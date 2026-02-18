@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(wsl -d Ubuntu_22_04_GodMode -e bash -c:*)"
+    ]
+  }
+}
