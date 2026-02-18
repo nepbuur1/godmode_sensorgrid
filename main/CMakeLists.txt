@@ -131,6 +131,12 @@ set(COMPONENT_ADD_INCLUDEDIRS
 "../apps/sensorgrid_v2/sensor_v2/src"
 "../apps/sensorgrid_v2/client_v2/src"
 
+# Sensor Grid apps (sensorgrid_v3)
+"../apps/sensorgrid_v3/sensorgrid_common"
+"../apps/sensorgrid_v3/server_v3/src"
+"../apps/sensorgrid_v3/sensor_v3/src"
+"../apps/sensorgrid_v3/client_v3/src"
+
 #"../apps/TestHwLibGlcOled"
 # Adafruit libs for driving SSD1306 OLED:
 # "../libs/Adafruit_SSD1306"

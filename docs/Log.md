@@ -120,3 +120,24 @@ Implemented sensorgrid_v2 with a polling-based ESP-NOW protocol. Unlike v1 where
 - Client flashed to /dev/ttyACM3 - all 6/6 HTTP tests passed
 - Dashboard verified working at http://192.168.4.1
 
+## Phase 3
+
+### Summary
+Created sensorgrid_v3 by fully copying sensorgrid_v2 and renaming all sub-apps from v2 to v3. This provides a clean starting point for further v3 functionality.
+
+### What was done
+- Copied `apps/sensorgrid_v2/` to `apps/sensorgrid_v3/`
+- Renamed directories: `sensor_v2/` → `sensor_v3/`, `server_v2/` → `server_v3/`, `client_v2/` → `client_v3/`
+- Renamed all source files (`*_v2*` → `*_v3*`)
+- Updated all includes, log strings, and doc references from "v2" to "v3"
+- Renamed and updated all documentation and mermaid diagram files
+- Regenerated SVGs: 12/12 successful (4 v1 + 4 v2 + 4 v3)
+- Added v3 include paths to `main/CMakeLists.txt`
+- Added v3 includes to `main/main.cpp` (commented out)
+
+### Test results
+- Server_v3 flashed to /dev/ttyACM0 - working
+- Sensor_v3 (ID=1) flashed to /dev/ttyACM1 - responding to POLL
+- Sensor_v3 (ID=2) flashed to /dev/ttyACM2 - responding to POLL
+- Client_v3 flashed to /dev/ttyACM3 - all 6/6 HTTP tests passed (with both sensors active)
+

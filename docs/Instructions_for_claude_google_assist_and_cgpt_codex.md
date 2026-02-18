@@ -111,3 +111,9 @@ apps/sensorgrid_v2/
     doc/                  (system-level docs, object models, mermaid, SVGs)
 ```
 Each app gets its own `doc/` folder with object model, call trees, and (for client_v2) test results.
+
+### Phase 3
+Now we move on to a new project, called sensorgrid_v3.
+For starters, by fully copying sensorgrid_v2. (and renaming the sub-apps to server_v3, sensor_v3 and client_v3).
+
+

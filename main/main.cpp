@@ -90,6 +90,11 @@ namespace crt
 //#include <sensor_v2.ino>
 //#include <client_v2.ino>
 
+// **** Sensor Grid apps (sensorgrid_v3) ****
+//#include <server_v3.ino>
+//#include <sensor_v3.ino>
+//#include <client_v3.ino>
+
 //------------------------------------
 // Above, you can copy or include the contents of .ino examples from the arduino IDE.
 // The only thing is: you may have to forward declare functions or change the order
