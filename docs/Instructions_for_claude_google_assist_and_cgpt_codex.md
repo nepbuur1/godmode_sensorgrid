@@ -13,7 +13,7 @@ The third one as "sensor_2".
 Please, follow the development phases in this document.
 Do that, while adhering the software development guidelines as specified in Software_dev_guidelines.md in this folder.
 
-### Phase 1:
+### Phase 1
 In the folder _not_part_of_this_project_reference_for_inspiration,
 you can find a previous project that I created for esp32 (not esp32-s3).
 
@@ -45,3 +45,69 @@ I've made some updates to guidelines for coding and documenting. I'd like you to
 
 #### Phase 1d
 Perhaps you can add a docs folder (with subfolders img and mermaid again) to sensorgrid_v1 as well, and add sensorgrid_v1.doc that summarises the complete sensorgrid_v1 - the role of it's apps, how they interact. This time including an "object model" where each of the apps is represented as an object, and along the arrows, the communications between them. (this is not a real object model - the stereo types within each object can be omitted, in this case).
+
+### Phase 2
+In phase 1, we created the project sensorgrid_v1, which consists of the cooperating apps client_v1, sensor_v1 and server_v1.
+In this phase we start a new project, named sensorgrid_v2, which will have a folder structure that is similar to that of v1, but with client_v2, sensor_v2 and server_v2, in this case. sensorgrid_v1 can be looked at for ideas, but sensorgrid_v2 will be different in the way that server and sensors setup their communications and communicate. in sensorgrid_v1, sensors tried to send their message whenever they wanted. that'll probably go wrong when using a lot of sensors, and when the sensors send large datapackets (at the same moment or overlapping moment).
+#### Phase 2a
+Planning. Propose a planning of how sensorgrid_v2 could be made without the limitation stated above. Perhaps somehow, the server device could handshake with the client devices via espnow. It "says" to sensor1 metaphorically: go ahead, send what you've got. only then, sensor1 sends its data to the server. if the data is too much for a single packet, it may be distributed over multiple packets. when the server has received all datapackets from sensor1 (or it time-outs), it repeats the above for sensor2, etc. In advance, the server knows how much sensors there are, so it does not need to wait for non-existing sensor ids.
+Is this idea viable? Or do you have suggestions for improvement of this plan?
+#### Phase 2b
+Implement sensorgrid_v2 with the following polling-based ESP-NOW protocol.
+
+##### Protocol overview
+The server operates in two phases:
+
+**DISCOVER/REGISTER phase (initial startup only):**
+- The server knows the expected number of sensors in advance (configured constant).
+- The server broadcasts a `DISCOVER` message periodically.
+- Each sensor that receives it replies with a `REGISTER` message containing its sensor ID. The server records the sensor ID and the sender's MAC address (available for free in the ESP-NOW receive callback metadata).
+- The server stays in this phase until all expected sensors have registered. There is no timeout — it waits indefinitely.
+- Once all sensors are registered, the server transitions to the POLL/DATA phase.
+
+**POLL/DATA phase (normal operation):**
+- The server polls each registered sensor in round-robin order.
+- For each sensor, the server sends a unicast `POLL` message to that sensor's MAC address.
+- The sensor responds with one or more `DATA` packets. Each DATA packet contains: sensor ID, packet index, total packet count, and payload.
+- When a sensor receives a POLL, it extracts the server's MAC from the receive callback and auto-adds it as a peer if not already present. This allows sensors to recover transparently from a power cycle without needing re-registration in the normal case.
+- After receiving all DATA packets from a sensor, the server moves to the next one.
+
+**Sensor unresponsive — recovery without blocking healthy sensors:**
+- If a sensor does not respond to a POLL, the server retries the POLL up to 5 more times.
+- If the sensor still does not respond after 5 retries, the server marks it as "unregistered" but stays in the POLL/DATA phase.
+- The server continues polling all remaining healthy sensors. Data from working sensors keeps flowing.
+- Between poll cycles (after polling all healthy sensors), the server broadcasts a single `DISCOVER` to attempt re-registration of the missing sensor.
+- Once the missing sensor responds with `REGISTER`, it is included in the next poll cycle.
+
+**Onboard RGB LED status indicator:**
+- LED off: all expected sensors are registered and responding. A healthy system shows no visible LED activity.
+- LED flashing (~1 Hz): one or more sensors are not yet registered or have become unresponsive. This applies both during initial startup and during normal operation.
+
+##### Packet types
+
+| Type | Direction | Contents |
+|------|-----------|----------|
+| `DISCOVER` | server -> broadcast | message type |
+| `REGISTER` | sensor -> server | message type, sensor ID |
+| `POLL` | server -> sensor (unicast) | message type, sensor ID |
+| `DATA` | sensor -> server | message type, sensor ID, packet index, total packets, payload |
+
+##### What carries over from v1
+- WiFi AP+STA mode on server (for web dashboard + ESP-NOW)
+- WiFi STA mode on sensors (for ESP-NOW)
+- Web dashboard with real-time bar charts and `/api/sensors` JSON API
+- Download button (CSV export)
+- client_v2 test app adapted for v2 endpoints
+- Simulated sensor values (same incrementing pattern as v1)
+- `neopixelWrite(RGB_BUILTIN, 0, 0, 0)` to turn off LED at startup (LED is then used only for status flashing)
+
+##### Folder structure
+```
+apps/sensorgrid_v2/
+    sensorgrid_common/    (shared packet definitions)
+    sensor_v2/src/        (sensor app)
+    server_v2/src/        (server app)
+    client_v2/src/        (test client app)
+    doc/                  (system-level docs, object models, mermaid, SVGs)
+```
+Each app gets its own `doc/` folder with object model, call trees, and (for client_v2) test results.
