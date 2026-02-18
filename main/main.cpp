@@ -80,9 +80,10 @@ namespace crt
 
 #include "nvs_flash.h" // nodig voor WIFI functionaliteit via Arduino IDE
 
-// **** Sensor Grid apps ****
-//#include <collector_phase1.ino>
-#include <sensor_v1.ino>
+// **** Sensor Grid apps (sensorgrid_v1) ****
+//#include <server_v1.ino>
+//#include <sensor_v1.ino>
+//#include <client_v1.ino>
 
 //------------------------------------
 // Above, you can copy or include the contents of .ino examples from the arduino IDE.

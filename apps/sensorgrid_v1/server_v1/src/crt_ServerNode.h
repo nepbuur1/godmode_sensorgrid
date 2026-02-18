@@ -11,7 +11,7 @@
 
 namespace crt
 {
-	class CollectorNode
+	class ServerNode
 	{
 	private:
 		static const uint8_t MAX_SENSORS = 8;
@@ -47,28 +47,31 @@ namespace crt
 					sensors[id].id = id;
 					sensors[id].value = pkt.adcValue;
 					sensors[id].lastSeenMs = nowMs;
-					ESP_LOGI("CollectorNode", "[ESP-NOW] sensor %u -> %d", id, pkt.adcValue);
+					ESP_LOGI("ServerNode", "[ESP-NOW] sensor %u -> %d", id, pkt.adcValue);
 				}
 				else
 				{
-					ESP_LOGW("CollectorNode", "[ESP-NOW] unknown sensor id: %u", id);
+					ESP_LOGW("ServerNode", "[ESP-NOW] unknown sensor id: %u", id);
 				}
 			}
 			else
 			{
-				ESP_LOGW("CollectorNode", "[ESP-NOW] unexpected packet length=%d", len);
+				ESP_LOGW("ServerNode", "[ESP-NOW] unexpected packet length=%d", len);
 			}
 		}
 
 	public:
-		CollectorNode(const char* ssid, const char* pass, int channel)
+		ServerNode(const char* ssid, const char* pass, int channel)
 			: apSsid(ssid), apPass(pass), apChannel(channel), server(80)
 		{
 		}
 
 		void init()
 		{
-			ESP_LOGI("CollectorNode", "Collector node starting...");
+			ESP_LOGI("ServerNode", "Server node starting...");
+
+			// Turn off the onboard RGB LED (NeoPixel on GPIO 48)
+			neopixelWrite(RGB_BUILTIN, 0, 0, 0);
 
 			for (int i = 1; i <= MAX_SENSORS; i++)
 			{
@@ -81,8 +84,8 @@ namespace crt
 			// WiFi AP + STA mode (AP for web clients, STA needed for ESP-NOW)
 			WiFi.mode(WIFI_AP_STA);
 			WiFi.softAP(apSsid, apPass, apChannel);
-			ESP_LOGI("CollectorNode", "AP SSID: %s", apSsid);
-			ESP_LOGI("CollectorNode", "AP IP: %s", WiFi.softAPIP().toString().c_str());
+			ESP_LOGI("ServerNode", "AP SSID: %s", apSsid);
+			ESP_LOGI("ServerNode", "AP IP: %s", WiFi.softAPIP().toString().c_str());
 
 			// Web routes
 			server.on("/", HTTP_GET, [this]() {
@@ -98,21 +101,21 @@ namespace crt
 			});
 
 			server.begin();
-			ESP_LOGI("CollectorNode", "WebServer started on port 80");
+			ESP_LOGI("ServerNode", "WebServer started on port 80");
 
 			// ESP-NOW
 			if (esp_now_init() != ESP_OK)
 			{
-				ESP_LOGE("CollectorNode", "ESP-NOW init failed!");
+				ESP_LOGE("ServerNode", "ESP-NOW init failed!");
 			}
 			else
 			{
-				ESP_LOGI("CollectorNode", "ESP-NOW init OK");
+				ESP_LOGI("ServerNode", "ESP-NOW init OK");
 				esp_now_register_recv_cb(onDataRecv);
 			}
 
-			ESP_LOGI("CollectorNode", "STA MAC: %s", WiFi.macAddress().c_str());
-			ESP_LOGI("CollectorNode", "AP MAC: %s", WiFi.softAPmacAddress().c_str());
+			ESP_LOGI("ServerNode", "STA MAC: %s", WiFi.macAddress().c_str());
+			ESP_LOGI("ServerNode", "AP MAC: %s", WiFi.softAPmacAddress().c_str());
 		}
 
 		void handleClient()
@@ -145,8 +148,8 @@ namespace crt
 
 			server.send(200, "application/json", json);
 		}
-	}; // end class CollectorNode
+	}; // end class ServerNode
 
-	CollectorNode::SensorState CollectorNode::sensors[CollectorNode::MAX_SENSORS + 1] = {};
+	ServerNode::SensorState ServerNode::sensors[ServerNode::MAX_SENSORS + 1] = {};
 
 } // end namespace crt

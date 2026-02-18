@@ -5,7 +5,7 @@
 
 namespace crt
 {
-	// Packet sent from sensor nodes to the collector via ESP-NOW.
+	// Packet sent from sensor nodes to the server via ESP-NOW.
 	// Must match exactly on both sides.
 	struct SensorPacket
 	{

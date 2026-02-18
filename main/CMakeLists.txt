@@ -119,10 +119,11 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 "../apps/pong/pong"
 
-# Sensor Grid apps
-"../apps/sensorgrid_common"
-"../apps/collector_phase1/src"
-"../apps/sensor_v1/src"
+# Sensor Grid apps (sensorgrid_v1)
+"../apps/sensorgrid_v1/sensorgrid_common"
+"../apps/sensorgrid_v1/server_v1/src"
+"../apps/sensorgrid_v1/sensor_v1/src"
+"../apps/sensorgrid_v1/client_v1/src"
 
 #"../apps/TestHwLibGlcOled"
 # Adafruit libs for driving SSD1306 OLED:

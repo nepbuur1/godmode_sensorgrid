@@ -28,3 +28,20 @@ n+=20; send(n%1024)).
 - provide the instruction of how I can view the monitor output of the collector, via which I should be able to verify via the logs that it's working properly.
 - of course, I also should be able to see it by logging in on the hotspot.
 
+#### Phase 1b (already completed)
+I've made some updates to guidelines for coding and documenting. I'd like you to take into account those updates for our current sensor/collector project. 
+- You'll see I request a "parent app" folder within the apps folder. Please call it "sensorgrid_v1". 
+- Then put the current sensor_v1 folder within it, and also the
+  collector_phase1 folder, but rename it server_v1 (from hereon, I'd rather talk about the server than the collector.
+- Please update any files to synchronize that). When you're ready, please don't forget to test if everything still builds and properly executes. (everything mentioned above can still be seen as part of phase 1 - a slight refactoring, and adding docs, without altering functionality)
+
+#### Phase 1c
+- Notice that I have added a fourth esp32-s3 device, which can be programmed using:
+`idf.py -p /dev/ttyACM3 flash monitor`.
+- Create an app for it within sensorgrid_v1, called "client_v1". The client_v1 device, app, should do following:
+- Log in on the wifi hotspot of server_v1. Test the webpage(s) that it serves (with all functionalities), in a similar way as a human would test it via a browser.
+- in its docs, so in sensorgrid_v1/client_v1/docs, add a test.md document that summarizes the tests that were done and their results.
+- within the apps of sensorgrid_v1, in the docs, there are nice refers to .svg files in img folder. but the .svg files in question (which should be converted versions of the corresponding files in the mermaid folder) are missing. So I think a mermaid to svg tool should be downloaded, installed and used to fix that. Please also summarize how you did that in Log.md.
+
+#### Phase 1d
+Perhaps you can add a docs folder (with subfolders img and mermaid again) to sensorgrid_v1 as well, and add sensorgrid_v1.doc that summarises the complete sensorgrid_v1 - the role of it's apps, how they interact. This time including an "object model" where each of the apps is represented as an object, and along the arrows, the communications between them. (this is not a real object model - the stereo types within each object can be omitted, in this case).

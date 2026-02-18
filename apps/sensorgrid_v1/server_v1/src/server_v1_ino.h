@@ -2,7 +2,7 @@
 
 #pragma once
 #include <Arduino.h>
-#include "crt_CollectorNode.h"
+#include "crt_ServerNode.h"
 
 static const char* AP_SSID = "SCOLIOSE";
 static const char* AP_PASS = "scoliose";
@@ -10,16 +10,16 @@ static const int AP_CHANNEL = 1;
 
 namespace crt
 {
-	CollectorNode collectorNode(AP_SSID, AP_PASS, AP_CHANNEL);
+	ServerNode serverNode(AP_SSID, AP_PASS, AP_CHANNEL);
 }
 
 void setup()
 {
-	ESP_LOGI("main", "=== COLLECTOR PHASE 1 ===");
-	crt::collectorNode.init();
+	ESP_LOGI("main", "=== SERVER NODE v1 ===");
+	crt::serverNode.init();
 }
 
 void loop()
 {
-	crt::collectorNode.handleClient();
+	crt::serverNode.handleClient();
 }

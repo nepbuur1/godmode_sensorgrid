@@ -39,9 +39,12 @@ namespace crt
 		{
 			ESP_LOGI("SensorNode", "Sensor node starting, id=%u, channel=%d", sensorId, channel);
 
+			// Turn off the onboard RGB LED (NeoPixel on GPIO 48)
+			neopixelWrite(RGB_BUILTIN, 0, 0, 0);
+
 			WiFi.mode(WIFI_STA);
 
-			// Force WiFi channel to match the collector's AP channel
+			// Force WiFi channel to match the server's AP channel
 			esp_wifi_set_promiscuous(true);
 			esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 			esp_wifi_set_promiscuous(false);

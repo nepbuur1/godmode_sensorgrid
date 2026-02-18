@@ -1,0 +1,9 @@
+graph LR
+    SensorNode["&lt;&lt;control&gt;&gt;<br/>SensorNode"]
+    WiFi["&lt;&lt;boundary&gt;&gt;<br/>WiFi"]
+    EspNow["&lt;&lt;boundary&gt;&gt;<br/>EspNow"]
+
+    SensorNode -- "setStaMode()" --> WiFi
+    SensorNode -- "setChannel(channel)" --> WiFi
+    SensorNode -- "init()" --> EspNow
+    SensorNode -- "send(sensorPacket)" --> EspNow

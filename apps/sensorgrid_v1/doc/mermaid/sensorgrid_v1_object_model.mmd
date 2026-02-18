@@ -1,0 +1,9 @@
+graph LR
+    sensor_v1["sensor_v1<br/>(x2)"]
+    server_v1["server_v1"]
+    client_v1["client_v1"]
+
+    sensor_v1 -- "ESP-NOW broadcast<br/>sensorPacket" --> server_v1
+    client_v1 -- "WiFi STA<br/>connectToAp(ssid, pass)" --> server_v1
+    client_v1 -- "HTTP GET<br/>/, /api/sensors" --> server_v1
+    server_v1 -- "HTTP response<br/>(html, json)" --> client_v1

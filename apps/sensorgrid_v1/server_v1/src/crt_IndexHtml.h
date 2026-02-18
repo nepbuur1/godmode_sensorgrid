@@ -1,5 +1,5 @@
 // by Marius Versteegen, 2025
-// Embedded HTML dashboard for the collector node web interface.
+// Embedded HTML dashboard for the server node web interface.
 // Adapted from _not_part_of_this_project_reference_for_inspiration/collector_node/data/index.html
 
 #pragma once
