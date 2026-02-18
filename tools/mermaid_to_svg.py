@@ -66,12 +66,18 @@ def convert_file(input_path: str, output_path: str) -> bool:
 def convert_all():
     """Convert all known mermaid files in the project."""
     project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    apps_dir = os.path.join(project_root, "apps", "sensorgrid_v1")
+
+    sensorgrid_dirs = []
+    apps_root = os.path.join(project_root, "apps")
+    for entry in os.listdir(apps_root):
+        if entry.startswith("sensorgrid_"):
+            sensorgrid_dirs.append(os.path.join(apps_root, entry))
 
     conversions = []
-    for app_name in os.listdir(apps_dir):
-        mermaid_dir = os.path.join(apps_dir, app_name, "doc", "mermaid")
-        img_dir = os.path.join(apps_dir, app_name, "doc", "img")
+    for sg_dir in sensorgrid_dirs:
+        # Check system-level doc/mermaid folder
+        mermaid_dir = os.path.join(sg_dir, "doc", "mermaid")
+        img_dir = os.path.join(sg_dir, "doc", "img")
         if os.path.isdir(mermaid_dir):
             for fname in os.listdir(mermaid_dir):
                 if fname.endswith(".mmd"):
@@ -80,6 +86,19 @@ def convert_all():
                         os.path.join(mermaid_dir, fname),
                         os.path.join(img_dir, svg_name),
                     ))
+
+        # Check each app's doc/mermaid folder
+        for app_name in os.listdir(sg_dir):
+            mermaid_dir = os.path.join(sg_dir, app_name, "doc", "mermaid")
+            img_dir = os.path.join(sg_dir, app_name, "doc", "img")
+            if os.path.isdir(mermaid_dir):
+                for fname in os.listdir(mermaid_dir):
+                    if fname.endswith(".mmd"):
+                        svg_name = fname.replace(".mmd", ".svg")
+                        conversions.append((
+                            os.path.join(mermaid_dir, fname),
+                            os.path.join(img_dir, svg_name),
+                        ))
 
     if not conversions:
         print("No .mmd files found.")

@@ -78,3 +78,45 @@ Converted the reference ESP32 sensor grid project to ESP32-S3 using ESP-IDF 5.4.
 - Created mermaid object model showing inter-app communication (ESP-NOW, WiFi, HTTP)
 - Generated system-level SVG via `mermaid_to_svg.py`
 
+## Phase 2
+
+### Summary
+Implemented sensorgrid_v2 with a polling-based ESP-NOW protocol. Unlike v1 where sensors broadcast freely, in v2 the server controls all communication: it discovers and registers sensors, then polls each one in round-robin order for data. This eliminates collision risk when using many sensors or large data packets.
+
+### Phase 2a: Protocol design
+- Designed DISCOVER/REGISTER/POLL/DATA protocol
+- DISCOVER: server broadcasts to find sensors
+- REGISTER: sensor responds with its ID
+- POLL: server unicasts to a specific sensor requesting data
+- DATA: sensor responds with current value (supports multi-packet via packetIndex/totalPackets)
+- Recovery: 5 retries on POLL timeout, then mark unregistered and broadcast DISCOVER
+- LED indicator: flashes red ~1Hz when any sensor is missing
+
+### Phase 2b: Implementation
+
+#### Created files
+- **`apps/sensorgrid_v2/sensorgrid_common/crt_SensorGridPacket.h`** - packet definitions (MessageType enum, DiscoverPacket, RegisterPacket, PollPacket, DataPacket with 200-byte payload)
+- **`apps/sensorgrid_v2/sensor_v2/src/`** - reactive sensor node
+  - `crt_SensorNode.h` - responds to DISCOVER with REGISTER, to POLL with DATA. Auto-adds server MAC as peer from receive callback. Static instance pointer for ESP-NOW callbacks.
+  - `sensor_v2_ino.h` / `sensor_v2.ino` - Arduino wrapper
+- **`apps/sensorgrid_v2/server_v2/src/`** - polling server node
+  - `crt_ServerNode.h` - state machine (DISCOVERING/POLLING/WAITING_DATA). Volatile flags for callback-to-update communication. LED flashing. Sensor recovery without blocking healthy sensors.
+  - `crt_IndexHtml.h` - embedded HTML dashboard (identical to v1)
+  - `server_v2_ino.h` / `server_v2.ino` - Arduino wrapper with EXPECTED_SENSOR_COUNT=2
+- **`apps/sensorgrid_v2/client_v2/src/`** - automated test client
+  - `crt_ClientNode.h` - identical tests to v1, updated log strings to "v2"
+  - `client_v2_ino.h` / `client_v2.ino` - Arduino wrapper
+- **Documentation** - docs, mermaid diagrams, and SVGs for all 3 apps + system level
+
+#### Modified files
+- **`main/main.cpp`** - added v2 includes (commented out)
+- **`main/CMakeLists.txt`** - added v2 include paths
+- **`tools/mermaid_to_svg.py`** - updated `--all` to scan all `sensorgrid_*` folders and system-level doc folders
+
+#### Test results
+- Server flashed to /dev/ttyACM0 - DISCOVER/REGISTER/POLL/DATA cycle working
+- Sensor 1 (ID=1) flashed to /dev/ttyACM1 - responds to POLL with incrementing values
+- Sensor 2 (ID=2) flashed to /dev/ttyACM2 - responds to POLL with incrementing values
+- Client flashed to /dev/ttyACM3 - all 6/6 HTTP tests passed
+- Dashboard verified working at http://192.168.4.1
+
