@@ -12,4 +12,5 @@ EspNow"]
     EspNow -- "onDataRecv(DISCOVER)" --> SensorNode
     SensorNode -- "send(RegisterPacket)" --> EspNow
     EspNow -- "onDataRecv(POLL)" --> SensorNode
-    SensorNode -- "send(DataPacket)" --> EspNow
+    SensorNode -- "send(DataPacket(s)
+50×uint16_t, multi-pkt)" --> EspNow

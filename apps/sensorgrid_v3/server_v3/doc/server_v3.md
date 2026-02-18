@@ -1,7 +1,7 @@
 # server_v3
 
 ## Summary
-Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all expected sensors, then polls them in round-robin order. Serves a web dashboard showing real-time bar charts for up to 8 sensors, and provides a JSON API endpoint for programmatic access. Flashes the onboard LED when any sensor is missing.
+Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all expected sensors, then polls them in round-robin order. Each sensor responds with an array of 50 uint16_t measurements (multi-packet reassembly supported for larger payloads). The server caches all measurements per sensor; the web dashboard displays only the first measurement value. Flashes the onboard LED when any sensor is missing.
 
 ## Object Model
 
@@ -11,7 +11,7 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
 
 | Object | Stereotype | Responsibility |
 |--------|-----------|---------------|
-| **ServerNode** | control | Orchestrates the server: runs the DISCOVERING/POLLING/WAITING_DATA state machine, manages sensor registration, sends POLL requests, processes DATA responses, handles sensor recovery, controls the LED, and serves the web dashboard. |
+| **ServerNode** | control | Orchestrates the server: runs the DISCOVERING/POLLING/WAITING_DATA state machine, manages sensor registration, sends POLL requests, reassembles multi-packet DATA responses into measurement arrays, handles sensor recovery, controls the LED, and serves the web dashboard. |
 | **WiFi** | boundary | Represents the ESP32-S3 WiFi hardware in AP+STA mode. Provides the access point that web clients connect to and the channel for ESP-NOW communication. |
 | **EspNow** | boundary | Represents the ESP-NOW protocol layer. Broadcasts DISCOVER, sends unicast POLL to sensors, and receives REGISTER and DATA messages via callback. |
 | **WebServer** | boundary | Represents the HTTP server. Serves the HTML dashboard on `/` and the sensor data JSON API on `/api/sensors`. |
@@ -51,11 +51,12 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
     - ! esp_now_send(PollPacket)
   - ? handleWaitingData()
     - ! processRegister()
-    - ? updateSensorState(id, value)
+    - ? memcpy(sensors[id].measurements, reassemblyBuffer) — store measurement array
     - ? retryPoll(id)
     - ? markUnregistered(id)
 
 ### onDataRecv() (ESP-NOW callback)
 - ! onDataRecv(info, data, len)
   - ? set newRegisterReceived + register data
-  - ? set newDataReceived + DataPacket buffer
+  - ? reassemble multi-packet DATA into reassemblyBuffer
+  - ? set newDataReceived when all packets received

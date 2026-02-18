@@ -16,8 +16,12 @@ namespace crt
 		int channel;
 		unsigned long sampleIntervalMs;
 		unsigned long lastSampleMs;
-		int counter;
-		int currentValue;
+		uint16_t counter;
+
+		// Double-buffered measurements: update() writes to one buffer,
+		// handlePoll() reads from the other. No race condition.
+		uint16_t measurements[2][MEASUREMENT_COUNT];
+		volatile uint8_t readyIndex;
 
 		static SensorNode* instance;
 		static bool serverPeerAdded;
@@ -91,26 +95,41 @@ namespace crt
 		{
 			ensureServerPeer(mac);
 
-			DataPacket data = {};
-			data.messageType = MessageType::DATA;
-			data.sensorId = sensorId;
-			data.packetIndex = 0;
-			data.totalPackets = 1;
-			data.payloadSize = sizeof(int);
-			memcpy(data.payload, &currentValue, sizeof(int));
+			const uint16_t totalBytes = MEASUREMENT_COUNT * sizeof(uint16_t);
+			const uint8_t maxPerPacket = DATA_PAYLOAD_MAX_SIZE;
+			const uint8_t totalPackets = (totalBytes + maxPerPacket - 1) / maxPerPacket;
+			const uint8_t* src = (const uint8_t*)measurements[readyIndex];
 
-			size_t sendSize = sizeof(DataPacket) - DATA_PAYLOAD_MAX_SIZE + data.payloadSize;
-			esp_now_send(mac, (uint8_t*)&data, sendSize);
+			uint16_t offset = 0;
+			for (uint8_t i = 0; i < totalPackets; i++)
+			{
+				uint16_t remaining = totalBytes - offset;
+				uint8_t chunk = (remaining > maxPerPacket) ? maxPerPacket : (uint8_t)remaining;
 
-			ESP_LOGI("SensorNode", "Received POLL, sent DATA id=%u val=%d", sensorId, currentValue);
+				DataPacket data = {};
+				data.messageType = MessageType::DATA;
+				data.sensorId = sensorId;
+				data.packetIndex = i;
+				data.totalPackets = totalPackets;
+				data.payloadSize = chunk;
+				memcpy(data.payload, src + offset, chunk);
+
+				size_t sendSize = sizeof(DataPacket) - DATA_PAYLOAD_MAX_SIZE + chunk;
+				esp_now_send(mac, (uint8_t*)&data, sendSize);
+				offset += chunk;
+			}
+
+			ESP_LOGI("SensorNode", "Received POLL, sent %u pkt(s) id=%u val=%u (%u measurements)",
+					 totalPackets, sensorId, measurements[readyIndex][0], MEASUREMENT_COUNT);
 		}
 
 	public:
 		SensorNode(uint8_t sensorId, int channel, unsigned long sampleIntervalMs)
 			: sensorId(sensorId), channel(channel),
 			  sampleIntervalMs(sampleIntervalMs),
-			  lastSampleMs(0), counter(0), currentValue(0)
+			  lastSampleMs(0), counter(0), readyIndex(0)
 		{
+			memset(measurements, 0, sizeof(measurements));
 			instance = this;
 		}
 
@@ -145,8 +164,22 @@ namespace crt
 			if (now - lastSampleMs >= sampleIntervalMs)
 			{
 				lastSampleMs = now;
+
+				// Write to the non-ready buffer (safe from handlePoll reads)
+				uint8_t writeIdx = 1 - readyIndex;
+
+				// Simulate 20ms I2C measurement processing time
+				delay(20);
+
 				counter += 10 * sensorId;
-				currentValue = counter % 1024;
+				measurements[writeIdx][0] = counter % 1024;
+				for (uint8_t i = 1; i < MEASUREMENT_COUNT; i++)
+				{
+					measurements[writeIdx][i] = (counter + i) % 1024;
+				}
+
+				// Atomic swap: single byte write = atomic on ESP32-S3
+				readyIndex = writeIdx;
 			}
 		}
 	}; // end class SensorNode

@@ -11,8 +11,8 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 
 | App | Device(s) | Responsibility |
 |-----|-----------|---------------|
-| **sensor_v3** | ACM1, ACM2 | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA. Each instance has a unique sensor ID and independently advances a simulated value. |
-| **server_v3** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, and serves a web dashboard with real-time bar charts and a JSON API. Flashes LED when sensors are missing. |
+| **sensor_v3** | ACM1, ACM2 | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 50 cached uint16_t measurements. Uses double-buffered arrays and 20ms simulated I2C delay. Each instance has a unique sensor ID. |
+| **server_v3** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a web dashboard (showing first measurement only) with a JSON API. Flashes LED when sensors are missing. |
 | **client_v3** | ACM3 | Connects to the server's WiFi AP and runs automated HTTP tests against all web endpoints, reporting PASS/FAIL results via serial log. |
 
 ### Communication Protocol
@@ -38,7 +38,38 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 | DiscoverPacket | server -> broadcast | messageType |
 | RegisterPacket | sensor -> server | messageType, sensorId |
 | PollPacket | server -> sensor | messageType, sensorId |
-| DataPacket | sensor -> server | messageType, sensorId, packetIndex, totalPackets, payloadSize, payload[200] |
+| DataPacket | sensor -> server | messageType, sensorId, packetIndex, totalPackets, payloadSize, payload[245] |
+
+#### DataPacket wire format (ESP-NOW, binary)
+
+With 50 measurements (100 bytes), the DataPacket fits in a single ESP-NOW frame:
+
+| Byte(s) | Field | Example value |
+|---------|-------|---------------|
+| 0 | messageType | `0x04` (DATA) |
+| 1 | sensorId | `1` |
+| 2 | packetIndex | `0` |
+| 3 | totalPackets | `1` |
+| 4 | payloadSize | `100` |
+| 5–104 | payload | 50 × uint16_t raw bytes |
+
+For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automatically splits across multiple packets using packetIndex/totalPackets, and the server reassembles them. The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minus the 5-byte header).
+
+#### JSON API response (`GET /api/sensors`)
+
+The web dashboard and test client use JSON over HTTP. Only `measurements[0]` is exposed as `"value"`:
+
+```json
+{
+  "now": 171056,
+  "sensors": [
+    {"id": 1, "seen": true,  "value": 258, "age_ms": 12},
+    {"id": 2, "seen": true,  "value": 480, "age_ms": 25},
+    {"id": 3, "seen": false, "value": 0,   "age_ms": 4294967295},
+    ...
+  ]
+}
+```
 
 ### Recovery Behavior
 

@@ -141,3 +141,20 @@ Created sensorgrid_v3 by fully copying sensorgrid_v2 and renaming all sub-apps f
 - Sensor_v3 (ID=2) flashed to /dev/ttyACM2 - responding to POLL
 - Client_v3 flashed to /dev/ttyACM3 - all 6/6 HTTP tests passed (with both sensors active)
 
+### Phase 3b: Multi-measurement sensor data
+
+#### Summary
+Changed sensors from sending a single value to sending 50 cached uint16_t measurements per POLL response. Added double buffering to handle POLL arriving during measurement (future I2C scenario). Added multi-packet send/reassembly to support payloads exceeding ESP-NOW's 250-byte frame limit.
+
+#### Changes
+- **`crt_SensorGridPacket.h`**: Added `MEASUREMENT_COUNT = 50`, increased `DATA_PAYLOAD_MAX_SIZE` from 200 to 245 (ESP-NOW max minus 5-byte header)
+- **`crt_SensorNode.h`**: Double-buffered `measurements[2][50]` array. `update()` simulates 20ms I2C delay, fills write buffer, atomically swaps. `handlePoll()` sends from ready buffer with multi-packet chunking.
+- **`crt_ServerNode.h`**: Multi-packet reassembly in `onDataRecv()` callback using `reassemblyBuffer[500]`. `SensorState` stores `measurements[50]` + `measurementCount`. JSON API uses `measurements[0]` for dashboard value.
+- **`main/CMakeLists.txt`**: Reordered include paths (v3 first) to resolve v2/v3 `crt_SensorGridPacket.h` name clash
+- Updated docs, mermaid diagrams, and regenerated SVGs (12/12)
+
+#### Test results
+- Server logs: `Sensor 1 -> 50 measurements, first=258`, `pkt 1/1 (100 bytes)` — correct single-packet delivery of 50 × uint16_t
+- Both sensors active and values incrementing
+- Client_v3: all 6/6 HTTP tests passed
+

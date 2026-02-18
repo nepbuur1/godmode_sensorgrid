@@ -14,7 +14,8 @@ WebServer"]
     ServerNode -- "broadcast(DiscoverPacket)" --> EspNow
     ServerNode -- "send(PollPacket)" --> EspNow
     EspNow -- "onDataRecv(RegisterPacket)" --> ServerNode
-    EspNow -- "onDataRecv(DataPacket)" --> ServerNode
+    EspNow -- "onDataRecv(DataPacket(s))
+reassemble multi-pkt" --> ServerNode
     ServerNode -- "addRoute(path, handler)" --> WebServer
     ServerNode -- "start()" --> WebServer
     WebServer -- "handleApiSensors()" --> ServerNode

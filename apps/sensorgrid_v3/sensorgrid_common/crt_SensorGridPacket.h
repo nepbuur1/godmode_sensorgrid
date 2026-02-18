@@ -33,9 +33,13 @@ namespace crt
 		uint8_t sensorId;
 	} __attribute__((packed));
 
+	// Number of uint16_t measurements per sensor sample cycle.
+	static const uint8_t MEASUREMENT_COUNT = 50;
+
 	// Sensor -> server. Response to POLL.
 	// Supports multi-packet payloads via packetIndex/totalPackets.
-	static const uint8_t DATA_PAYLOAD_MAX_SIZE = 200;
+	// 245 = ESP-NOW max frame (250) minus DataPacket header (5 bytes).
+	static const uint8_t DATA_PAYLOAD_MAX_SIZE = 245;
 
 	struct DataPacket
 	{

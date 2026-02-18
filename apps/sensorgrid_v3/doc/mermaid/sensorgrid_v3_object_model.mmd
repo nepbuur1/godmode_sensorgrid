@@ -11,7 +11,7 @@ RegisterPacket" --> server_v3
     server_v3 -- "ESP-NOW unicast
 PollPacket" --> sensor_v3
     sensor_v3 -- "ESP-NOW unicast
-DataPacket" --> server_v3
+DataPacket(s) 50×uint16_t" --> server_v3
     client_v3 -- "WiFi STA
 connectToAp(ssid, pass)" --> server_v3
     client_v3 -- "HTTP GET

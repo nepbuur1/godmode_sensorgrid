@@ -34,7 +34,8 @@ namespace crt
 			uint8_t id;
 			uint8_t mac[6];
 			bool peerAdded;
-			int value;
+			uint16_t measurements[MEASUREMENT_COUNT];
+			uint8_t measurementCount;
 			unsigned long lastSeenMs;
 		};
 
@@ -63,7 +64,14 @@ namespace crt
 		static volatile uint8_t receivedRegisterMac[6];
 
 		static volatile bool newDataReceived;
-		static DataPacket receivedDataPacket;
+
+		// Multi-packet reassembly state
+		static const uint16_t MAX_REASSEMBLY_SIZE = 500;
+		static uint8_t reassemblyBuffer[MAX_REASSEMBLY_SIZE];
+		static volatile uint8_t dataPacketsReceived;
+		static volatile uint8_t dataPacketsExpected;
+		static volatile uint16_t reassemblyBytesReceived;
+		static volatile uint8_t reassemblySensorId;
 
 		static constexpr uint8_t BROADCAST_ADDRESS[6] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
@@ -94,13 +102,38 @@ namespace crt
 				{
 					if (len >= 5)
 					{
-						memcpy(&receivedDataPacket, incomingData,
-							   len < (int)sizeof(DataPacket) ? len : sizeof(DataPacket));
-						newDataReceived = true;
-						ESP_LOGI("ServerNode", "[ESP-NOW] DATA from sensor %u, pkt %u/%u",
-								 receivedDataPacket.sensorId,
-								 receivedDataPacket.packetIndex + 1,
-								 receivedDataPacket.totalPackets);
+						DataPacket pkt;
+						size_t copyLen = len < (int)sizeof(DataPacket) ? len : sizeof(DataPacket);
+						memcpy(&pkt, incomingData, copyLen);
+
+						if (pkt.packetIndex == 0)
+						{
+							// Start new reassembly
+							reassemblySensorId = pkt.sensorId;
+							dataPacketsExpected = pkt.totalPackets;
+							dataPacketsReceived = 0;
+							reassemblyBytesReceived = 0;
+						}
+
+						if (pkt.sensorId == reassemblySensorId &&
+							pkt.packetIndex == dataPacketsReceived)
+						{
+							uint16_t offset = reassemblyBytesReceived;
+							if (offset + pkt.payloadSize <= MAX_REASSEMBLY_SIZE)
+							{
+								memcpy(reassemblyBuffer + offset, pkt.payload, pkt.payloadSize);
+								reassemblyBytesReceived += pkt.payloadSize;
+							}
+							dataPacketsReceived++;
+
+							ESP_LOGI("ServerNode", "[ESP-NOW] DATA from sensor %u, pkt %u/%u (%u bytes)",
+									 pkt.sensorId, pkt.packetIndex + 1, pkt.totalPackets, pkt.payloadSize);
+
+							if (dataPacketsReceived >= dataPacketsExpected)
+							{
+								newDataReceived = true;
+							}
+						}
 					}
 					break;
 				}
@@ -274,29 +307,22 @@ namespace crt
 				newDataReceived = false;
 				uint8_t expectedId = registeredIds[currentPollIndex];
 
-				if (receivedDataPacket.sensorId == expectedId)
+				if (reassemblySensorId == expectedId)
 				{
-					int value = 0;
-					if (receivedDataPacket.payloadSize >= sizeof(int))
-					{
-						memcpy(&value, receivedDataPacket.payload, sizeof(int));
-					}
+					uint8_t count = reassemblyBytesReceived / sizeof(uint16_t);
+					if (count > MEASUREMENT_COUNT) count = MEASUREMENT_COUNT;
 
-					sensors[expectedId].value = value;
+					memcpy(sensors[expectedId].measurements, reassemblyBuffer,
+						   count * sizeof(uint16_t));
+					sensors[expectedId].measurementCount = count;
 					sensors[expectedId].lastSeenMs = millis();
 					sensors[expectedId].seen = true;
 
-					ESP_LOGI("ServerNode", "Sensor %u -> %d", expectedId, value);
+					ESP_LOGI("ServerNode", "Sensor %u -> %u measurements, first=%u",
+							 expectedId, count, sensors[expectedId].measurements[0]);
 
-					if (receivedDataPacket.packetIndex >= receivedDataPacket.totalPackets - 1)
-					{
-						currentPollIndex++;
-						currentState = State::POLLING;
-					}
-					else
-					{
-						stateEnteredMs = millis();
-					}
+					currentPollIndex++;
+					currentState = State::POLLING;
 				}
 			}
 			else if (millis() - stateEnteredMs >= DATA_TIMEOUT_MS)
@@ -356,7 +382,7 @@ namespace crt
 				json += "{";
 				json += "\"id\":" + String(i) + ",";
 				json += "\"seen\":" + String(s.seen ? "true" : "false") + ",";
-				json += "\"value\":" + String(s.seen ? s.value : 0) + ",";
+				json += "\"value\":" + String(s.seen ? (int)s.measurements[0] : 0) + ",";
 				json += "\"age_ms\":" + String(s.seen ? age : (unsigned long)0xFFFFFFFF);
 				json += "}";
 			}
@@ -451,7 +477,11 @@ namespace crt
 	volatile uint8_t ServerNode::receivedRegisterSensorId = 0;
 	volatile uint8_t ServerNode::receivedRegisterMac[6] = {};
 	volatile bool ServerNode::newDataReceived = false;
-	DataPacket ServerNode::receivedDataPacket = {};
+	uint8_t ServerNode::reassemblyBuffer[ServerNode::MAX_REASSEMBLY_SIZE] = {};
+	volatile uint8_t ServerNode::dataPacketsReceived = 0;
+	volatile uint8_t ServerNode::dataPacketsExpected = 0;
+	volatile uint16_t ServerNode::reassemblyBytesReceived = 0;
+	volatile uint8_t ServerNode::reassemblySensorId = 0;
 	constexpr uint8_t ServerNode::BROADCAST_ADDRESS[6];
 
 } // end namespace crt

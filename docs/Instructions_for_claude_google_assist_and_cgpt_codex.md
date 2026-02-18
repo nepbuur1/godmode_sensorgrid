@@ -113,7 +113,11 @@ apps/sensorgrid_v2/
 Each app gets its own `doc/` folder with object model, call trees, and (for client_v2) test results.
 
 ### Phase 3
+#### Phase 3a
 Now we move on to a new project, called sensorgrid_v3.
 For starters, by fully copying sensorgrid_v2. (and renaming the sub-apps to server_v3, sensor_v3 and client_v3).
 
+#### Phase 3b
+In the end, we will make sure that each sensor (microcontroller) makes measurements, caches them, then waits for the POLL request of the server, upon which the measurements are sent to the server. Right now, only one "measurement"/testvalue is sent which (i believe) represented by a two-byte unsigned integer.
+In the future, that will become a fixed amount of measurements (say 50), say all of type uint16_t. I guess it'd be most (processing-) efficient to send that these measurements as a single series of bytes in the (json) message rather than as separate measurement values. Allright, let's simulate that the sensor needs to spend 0.02 seconds of processing time to "measure" (for now) 50 values of type uint16_t. Let's use the same by 10 incrementing value as currently as the first "measurement" that is sent to the server. For now, let's say the server stores/caches the latest measurements from each sensor. For now, the webpage is kept the same. The values in the bars reflect only the value of the first cached measurement.
 
