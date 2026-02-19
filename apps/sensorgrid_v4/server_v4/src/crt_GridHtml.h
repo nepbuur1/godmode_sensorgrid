@@ -1,6 +1,6 @@
 // by Marius Versteegen, 2025
 // Grid visualization page: shows sensor 1's measurements as gray-scale circles
-// arranged in a diamond pattern.
+// arranged in a diamond pattern, with a histogram of value distribution below.
 
 #pragma once
 
@@ -35,9 +35,13 @@ namespace crt
       background: #fff;
       border: 1px solid #ddd;
     }
-    h1 {
+    h1, h2 {
       text-align: center;
       margin-bottom: 1rem;
+    }
+    h2 {
+      margin-top: 2rem;
+      font-size: 1.1rem;
     }
     .info {
       text-align: center;
@@ -68,6 +72,29 @@ namespace crt
       color: #888;
       transition: background 0.2s ease-out;
     }
+    .histogram {
+      max-width: 500px;
+      margin: 0 auto;
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 120px;
+    }
+    .hist-bar {
+      flex: 1;
+      background: #555;
+      border-radius: 1px 1px 0 0;
+      transition: height 0.2s ease-out;
+      min-height: 1px;
+    }
+    .hist-axis {
+      max-width: 500px;
+      margin: 2px auto 0;
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.65rem;
+      color: #888;
+    }
     #status {
       margin-top: 1rem;
       text-align: center;
@@ -84,30 +111,34 @@ namespace crt
     <h1>Sensor 1 - Grid View</h1>
     <div class="info">Each circle shows one measurement. Gray intensity is proportional to value (0=white, 1023=black). Arranged in a diamond pattern.</div>
     <div class="grid-container" id="grid"></div>
+    <h2>Value Distribution</h2>
+    <div class="histogram" id="histogram"></div>
+    <div class="hist-axis"><span>0</span><span>256</span><span>512</span><span>768</span><span>1023</span></div>
     <div id="status">...</div>
   </div>
 
   <script>
     const MAX_VALUE = 1023;
     const POLL_MS = 500;
+    const NUM_BINS = 50;
 
     const gridEl = document.getElementById("grid");
+    const histEl = document.getElementById("histogram");
     const statusEl = document.getElementById("status");
     let cells = [];
     let currentCount = 0;
+    let histBars = [];
 
     function computeRowSizes(n) {
       if (n <= 0) return [];
       const w = Math.ceil(Math.sqrt(n));
       const rows = [];
       let remaining = n;
-      // Ascending: 1, 2, ..., w
       for (let r = 1; r <= w && remaining > 0; r++) {
         const s = Math.min(r, remaining);
         rows.push(s);
         remaining -= s;
       }
-      // Descending: w-1, w-2, ..., 1
       for (let r = w - 1; r >= 1 && remaining > 0; r--) {
         const s = Math.min(r, remaining);
         rows.push(s);
@@ -132,6 +163,32 @@ namespace crt
           cells.push(cell);
         }
         gridEl.appendChild(rowEl);
+      }
+    }
+
+    function createHistogram() {
+      histEl.innerHTML = "";
+      histBars = [];
+      for (let i = 0; i < NUM_BINS; i++) {
+        const bar = document.createElement("div");
+        bar.className = "hist-bar";
+        bar.style.height = "1px";
+        histEl.appendChild(bar);
+        histBars.push(bar);
+      }
+    }
+
+    function updateHistogram(values) {
+      const binWidth = Math.ceil((MAX_VALUE + 1) / NUM_BINS);
+      const counts = new Array(NUM_BINS).fill(0);
+      for (const v of values) {
+        const bin = Math.min(Math.floor(v / binWidth), NUM_BINS - 1);
+        counts[bin]++;
+      }
+      const maxCount = Math.max(1, ...counts);
+      for (let i = 0; i < NUM_BINS; i++) {
+        const pct = (counts[i] / maxCount) * 100;
+        histBars[i].style.height = Math.max(1, pct) + "%";
       }
     }
 
@@ -160,6 +217,8 @@ namespace crt
           }
         });
 
+        updateHistogram(data.values);
+
         statusEl.textContent = "Laatste update: " + new Date().toLocaleTimeString();
       } catch (e) {
         statusEl.textContent = "Fout: " + e.message;
@@ -167,6 +226,7 @@ namespace crt
     }
 
     createGrid(50);
+    createHistogram();
     setInterval(fetchMeasurements, POLL_MS);
     fetchMeasurements();
   </script>

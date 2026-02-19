@@ -195,6 +195,8 @@ For each measurement:
 
 The diamond dynamically adjusts when the measurement count changes. It polls `/api/measurements/1` every 500ms.
 
+Below the diamond, a **histogram** shows the distribution of the current measurement values across 10 bins (0-1023 range). Bar heights are proportional to the count in each bin, and the numeric count is shown above each bar.
+
 ### Monitoring serial output
 
 To view diagnostic logs from any device:

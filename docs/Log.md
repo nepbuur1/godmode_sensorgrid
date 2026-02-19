@@ -194,3 +194,14 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - All 4 devices re-flashed and tested
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4c: Histogram
+
+#### Changes
+- **`crt_GridHtml.h`**: Added a histogram below the diamond showing the distribution of measurement values across 10 bins (0-1023). Bars are proportional to max bin count, with numeric counts above each bar and range labels below.
+- **`crt_ClientNode.h`**: Added `hasHistogram` check to `testGridPage()` (checks for "histogram" in HTML)
+- Updated sensorgrid_v4.md and test.md
+
+#### Test results
+- All 4 devices re-flashed and tested
+- Client_v4: all 8/8 HTTP tests passed
+

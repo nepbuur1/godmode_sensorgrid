@@ -11,7 +11,7 @@
 | # | Test | Result | Detail |
 |---|------|--------|--------|
 | 1 | GET / (dashboard) | PASS | HTML OK: title, heading, script, api reference, nav bar present |
-| 2 | GET /grid (grid view) | PASS | Grid page OK: title, nav, grid container, measurements API reference present |
+| 2 | GET /grid (grid view) | PASS | Grid page OK: title, nav, grid container, measurements API, histogram present |
 | 3 | GET /api/sensors (structure) | PASS | JSON structure OK: now, sensors[], id, seen, value fields present |
 | 4 | GET /api/measurements/1 (sensor 1 measurements) | PASS | Measurements JSON OK: id, count, values[] present |
 | 5 | Sensor data present | PASS | At least one sensor has seen:true |
