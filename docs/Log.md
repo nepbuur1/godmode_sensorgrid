@@ -265,3 +265,17 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - All four devices re-flashed (server, sensor 1, sensor 2, client)
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4h: Hex-packed circle grid
+
+#### Changes
+- **`crt_GridHtml.h`**: Adjusted vertical spacing for hex packing — circle centers are equidistant in all 6 directions:
+  - Removed vertical gap from `.grid-container` (set to 0)
+  - Added `margin-top: -1px` on rows (first row excluded) to achieve the `sqrt(3)/2` ratio
+  - With 22px circles and 2px horizontal gap: horizontal center-to-center = 24px, vertical center-to-center ≈ 21px (close to ideal 20.8px)
+  - The diamond's centered rows with differing counts naturally provide the half-cell horizontal offset for hex packing
+- Updated sensorgrid_v4.md (noted hex packing in grid view description)
+
+#### Test results
+- Server and client re-flashed and tested
+- Client_v4: all 8/8 HTTP tests passed
+

@@ -86,13 +86,17 @@ namespace crt
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 2px;
+      gap: 0;
       margin: 0 auto;
     }
     .row {
       display: flex;
       gap: 2px;
       justify-content: center;
+      margin-top: -1px;
+    }
+    .row:first-child {
+      margin-top: 0;
     }
     .cell {
       width: 22px;

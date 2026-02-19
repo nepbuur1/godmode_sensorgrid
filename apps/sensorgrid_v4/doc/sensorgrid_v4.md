@@ -187,7 +187,7 @@ At the bottom of the page:
 
 The page titled **Grid View** shows all 64 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a diamond grid, histogram, and statistics table.
 
-Each sensor's measurements are shown as circles arranged in a **diamond pattern**. Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
+Each sensor's measurements are shown as circles arranged in a **diamond pattern** with **hex packing** — rows are vertically close so that circle centers are equidistant in all 6 directions (like a hex grid). Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
 
 For example, with 64 measurements: W = ceil(sqrt(64)) = 8, so the diamond is a perfect 8² arrangement with rows 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1 circles.
 
