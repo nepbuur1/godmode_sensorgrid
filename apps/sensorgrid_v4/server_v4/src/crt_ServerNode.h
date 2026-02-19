@@ -454,6 +454,15 @@ namespace crt
 			server.on("/api/measurements/1", HTTP_GET, [this]() {
 				handleApiMeasurements(1);
 			});
+			server.on("/api/measurements/2", HTTP_GET, [this]() {
+				handleApiMeasurements(2);
+			});
+			server.on("/api/measurements/3", HTTP_GET, [this]() {
+				handleApiMeasurements(3);
+			});
+			server.on("/api/measurements/4", HTTP_GET, [this]() {
+				handleApiMeasurements(4);
+			});
 			server.onNotFound([this]() {
 				server.send(404, "text/plain", "Not found");
 			});

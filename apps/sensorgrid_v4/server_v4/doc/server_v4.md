@@ -1,7 +1,7 @@
 # server_v4
 
 ## Summary
-Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all expected sensors, then polls them in round-robin order. Each sensor responds with an array of 50 uint16_t measurements (multi-packet reassembly supported for larger payloads). The server caches all measurements per sensor and serves a multi-page web interface: a dashboard showing the first measurement per sensor, a grid visualization page showing all measurements of sensor 1 as gray-scale rectangles, and JSON APIs for both summary and per-sensor measurement data. Flashes the onboard LED when any sensor is missing.
+Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all expected sensors, then polls them in round-robin order. Each sensor responds with an array of 50 uint16_t measurements (multi-packet reassembly supported for larger payloads). The server caches all measurements per sensor and serves a multi-page web interface: a dashboard showing the first measurement per sensor, a grid visualization page showing all measurements of sensors 1-4 in a 2×2 layout with diamond grids, histograms, and statistics, and JSON APIs for both summary and per-sensor measurement data. Flashes the onboard LED when any sensor is missing.
 
 ## Object Model
 
@@ -14,7 +14,7 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
 | **ServerNode** | control | Orchestrates the server: runs the DISCOVERING/POLLING/WAITING_DATA state machine, manages sensor registration, sends POLL requests, reassembles multi-packet DATA responses into measurement arrays, handles sensor recovery, controls the LED, and serves the web dashboard. |
 | **WiFi** | boundary | Represents the ESP32-S3 WiFi hardware in AP+STA mode. Provides the access point that web clients connect to and the channel for ESP-NOW communication. |
 | **EspNow** | boundary | Represents the ESP-NOW protocol layer. Broadcasts DISCOVER, sends unicast POLL to sensors, and receives REGISTER and DATA messages via callback. |
-| **WebServer** | boundary | Represents the HTTP server. Serves the HTML dashboard on `/`, the grid visualization on `/grid`, the sensor summary JSON API on `/api/sensors`, and the per-sensor measurement JSON API on `/api/measurements/1`. |
+| **WebServer** | boundary | Represents the HTTP server. Serves the HTML dashboard on `/`, the grid visualization on `/grid`, the sensor summary JSON API on `/api/sensors`, and the per-sensor measurement JSON APIs on `/api/measurements/{1..4}`. |
 
 ## Call Trees
 
@@ -26,7 +26,7 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
   - ! server.on("/", handleRoot)
   - ! server.on("/grid", handleGrid)
   - ! server.on("/api/sensors", handleApiSensors)
-  - ! server.on("/api/measurements/1", handleApiMeasurements)
+  - ! server.on("/api/measurements/{1..4}", handleApiMeasurements)
   - ! server.onNotFound(handleNotFound)
   - ! server.begin()
   - ! esp_now_init()

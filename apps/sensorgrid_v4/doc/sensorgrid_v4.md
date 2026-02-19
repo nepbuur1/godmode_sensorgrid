@@ -12,7 +12,7 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 | App | Device(s) | Responsibility |
 |-----|-----------|---------------|
 | **sensor_v4** | ACM1, ACM2 | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 50 cached uint16_t measurements. Uses double-buffered arrays and 20ms simulated I2C delay. Each instance has a unique sensor ID. |
-| **server_v4** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor), a grid visualization page (showing all measurements of sensor 1 as gray-scale rectangles), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
+| **server_v4** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor), a grid visualization page (showing all measurements of sensors 1-4 in a 2×2 layout with diamond grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
 | **client_v4** | ACM3 | Connects to the server's WiFi AP and runs automated HTTP tests against all web endpoints, reporting PASS/FAIL results via serial log. |
 
 ### Communication Protocol
@@ -28,7 +28,7 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 - Server waits up to 200ms for each response. On timeout, retries up to 5 times. After 5 failures, marks the sensor unregistered and broadcasts DISCOVER to recover it.
 
 #### Web Interface
-- **client_v4 -> server_v4**: WiFi STA connection to the server's AP, followed by HTTP GET requests to `/` (dashboard), `/grid` (grid visualization), `/api/sensors` (JSON summary), and `/api/measurements/1` (JSON measurement array).
+- **client_v4 -> server_v4**: WiFi STA connection to the server's AP, followed by HTTP GET requests to `/` (dashboard), `/grid` (grid visualization), `/api/sensors` (JSON summary), and `/api/measurements/{1..4}` (JSON measurement arrays per sensor).
 - **server_v4 -> client_v4**: HTTP responses containing HTML (dashboard or grid page) or JSON (sensor data).
 - Both HTML pages include a navigation bar linking to Home (`/`) and Grid View (`/grid`).
 
@@ -185,7 +185,9 @@ At the bottom of the page:
 
 #### Grid View page
 
-The page titled **Sensor 1 - Grid View** shows all 50 measurements from sensor 1 as circles arranged in a **diamond pattern**. Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
+The page titled **Grid View** shows all 50 measurements from each of sensors 1-4 in a **2×2 layout**. Each sensor has its own widget containing a diamond grid, histogram, and statistics table.
+
+Each sensor's measurements are shown as circles arranged in a **diamond pattern**. Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
 
 For example, with 50 measurements: rows contain 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 1 circles.
 
@@ -193,14 +195,14 @@ For each measurement:
 - The circle's **gray-scale** is proportional to the value: 0 = white, 1023 = black.
 - The **numeric value** is shown inside each circle, with text color adjusted for contrast (light text on dark circles, dark text on light circles).
 
-The diamond dynamically adjusts when the measurement count changes. It polls `/api/measurements/1` every 500ms.
+The diamonds dynamically adjust when the measurement count changes. The page polls `/api/measurements/1` through `/api/measurements/4` every 500ms, fetching all four sensors in parallel.
 
-Below the diamond, a **histogram** shows the distribution of the current measurement values across 50 bins (0-1023 range). Bar heights are proportional to the most populated bin.
+Below each diamond, a **histogram** shows the distribution of the current measurement values across 50 bins (0-1023 range). Bar heights are proportional to the most populated bin.
 
-Below the histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
+Below each histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
 
-Above the diamond, two toggle buttons control circle coloring:
-- **Normalize** — maps the gray/color range to the current min-max of measurements instead of the full 0-1023 range.
+Above the diamonds, two toggle buttons control circle coloring (applied to all four sensors simultaneously):
+- **Normalize** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-1023 range.
 - **Colorize** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
 - When both are active, the full color gradient is mapped to the current measurement range.
 

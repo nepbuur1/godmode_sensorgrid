@@ -232,3 +232,20 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Server and client re-flashed and tested
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4f: Multi-sensor grid view (2×2 layout)
+
+#### Changes
+- **`crt_GridHtml.h`**: Complete rewrite for 2×2 sensor layout:
+  - Four sensor widgets (Sensor 1-4), each with its own diamond grid, histogram, and statistics table
+  - `.sensor-layout` CSS grid with `grid-template-columns: 1fr 1fr`
+  - Reduced circle size from 48px to 30px, histogram height from 120px to 60px to fit side-by-side
+  - JS refactored: per-sensor state objects, `SENSOR_IDS = [1, 2, 3, 4]`, `fetchAll()` fetches all 4 sensors in parallel via `Promise.all()`
+  - Normalize and Colorize buttons apply to all four sensors simultaneously
+- **`crt_ServerNode.h`**: Added `/api/measurements/2`, `/api/measurements/3`, `/api/measurements/4` routes
+- **`crt_ClientNode.h`**: Updated `testGridPage()` to check for `Sensor 1`/`Sensor 4` headings and `sensor-layout` class instead of literal API URLs
+- Updated sensorgrid_v4.md, server_v4.md, test.md, mermaid diagrams, regenerated 16/16 SVGs
+
+#### Test results
+- Server and client re-flashed and tested
+- Client_v4: all 8/8 HTTP tests passed
+

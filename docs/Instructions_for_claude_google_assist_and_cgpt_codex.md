@@ -140,3 +140,8 @@ On the same page, I'd also like two buttons. Each of them can toggle an aspect o
 - One button "Normalize" can toggle whether the gray-range is normalised over the range of current measurements or not.
 - Another button "Colorize" can toggle whether the gray-range is used, or a color-range (from black to blue to green to yellow to red).
 - If "color mode" is selected while normalised mode is selected, the full color range is mapped to the current measurements.
+#### Phase 4f
+- Summarized, we have a color grid web page, with navigation bar on top, a normalize and colorize button, and for sensor 1 a group of widgets that visualize its measurements: the colorgrid, the histogram and the statistics table.
+- What I would like now, is that similar groups of widgets are added to the same page for 3 more sensors: sensor 2, sensor 3 and sensor 4:
+one row with on the left side the group of widgets of sensor 1 and to its right the group of widgets for sensor 2.
+below that, another row with two groups of widgets: to the left of sensor 3, to the right of sensor 4.

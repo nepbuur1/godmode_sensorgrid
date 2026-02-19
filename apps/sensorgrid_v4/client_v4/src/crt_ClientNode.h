@@ -272,28 +272,33 @@ namespace crt
 			bool hasTitle = body.indexOf("Grid View") >= 0;
 			bool hasNav = body.indexOf("<nav") >= 0;
 			bool hasGridContainer = body.indexOf("grid-container") >= 0;
-			bool hasApiRef = body.indexOf("/api/measurements/1") >= 0;
+			bool hasSensor1 = body.indexOf("Sensor 1") >= 0;
+			bool hasSensor4 = body.indexOf("Sensor 4") >= 0;
 			bool hasHistogram = body.indexOf("histogram") >= 0;
 			bool hasStatsTable = body.indexOf("stats-table") >= 0;
 			bool hasNormalize = body.indexOf("Normalize") >= 0;
 			bool hasColorize = body.indexOf("Colorize") >= 0;
+			bool hasLayout = body.indexOf("sensor-layout") >= 0;
 
-			if (hasTitle && hasNav && hasGridContainer && hasApiRef && hasHistogram && hasStatsTable && hasNormalize && hasColorize)
+			if (hasTitle && hasNav && hasGridContainer && hasSensor1 && hasSensor4 &&
+				hasHistogram && hasStatsTable && hasNormalize && hasColorize && hasLayout)
 			{
-				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, api, histogram, stats, buttons present");
+				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, sensors 1-4, histogram, stats, buttons, layout");
 			}
 			else
 			{
 				char msg[160];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s",
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s%s%s",
 					hasTitle ? "" : "title ",
 					hasNav ? "" : "nav ",
 					hasGridContainer ? "" : "grid ",
-					hasApiRef ? "" : "api ",
+					hasSensor1 ? "" : "s1-api ",
+					hasSensor4 ? "" : "s4-api ",
 					hasHistogram ? "" : "histogram ",
 					hasStatsTable ? "" : "stats ",
 					hasNormalize ? "" : "normalize ",
-					hasColorize ? "" : "colorize ");
+					hasColorize ? "" : "colorize ",
+					hasLayout ? "" : "layout ");
 				logResult(TEST_NAME, false, msg);
 			}
 		}
