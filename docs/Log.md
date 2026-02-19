@@ -184,3 +184,13 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Sensor_v4 (ID=2) flashed to /dev/ttyACM2 - responding to POLL
 - Client_v4 flashed to /dev/ttyACM3 - all 8/8 HTTP tests passed
 
+### Phase 4b: Grid view diamond layout
+
+#### Changes
+- **`crt_GridHtml.h`**: Changed rectangles to circles (`border-radius: 50%`). Changed rectangular grid layout to diamond pattern using flexbox rows. Row sizes computed as: ascending 1, 2, ..., W (where W = ceil(sqrt(N))), then descending W-1, W-2, ..., with the last row potentially partial. For 50 measurements: 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 1.
+- Updated sensorgrid_v4.md grid view description
+
+#### Test results
+- All 4 devices re-flashed and tested
+- Client_v4: all 8/8 HTTP tests passed
+

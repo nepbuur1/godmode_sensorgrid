@@ -185,13 +185,15 @@ At the bottom of the page:
 
 #### Grid View page
 
-The page titled **Sensor 1 - Grid View** shows all 50 measurements from sensor 1 as a grid of rectangles (5 columns).
+The page titled **Sensor 1 - Grid View** shows all 50 measurements from sensor 1 as circles arranged in a **diamond pattern**. Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
+
+For example, with 50 measurements: rows contain 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 1 circles.
 
 For each measurement:
-- The rectangle's **gray-scale** is proportional to the value: 0 = white, 1023 = black.
-- The **numeric value** is shown inside each cell, with text color adjusted for contrast (light text on dark cells, dark text on light cells).
+- The circle's **gray-scale** is proportional to the value: 0 = white, 1023 = black.
+- The **numeric value** is shown inside each circle, with text color adjusted for contrast (light text on dark circles, dark text on light circles).
 
-The grid dynamically adjusts its size when the measurement count changes. It polls `/api/measurements/1` every 500ms.
+The diamond dynamically adjusts when the measurement count changes. It polls `/api/measurements/1` every 500ms.
 
 ### Monitoring serial output
 

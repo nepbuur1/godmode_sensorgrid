@@ -1,5 +1,6 @@
 // by Marius Versteegen, 2025
-// Grid visualization page: shows sensor 1's measurements as gray-scale rectangles.
+// Grid visualization page: shows sensor 1's measurements as gray-scale circles
+// arranged in a diamond pattern.
 
 #pragma once
 
@@ -44,20 +45,26 @@ namespace crt
       margin-bottom: 1rem;
     }
     .grid-container {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
       gap: 4px;
-      max-width: 500px;
       margin: 0 auto;
     }
+    .row {
+      display: flex;
+      gap: 4px;
+      justify-content: center;
+    }
     .cell {
-      aspect-ratio: 1;
+      width: 48px;
+      height: 48px;
+      border-radius: 50%;
       border: 1px solid #ccc;
-      border-radius: 3px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: #888;
       transition: background 0.2s ease-out;
     }
@@ -75,29 +82,56 @@ namespace crt
   </nav>
   <div class="page">
     <h1>Sensor 1 - Grid View</h1>
-    <div class="info">Each rectangle shows one measurement. Gray intensity is proportional to value (0=white, 1023=black).</div>
+    <div class="info">Each circle shows one measurement. Gray intensity is proportional to value (0=white, 1023=black). Arranged in a diamond pattern.</div>
     <div class="grid-container" id="grid"></div>
     <div id="status">...</div>
   </div>
 
   <script>
     const MAX_VALUE = 1023;
-    const COLS = 5;
     const POLL_MS = 500;
 
     const gridEl = document.getElementById("grid");
     const statusEl = document.getElementById("status");
     let cells = [];
+    let currentCount = 0;
+
+    function computeRowSizes(n) {
+      if (n <= 0) return [];
+      const w = Math.ceil(Math.sqrt(n));
+      const rows = [];
+      let remaining = n;
+      // Ascending: 1, 2, ..., w
+      for (let r = 1; r <= w && remaining > 0; r++) {
+        const s = Math.min(r, remaining);
+        rows.push(s);
+        remaining -= s;
+      }
+      // Descending: w-1, w-2, ..., 1
+      for (let r = w - 1; r >= 1 && remaining > 0; r--) {
+        const s = Math.min(r, remaining);
+        rows.push(s);
+        remaining -= s;
+      }
+      return rows;
+    }
 
     function createGrid(count) {
       gridEl.innerHTML = "";
       cells = [];
-      for (let i = 0; i < count; i++) {
-        const cell = document.createElement("div");
-        cell.className = "cell";
-        cell.textContent = "?";
-        gridEl.appendChild(cell);
-        cells.push(cell);
+      currentCount = count;
+      const rowSizes = computeRowSizes(count);
+      for (const size of rowSizes) {
+        const rowEl = document.createElement("div");
+        rowEl.className = "row";
+        for (let i = 0; i < size; i++) {
+          const cell = document.createElement("div");
+          cell.className = "cell";
+          cell.textContent = "?";
+          rowEl.appendChild(cell);
+          cells.push(cell);
+        }
+        gridEl.appendChild(rowEl);
       }
     }
 
@@ -113,7 +147,7 @@ namespace crt
         if (!res.ok) throw new Error(res.status);
         const data = await res.json();
 
-        if (cells.length !== data.count) {
+        if (currentCount !== data.count) {
           createGrid(data.count);
         }
 
