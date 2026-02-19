@@ -158,3 +158,29 @@ Changed sensors from sending a single value to sending 50 cached uint16_t measur
 - Both sensors active and values incrementing
 - Client_v3: all 6/6 HTTP tests passed
 
+## Phase 4
+
+### Summary
+Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3 to v4. Then upgraded the web interface with a navigation bar and a new grid visualization page.
+
+### Phase 4: Copy v3 → v4
+- Copied `apps/sensorgrid_v3/` to `apps/sensorgrid_v4/`
+- Renamed directories, source files, includes, log strings, and documentation from v3 to v4
+- Added v4 include paths to `main/CMakeLists.txt` (listed first before v3)
+- Added v4 includes to `main/main.cpp` (commented out)
+
+### Phase 4a: Web interface upgrade
+
+#### Changes
+- **`crt_IndexHtml.h`**: Added navigation bar with links to Home (`/`) and Grid View (`/grid`)
+- **`crt_GridHtml.h`** (new): Grid visualization page showing sensor 1's measurements as gray-scale rectangles (5 columns). Gray intensity proportional to value (0=white, 1023=black). Polls `/api/measurements/1` every 500ms.
+- **`crt_ServerNode.h`**: Added `/grid` route serving GRID_HTML, added `/api/measurements/1` endpoint returning `{id, count, values[]}` JSON, added `#include "crt_GridHtml.h"`
+- **`crt_ClientNode.h`**: Added `testGridPage()` and `testApiMeasurements()` tests, updated `testDashboardPage()` to check for nav bar. Now 8 tests total.
+- Updated docs, mermaid diagrams, and regenerated SVGs (16/16: 4×v1 + 4×v2 + 4×v3 + 4×v4)
+
+#### Test results
+- Server_v4 flashed to /dev/ttyACM0 - working with nav bar and grid page
+- Sensor_v4 (ID=1) flashed to /dev/ttyACM1 - responding to POLL
+- Sensor_v4 (ID=2) flashed to /dev/ttyACM2 - responding to POLL
+- Client_v4 flashed to /dev/ttyACM3 - all 8/8 HTTP tests passed
+

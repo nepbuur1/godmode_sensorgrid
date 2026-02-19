@@ -1,0 +1,22 @@
+graph LR
+    ServerNode["&laquo;control&raquo;
+ServerNode"]
+    WiFi["&laquo;boundary&raquo;
+WiFi"]
+    EspNow["&laquo;boundary&raquo;
+EspNow"]
+    WebServer["&laquo;boundary&raquo;
+WebServer"]
+
+    ServerNode -- "setApStaMode()" --> WiFi
+    ServerNode -- "startAp(ssid, pass, channel)" --> WiFi
+    ServerNode -- "init()" --> EspNow
+    ServerNode -- "broadcast(DiscoverPacket)" --> EspNow
+    ServerNode -- "send(PollPacket)" --> EspNow
+    EspNow -- "onDataRecv(RegisterPacket)" --> ServerNode
+    EspNow -- "onDataRecv(DataPacket(s))
+reassemble multi-pkt" --> ServerNode
+    ServerNode -- "addRoute(path, handler)" --> WebServer
+    ServerNode -- "start()" --> WebServer
+    WebServer -- "handleApiSensors()" --> ServerNode
+    WebServer -- "handleApiMeasurements()" --> ServerNode

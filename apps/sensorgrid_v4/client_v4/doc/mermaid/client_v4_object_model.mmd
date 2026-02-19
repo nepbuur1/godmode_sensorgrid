@@ -1,0 +1,13 @@
+graph LR
+    ClientNode["&laquo;control&raquo;
+ClientNode"]
+    WiFi["&laquo;boundary&raquo;
+WiFi"]
+    HttpClient["&laquo;boundary&raquo;
+HttpClient"]
+
+    ClientNode -- "setStaMode()" --> WiFi
+    ClientNode -- "connectToAp(ssid, pass)" --> WiFi
+    WiFi -- "connected(ip)" --> ClientNode
+    ClientNode -- "get(url)" --> HttpClient
+    HttpClient -- "response(code, body)" --> ClientNode

@@ -119,8 +119,13 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 "../apps/pong/pong"
 
-# Sensor Grid apps (sensorgrid_v3) - listed first: v3's crt_SensorGridPacket.h
-# is a superset of v2's (adds MEASUREMENT_COUNT, larger payload buffer)
+# Sensor Grid apps (sensorgrid_v4) - listed first: latest crt_SensorGridPacket.h
+"../apps/sensorgrid_v4/sensorgrid_common"
+"../apps/sensorgrid_v4/server_v4/src"
+"../apps/sensorgrid_v4/sensor_v4/src"
+"../apps/sensorgrid_v4/client_v4/src"
+
+# Sensor Grid apps (sensorgrid_v3)
 "../apps/sensorgrid_v3/sensorgrid_common"
 "../apps/sensorgrid_v3/server_v3/src"
 "../apps/sensorgrid_v3/sensor_v3/src"
