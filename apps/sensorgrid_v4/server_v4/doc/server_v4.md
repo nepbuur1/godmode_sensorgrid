@@ -14,7 +14,7 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
 | **ServerNode** | control | Orchestrates the server: runs the DISCOVERING/POLLING/WAITING_DATA state machine, manages sensor registration, sends POLL requests, reassembles multi-packet DATA responses into measurement arrays, handles sensor recovery, controls the LED, and serves the web dashboard. |
 | **WiFi** | boundary | Represents the ESP32-S3 WiFi hardware in AP+STA mode. Provides the access point that web clients connect to and the channel for ESP-NOW communication. |
 | **EspNow** | boundary | Represents the ESP-NOW protocol layer. Broadcasts DISCOVER, sends unicast POLL to sensors, and receives REGISTER and DATA messages via callback. |
-| **WebServer** | boundary | Represents the HTTP server. Serves the HTML dashboard on `/`, the grid visualization on `/grid`, the sensor summary JSON API on `/api/sensors`, and the per-sensor measurement JSON APIs on `/api/measurements/{1..4}`. |
+| **WebServer** | boundary | Represents the HTTP server. Serves the HTML dashboard on `/`, the grid visualization on `/grid`, the sensor summary JSON API on `/api/sensors`, per-sensor measurement JSON APIs on `/api/measurements/{1..4}`, and the combined measurement endpoint `/api/allmeasurements`. |
 
 ## Call Trees
 
@@ -27,6 +27,7 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
   - ! server.on("/grid", handleGrid)
   - ! server.on("/api/sensors", handleApiSensors)
   - ! server.on("/api/measurements/{1..4}", handleApiMeasurements)
+  - ! server.on("/api/allmeasurements", handleApiAllMeasurements)
   - ! server.onNotFound(handleNotFound)
   - ! server.begin()
   - ! esp_now_init()
@@ -42,6 +43,8 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
     - ? handleApiSensors()
       - ! server.send(json)
     - ? handleApiMeasurements(sensorId)
+      - ! server.send(json)
+    - ? handleApiAllMeasurements()
       - ! server.send(json)
     - ? server.send(404, "Not found")
   - ! updateLed()

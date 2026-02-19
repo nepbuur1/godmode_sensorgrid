@@ -149,3 +149,8 @@ below that, another row with two groups of widgets: to the left of sensor 3, to 
 I realize now, that I'd rather have all 4 groups of widgets on a single row, rather than spread over 2 rows (becausee I assume that the webpage is viewed in landscape mode). Furthermore, let's increase the amount of "test measurements" that each sensor sends on each POLL from 50 to 64.
 #### Phase 4h
 The rows of circles of the circlegrids should be closer to one-another, such that the centers of all circles of the grid have equal distance (in all 6 directions, left, right, topleft, topright, bottomleft, bottomright, like in a hex grid)
+#### Phase 4i
+The grid view page currently fetches measurement data for each sensor via a separate HTTP request (`/api/measurements/1` through `/api/measurements/4`). Since the ESP32's WebServer is single-threaded, these 4 sequential requests slow down the update rate. Replace this with a single endpoint `/api/allmeasurements` that returns all sensor measurement data in one JSON response. Update the grid view JS to use this single endpoint instead of 4 separate ones.
+#### Phase 4j
+Please update the freertos tick rate to 1000Hz.
+Furthermore, lower the JS polling interval to 100ms. Instead of `setInterval`, use a `setTimeout`-based loop: measure how long `fetchAll()` took, then wait only the remaining milliseconds to reach 100ms total cycle time. If `fetchAll()` took longer than 100ms, don't add extra wait.

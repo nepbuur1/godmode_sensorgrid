@@ -200,7 +200,7 @@ namespace crt
 
   <script>
     const MAX_VALUE = 1023;
-    const POLL_MS = 500;
+    const POLL_MS = 100;
     const NUM_BINS = 50;
     const SENSOR_IDS = [1, 2, 3, 4];
 
@@ -324,7 +324,7 @@ namespace crt
       const t = Math.max(0, Math.min(1, (v - lo) / r));
 
       if (!colorized) {
-        const gray = Math.round(255 * (1 - t));
+        const gray = Math.round(255 * t);
         return { bg: `rgb(${gray},${gray},${gray})`, dark: gray < 128 };
       }
       // Color gradient: black -> blue -> green -> yellow -> red
@@ -371,40 +371,43 @@ namespace crt
       SENSOR_IDS.forEach(id => colorCells(sensors[id]));
     }
 
-    async function fetchSensor(id) {
+    function updateSensor(id, data) {
       const s = sensors[id];
-      try {
-        const res = await fetch("/api/measurements/" + id);
-        if (!res.ok) {
-          s.gridEl.innerHTML = '<div class="no-data">No data</div>';
-          s.cells = [];
-          s.currentCount = 0;
-          s.lastValues = [];
-          return;
-        }
-        const data = await res.json();
-        if (s.currentCount !== data.count) {
-          createGrid(s, data.count);
-        }
-        s.lastValues = data.values;
-        const [mn, mx] = minMax(data.values);
-        data.values.forEach((v, i) => {
-          if (i < s.cells.length) {
-            const c = colorForValue(v, mn, mx);
-            s.cells[i].style.background = c.bg;
-            s.cells[i].textContent = v;
-            s.cells[i].style.color = c.dark ? "#ddd" : "#444";
-          }
-        });
-        updateHistogram(s, data.values);
-        updateStats(s, data.values);
-      } catch (e) {
-        // leave as-is on error
+      if (data.count === 0) {
+        s.gridEl.innerHTML = '<div class="no-data">No data</div>';
+        s.cells = [];
+        s.currentCount = 0;
+        s.lastValues = [];
+        return;
       }
+      if (s.currentCount !== data.count) {
+        createGrid(s, data.count);
+      }
+      s.lastValues = data.values;
+      const [mn, mx] = minMax(data.values);
+      data.values.forEach((v, i) => {
+        if (i < s.cells.length) {
+          const c = colorForValue(v, mn, mx);
+          s.cells[i].style.background = c.bg;
+          s.cells[i].textContent = v;
+          s.cells[i].style.color = c.dark ? "#ddd" : "#444";
+        }
+      });
+      updateHistogram(s, data.values);
+      updateStats(s, data.values);
     }
 
     async function fetchAll() {
-      await Promise.all(SENSOR_IDS.map(id => fetchSensor(id)));
+      try {
+        const res = await fetch("/api/allmeasurements");
+        if (!res.ok) return;
+        const all = await res.json();
+        for (const data of all.sensors) {
+          updateSensor(data.id, data);
+        }
+      } catch (e) {
+        // leave as-is on error
+      }
       statusEl.textContent = "Laatste update: " + new Date().toLocaleTimeString();
     }
 
@@ -413,8 +416,13 @@ namespace crt
       createGrid(sensors[id], 0);
       createHistogram(sensors[id]);
     });
-    setInterval(fetchAll, POLL_MS);
-    fetchAll();
+    async function pollLoop() {
+      const start = Date.now();
+      await fetchAll();
+      const remaining = Math.max(0, POLL_MS - (Date.now() - start));
+      setTimeout(pollLoop, remaining);
+    }
+    pollLoop();
   </script>
 </body>
 </html>)rawliteral";

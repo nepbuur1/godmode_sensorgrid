@@ -20,3 +20,4 @@ reassemble multi-pkt" --> ServerNode
     ServerNode -- "start()" --> WebServer
     WebServer -- "handleApiSensors()" --> ServerNode
     WebServer -- "handleApiMeasurements()" --> ServerNode
+    WebServer -- "handleApiAllMeasurements()" --> ServerNode

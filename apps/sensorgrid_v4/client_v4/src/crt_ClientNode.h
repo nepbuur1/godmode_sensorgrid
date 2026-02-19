@@ -274,6 +274,7 @@ namespace crt
 			bool hasGridContainer = body.indexOf("grid-container") >= 0;
 			bool hasSensor1 = body.indexOf("Sensor 1") >= 0;
 			bool hasSensor4 = body.indexOf("Sensor 4") >= 0;
+			bool hasAllApi = body.indexOf("allmeasurements") >= 0;
 			bool hasHistogram = body.indexOf("histogram") >= 0;
 			bool hasStatsTable = body.indexOf("stats-table") >= 0;
 			bool hasNormalize = body.indexOf("Normalize") >= 0;
@@ -281,19 +282,20 @@ namespace crt
 			bool hasLayout = body.indexOf("sensor-layout") >= 0;
 
 			if (hasTitle && hasNav && hasGridContainer && hasSensor1 && hasSensor4 &&
-				hasHistogram && hasStatsTable && hasNormalize && hasColorize && hasLayout)
+				hasAllApi && hasHistogram && hasStatsTable && hasNormalize && hasColorize && hasLayout)
 			{
-				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, sensors 1-4, histogram, stats, buttons, layout");
+				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, sensors 1-4, allapi, histogram, stats, buttons, layout");
 			}
 			else
 			{
-				char msg[160];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s%s%s",
+				char msg[180];
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s%s%s%s",
 					hasTitle ? "" : "title ",
 					hasNav ? "" : "nav ",
 					hasGridContainer ? "" : "grid ",
-					hasSensor1 ? "" : "s1-api ",
-					hasSensor4 ? "" : "s4-api ",
+					hasSensor1 ? "" : "s1 ",
+					hasSensor4 ? "" : "s4 ",
+					hasAllApi ? "" : "allapi ",
 					hasHistogram ? "" : "histogram ",
 					hasStatsTable ? "" : "stats ",
 					hasNormalize ? "" : "normalize ",
@@ -336,6 +338,49 @@ namespace crt
 				char msg[128];
 				snprintf(msg, sizeof(msg), "Missing: %s%s%s",
 					hasId ? "" : "id ",
+					hasCount ? "" : "count ",
+					hasValues ? "" : "values ");
+				logResult(TEST_NAME, false, msg);
+			}
+		}
+
+		void testApiAllMeasurements()
+		{
+			const char* TEST_NAME = "GET /api/allmeasurements (all sensors)";
+			int code = 0;
+			String body;
+
+			if (!httpGet("/api/allmeasurements", code, body))
+			{
+				logResult(TEST_NAME, false, "HTTP request failed");
+				return;
+			}
+
+			if (code != 200)
+			{
+				char msg[64];
+				snprintf(msg, sizeof(msg), "Expected HTTP 200, got %d", code);
+				logResult(TEST_NAME, false, msg);
+				return;
+			}
+
+			bool hasSensors = body.indexOf("\"sensors\":[") >= 0;
+			bool hasId1 = body.indexOf("\"id\":1") >= 0;
+			bool hasId2 = body.indexOf("\"id\":2") >= 0;
+			bool hasCount = body.indexOf("\"count\":") >= 0;
+			bool hasValues = body.indexOf("\"values\":[") >= 0;
+
+			if (hasSensors && hasId1 && hasId2 && hasCount && hasValues)
+			{
+				logResult(TEST_NAME, true, "All measurements JSON OK: sensors[], id:1, id:2, count, values[] present");
+			}
+			else
+			{
+				char msg[128];
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s",
+					hasSensors ? "" : "sensors ",
+					hasId1 ? "" : "id1 ",
+					hasId2 ? "" : "id2 ",
 					hasCount ? "" : "count ",
 					hasValues ? "" : "values ");
 				logResult(TEST_NAME, false, msg);
@@ -427,6 +472,7 @@ namespace crt
 			testGridPage();
 			testApiSensorsStructure();
 			testApiMeasurements();
+			testApiAllMeasurements();
 			testSensorDataPresent();
 			testSensorValuesUpdating();
 			testDownloadButton();

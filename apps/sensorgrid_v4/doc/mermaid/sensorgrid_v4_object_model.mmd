@@ -16,6 +16,6 @@ DataPacket(s) 64×uint16_t" --> server_v4
 connectToAp(ssid, pass)" --> server_v4
     client_v4 -- "HTTP GET
 /, /grid, /api/sensors,
-/api/measurements/{1..4}" --> server_v4
+/api/allmeasurements" --> server_v4
     server_v4 -- "HTTP response
 (html, json)" --> client_v4

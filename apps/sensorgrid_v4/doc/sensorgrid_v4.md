@@ -28,7 +28,7 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 - Server waits up to 200ms for each response. On timeout, retries up to 5 times. After 5 failures, marks the sensor unregistered and broadcasts DISCOVER to recover it.
 
 #### Web Interface
-- **client_v4 -> server_v4**: WiFi STA connection to the server's AP, followed by HTTP GET requests to `/` (dashboard), `/grid` (grid visualization), `/api/sensors` (JSON summary), and `/api/measurements/{1..4}` (JSON measurement arrays per sensor).
+- **client_v4 -> server_v4**: WiFi STA connection to the server's AP, followed by HTTP GET requests to `/` (dashboard), `/grid` (grid visualization), `/api/sensors` (JSON summary), `/api/measurements/{1..4}` (JSON measurement arrays per sensor), and `/api/allmeasurements` (all sensors' measurements in one response).
 - **server_v4 -> client_v4**: HTTP responses containing HTML (dashboard or grid page) or JSON (sensor data).
 - Both HTML pages include a navigation bar linking to Home (`/`) and Grid View (`/grid`).
 
@@ -77,8 +77,21 @@ For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automaticall
 ```json
 {
   "id": 1,
-  "count": 50,
+  "count": 64,
   "values": [258, 259, 260, 261, ...]
+}
+```
+
+**`GET /api/allmeasurements`** — All sensors' measurements in one response (used by the grid view page for faster updates):
+
+```json
+{
+  "sensors": [
+    {"id": 1, "count": 64, "values": [258, 259, ...]},
+    {"id": 2, "count": 64, "values": [480, 481, ...]},
+    {"id": 3, "count": 0, "values": []},
+    {"id": 4, "count": 0, "values": []}
+  ]
 }
 ```
 
@@ -192,10 +205,10 @@ Each sensor's measurements are shown as circles arranged in a **diamond pattern*
 For example, with 64 measurements: W = ceil(sqrt(64)) = 8, so the diamond is a perfect 8² arrangement with rows 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1 circles.
 
 For each measurement:
-- The circle's **gray-scale** is proportional to the value: 0 = white, 1023 = black.
+- The circle's **gray-scale** is proportional to the value: 0 = black, 1023 = white.
 - The **numeric value** is shown inside each circle, with text color adjusted for contrast (light text on dark circles, dark text on light circles).
 
-The diamonds dynamically adjust when the measurement count changes. The page polls `/api/measurements/1` through `/api/measurements/4` every 500ms, fetching all four sensors in parallel.
+The diamonds dynamically adjust when the measurement count changes. The page polls `/api/allmeasurements` every 100ms (using a `setTimeout`-based loop that accounts for response time), fetching all four sensors' data in a single HTTP request.
 
 Below each diamond, a **histogram** shows the distribution of the current measurement values across 50 bins (0-1023 range). Bar heights are proportional to the most populated bin.
 

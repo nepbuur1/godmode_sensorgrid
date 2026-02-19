@@ -415,6 +415,30 @@ namespace crt
 			server.send(200, "application/json", json);
 		}
 
+		void handleApiAllMeasurements()
+		{
+			String json = "{\"sensors\":[";
+			for (int id = 1; id <= 4; id++)
+			{
+				if (id > 1) json += ",";
+				SensorState& s = sensors[id];
+				json += "{\"id\":" + String(id) + ",";
+				json += "\"count\":" + String(s.seen ? (int)s.measurementCount : 0) + ",";
+				json += "\"values\":[";
+				if (s.seen)
+				{
+					for (uint8_t i = 0; i < s.measurementCount; i++)
+					{
+						if (i > 0) json += ",";
+						json += String(s.measurements[i]);
+					}
+				}
+				json += "]}";
+			}
+			json += "]}";
+			server.send(200, "application/json", json);
+		}
+
 	public:
 		ServerNode(const char* ssid, const char* pass, int channel,
 				   uint8_t expectedSensors)
@@ -462,6 +486,9 @@ namespace crt
 			});
 			server.on("/api/measurements/4", HTTP_GET, [this]() {
 				handleApiMeasurements(4);
+			});
+			server.on("/api/allmeasurements", HTTP_GET, [this]() {
+				handleApiAllMeasurements();
 			});
 			server.onNotFound([this]() {
 				server.send(404, "text/plain", "Not found");

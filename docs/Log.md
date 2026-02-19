@@ -279,3 +279,28 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Server and client re-flashed and tested
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4i: Single-endpoint measurement fetch
+
+#### Changes
+- **`crt_ServerNode.h`**: Added `handleApiAllMeasurements()` method and `/api/allmeasurements` route — returns all 4 sensors' measurement arrays in a single JSON response
+- **`crt_GridHtml.h`**: Replaced 4 parallel `fetch("/api/measurements/" + id)` calls with a single `fetch("/api/allmeasurements")`. JS now parses the combined response and updates all 4 sensor widgets from it. This reduces the web server load from 4 sequential HTTP request/response cycles to 1 per update interval.
+- **`crt_ClientNode.h`**: Added `testApiAllMeasurements()` test (checks for sensors[], id:1, id:2, count, values[]). Updated `testGridPage()` to verify `allmeasurements` reference in HTML. Test count increased from 8 to 9.
+- Updated sensorgrid_v4.md (added `/api/allmeasurements` endpoint docs and JSON example), server_v4.md, test.md, mermaid diagrams, regenerated 16/16 SVGs
+- Added Phase 4i to Instructions document
+
+#### Test results
+- Server and client re-flashed and tested
+- Client_v4: all 9/9 HTTP tests passed
+
+### Phase 4j: Faster polling (100ms cycle, setTimeout-based loop)
+
+#### Changes
+- **FreeRTOS tick rate**: Already at 1000Hz (`CONFIG_FREERTOS_HZ=1000` in sdkconfig), so `vTaskDelay(1)` = 1ms. No change needed.
+- **`crt_GridHtml.h`**: Lowered `POLL_MS` from 200 to 100. Replaced `setInterval(fetchAll, POLL_MS)` with a `setTimeout`-based `pollLoop()` that measures `fetchAll()` duration and waits only the remaining time to reach 100ms total cycle. This prevents request pileup if a response occasionally takes longer than 100ms.
+- Updated sensorgrid_v4.md (grid view polling interval updated to 100ms)
+- Added Phase 4j to Instructions document
+
+#### Test results
+- Server and client re-flashed and tested
+- Client_v4: all 9/9 HTTP tests passed
+
