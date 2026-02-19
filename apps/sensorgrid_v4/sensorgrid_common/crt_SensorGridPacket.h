@@ -34,7 +34,7 @@ namespace crt
 	} __attribute__((packed));
 
 	// Number of uint16_t measurements per sensor sample cycle.
-	static const uint8_t MEASUREMENT_COUNT = 50;
+	static const uint8_t MEASUREMENT_COUNT = 64;
 
 	// Sensor -> server. Response to POLL.
 	// Supports multi-packet payloads via packetIndex/totalPackets.

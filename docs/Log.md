@@ -249,3 +249,19 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Server and client re-flashed and tested
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4g: Single-row layout and 64 measurements
+
+#### Changes
+- **`crt_SensorGridPacket.h`**: Changed `MEASUREMENT_COUNT` from 50 to 64 (128 bytes, still fits in single ESP-NOW frame)
+- **`crt_GridHtml.h`**: Changed layout from 2×2 to single-row (4 columns) for landscape viewing:
+  - `grid-template-columns: 1fr 1fr 1fr 1fr`, page max-width increased to 1200px
+  - Circle size reduced from 30px to 22px, gap from 3px to 2px
+  - Histogram height reduced from 60px to 40px
+  - Widget padding and font sizes reduced to fit 4 side-by-side
+- Updated sensorgrid_v4.md, server_v4.md, sensor_v4.md (50→64 measurements, 2×2→single-row)
+- Updated mermaid diagrams (DataPacket label now shows 64×uint16_t), regenerated 16/16 SVGs
+
+#### Test results
+- All four devices re-flashed (server, sensor 1, sensor 2, client)
+- Client_v4: all 8/8 HTTP tests passed
+

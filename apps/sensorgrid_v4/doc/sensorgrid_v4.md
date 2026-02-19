@@ -11,8 +11,8 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 
 | App | Device(s) | Responsibility |
 |-----|-----------|---------------|
-| **sensor_v4** | ACM1, ACM2 | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 50 cached uint16_t measurements. Uses double-buffered arrays and 20ms simulated I2C delay. Each instance has a unique sensor ID. |
-| **server_v4** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor), a grid visualization page (showing all measurements of sensors 1-4 in a 2×2 layout with diamond grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
+| **sensor_v4** | ACM1, ACM2 | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 64 cached uint16_t measurements. Uses double-buffered arrays and 20ms simulated I2C delay. Each instance has a unique sensor ID. |
+| **server_v4** | ACM0 | Runs a WiFi access point, discovers and registers sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor), a grid visualization page (showing all measurements of sensors 1-4 in a single-row layout with diamond grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
 | **client_v4** | ACM3 | Connects to the server's WiFi AP and runs automated HTTP tests against all web endpoints, reporting PASS/FAIL results via serial log. |
 
 ### Communication Protocol
@@ -43,7 +43,7 @@ A polling-based sensor grid system consisting of four ESP32-S3 devices communica
 
 #### DataPacket wire format (ESP-NOW, binary)
 
-With 50 measurements (100 bytes), the DataPacket fits in a single ESP-NOW frame:
+With 64 measurements (128 bytes), the DataPacket fits in a single ESP-NOW frame:
 
 | Byte(s) | Field | Example value |
 |---------|-------|---------------|
@@ -51,8 +51,8 @@ With 50 measurements (100 bytes), the DataPacket fits in a single ESP-NOW frame:
 | 1 | sensorId | `1` |
 | 2 | packetIndex | `0` |
 | 3 | totalPackets | `1` |
-| 4 | payloadSize | `100` |
-| 5–104 | payload | 50 × uint16_t raw bytes |
+| 4 | payloadSize | `128` |
+| 5–132 | payload | 64 × uint16_t raw bytes |
 
 For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automatically splits across multiple packets using packetIndex/totalPackets, and the server reassembles them. The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minus the 5-byte header).
 
@@ -185,11 +185,11 @@ At the bottom of the page:
 
 #### Grid View page
 
-The page titled **Grid View** shows all 50 measurements from each of sensors 1-4 in a **2×2 layout**. Each sensor has its own widget containing a diamond grid, histogram, and statistics table.
+The page titled **Grid View** shows all 64 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a diamond grid, histogram, and statistics table.
 
 Each sensor's measurements are shown as circles arranged in a **diamond pattern**. Rows start with 1 circle, increase to a widest row of W = ceil(sqrt(N)) circles, then decrease back. The last row may be partial if N is not a perfect diamond number.
 
-For example, with 50 measurements: rows contain 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 1 circles.
+For example, with 64 measurements: W = ceil(sqrt(64)) = 8, so the diamond is a perfect 8² arrangement with rows 1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 3, 2, 1 circles.
 
 For each measurement:
 - The circle's **gray-scale** is proportional to the value: 0 = white, 1023 = black.

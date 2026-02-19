@@ -145,3 +145,5 @@ On the same page, I'd also like two buttons. Each of them can toggle an aspect o
 - What I would like now, is that similar groups of widgets are added to the same page for 3 more sensors: sensor 2, sensor 3 and sensor 4:
 one row with on the left side the group of widgets of sensor 1 and to its right the group of widgets for sensor 2.
 below that, another row with two groups of widgets: to the left of sensor 3, to the right of sensor 4.
+#### Phase 4g
+I realize now, that I'd rather have all 4 groups of widgets on a single row, rather than spread over 2 rows (becausee I assume that the webpage is viewed in landscape mode). Furthermore, let's increase the amount of "test measurements" that each sensor sends on each POLL from 50 to 64.

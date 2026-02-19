@@ -29,7 +29,7 @@ namespace crt
       font-weight: 600;
     }
     .page {
-      max-width: 960px;
+      max-width: 1200px;
       margin: 1.5rem auto;
       padding: 1rem;
       background: #fff;
@@ -63,19 +63,19 @@ namespace crt
     }
     .sensor-layout {
       display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1rem;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 0.5rem;
     }
     .sensor-widget {
       border: 1px solid #ddd;
       border-radius: 6px;
-      padding: 0.8rem;
+      padding: 0.4rem;
       background: #fafafa;
     }
     .sensor-widget h3 {
       text-align: center;
-      margin: 0 0 0.5rem;
-      font-size: 0.95rem;
+      margin: 0 0 0.3rem;
+      font-size: 0.8rem;
     }
     .sensor-widget .no-data {
       text-align: center;
@@ -86,33 +86,33 @@ namespace crt
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 3px;
+      gap: 2px;
       margin: 0 auto;
     }
     .row {
       display: flex;
-      gap: 3px;
+      gap: 2px;
       justify-content: center;
     }
     .cell {
-      width: 30px;
-      height: 30px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       border: 1px solid #ccc;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.5rem;
+      font-size: 0.4rem;
       color: #888;
       transition: background 0.2s ease-out;
     }
     .histogram {
       max-width: 100%;
-      margin: 0.5rem auto 0;
+      margin: 0.3rem auto 0;
       display: flex;
       align-items: flex-end;
       gap: 1px;
-      height: 60px;
+      height: 40px;
     }
     .hist-bar {
       flex: 1;
@@ -129,14 +129,14 @@ namespace crt
       color: #888;
     }
     .stats-table {
-      margin: 0.5rem auto 0;
+      margin: 0.3rem auto 0;
       border-collapse: collapse;
       width: 100%;
-      font-size: 0.75rem;
+      font-size: 0.65rem;
     }
     .stats-table th, .stats-table td {
       border: 1px solid #ccc;
-      padding: 0.2rem 0.4rem;
+      padding: 0.15rem 0.3rem;
       text-align: center;
     }
     .stats-table th {

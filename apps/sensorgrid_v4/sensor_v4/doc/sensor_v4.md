@@ -3,7 +3,7 @@
 ## Summary
 Sensor node app for the sensorgrid. Purely reactive: responds to DISCOVER messages from the server with a REGISTER reply, and responds to POLL messages with DATA containing cached measurement arrays. Configurable sensor ID allows the same codebase to be flashed to multiple sensor devices, each with a unique identity.
 
-Each measurement cycle produces 50 uint16_t values with a simulated 20ms I2C processing delay. Double buffering ensures POLL responses always contain complete data, even if a POLL arrives mid-measurement. Multi-packet support splits payloads that exceed the ESP-NOW 250-byte frame limit.
+Each measurement cycle produces 64 uint16_t values with a simulated 20ms I2C processing delay. Double buffering ensures POLL responses always contain complete data, even if a POLL arrives mid-measurement. Multi-packet support splits payloads that exceed the ESP-NOW 250-byte frame limit.
 
 Currently sends incrementing simulated values: first measurement = `(counter += 10 * sensorId) % 1024`, remaining = `(counter + i) % 1024`.
 
@@ -33,7 +33,7 @@ Currently sends incrementing simulated values: first measurement = `(counter += 
 ### update()
 - ! update()
   - ? delay(20) — simulate I2C measurement
-  - ? fill measurements[writeIdx][0..49]
+  - ? fill measurements[writeIdx][0..63]
   - ? readyIndex = writeIdx — atomic buffer swap
 
 ### onDataRecv() (ESP-NOW callback)
