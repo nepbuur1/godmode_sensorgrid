@@ -95,6 +95,21 @@ namespace crt
       font-size: 0.65rem;
       color: #888;
     }
+    .stats-table {
+      max-width: 400px;
+      margin: 1.5rem auto 0;
+      border-collapse: collapse;
+      width: 100%;
+    }
+    .stats-table th, .stats-table td {
+      border: 1px solid #ccc;
+      padding: 0.4rem 0.8rem;
+      text-align: center;
+    }
+    .stats-table th {
+      background: #f0f0f0;
+      font-weight: 600;
+    }
     #status {
       margin-top: 1rem;
       text-align: center;
@@ -114,6 +129,11 @@ namespace crt
     <h2>Value Distribution</h2>
     <div class="histogram" id="histogram"></div>
     <div class="hist-axis"><span>0</span><span>256</span><span>512</span><span>768</span><span>1023</span></div>
+    <h2>Statistics</h2>
+    <table class="stats-table">
+      <tr><th>max</th><th>average</th><th>sqrt(var)</th></tr>
+      <tr><td id="statMax">-</td><td id="statAvg">-</td><td id="statStd">-</td></tr>
+    </table>
     <div id="status">...</div>
   </div>
 
@@ -124,6 +144,9 @@ namespace crt
 
     const gridEl = document.getElementById("grid");
     const histEl = document.getElementById("histogram");
+    const statMaxEl = document.getElementById("statMax");
+    const statAvgEl = document.getElementById("statAvg");
+    const statStdEl = document.getElementById("statStd");
     const statusEl = document.getElementById("status");
     let cells = [];
     let currentCount = 0;
@@ -192,6 +215,27 @@ namespace crt
       }
     }
 
+    function updateStats(values) {
+      if (values.length === 0) return;
+      let max = values[0];
+      let sum = 0;
+      for (const v of values) {
+        if (v > max) max = v;
+        sum += v;
+      }
+      const avg = sum / values.length;
+      let sumSqDiff = 0;
+      for (const v of values) {
+        const d = v - avg;
+        sumSqDiff += d * d;
+      }
+      const variance = sumSqDiff / values.length;
+      const std = Math.sqrt(variance);
+      statMaxEl.textContent = max;
+      statAvgEl.textContent = avg.toFixed(1);
+      statStdEl.textContent = std.toFixed(1);
+    }
+
     function grayValue(v) {
       const clamped = Math.max(0, Math.min(MAX_VALUE, v));
       const gray = Math.round(255 * (1 - clamped / MAX_VALUE));
@@ -218,6 +262,7 @@ namespace crt
         });
 
         updateHistogram(data.values);
+        updateStats(data.values);
 
         statusEl.textContent = "Laatste update: " + new Date().toLocaleTimeString();
       } catch (e) {

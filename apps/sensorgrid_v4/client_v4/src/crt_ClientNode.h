@@ -274,20 +274,22 @@ namespace crt
 			bool hasGridContainer = body.indexOf("grid-container") >= 0;
 			bool hasApiRef = body.indexOf("/api/measurements/1") >= 0;
 			bool hasHistogram = body.indexOf("histogram") >= 0;
+			bool hasStatsTable = body.indexOf("stats-table") >= 0;
 
-			if (hasTitle && hasNav && hasGridContainer && hasApiRef && hasHistogram)
+			if (hasTitle && hasNav && hasGridContainer && hasApiRef && hasHistogram && hasStatsTable)
 			{
-				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid container, measurements API, histogram present");
+				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, api, histogram, stats present");
 			}
 			else
 			{
 				char msg[128];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s",
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s",
 					hasTitle ? "" : "title ",
 					hasNav ? "" : "nav ",
 					hasGridContainer ? "" : "grid-container ",
 					hasApiRef ? "" : "measurements-api ",
-					hasHistogram ? "" : "histogram ");
+					hasHistogram ? "" : "histogram ",
+					hasStatsTable ? "" : "stats-table ");
 				logResult(TEST_NAME, false, msg);
 			}
 		}
