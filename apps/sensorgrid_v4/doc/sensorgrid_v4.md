@@ -199,6 +199,11 @@ Below the diamond, a **histogram** shows the distribution of the current measure
 
 Below the histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
 
+Above the diamond, two toggle buttons control circle coloring:
+- **Normalize** — maps the gray/color range to the current min-max of measurements instead of the full 0-1023 range.
+- **Colorize** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
+- When both are active, the full color gradient is mapped to the current measurement range.
+
 ### Monitoring serial output
 
 To view diagnostic logs from any device:

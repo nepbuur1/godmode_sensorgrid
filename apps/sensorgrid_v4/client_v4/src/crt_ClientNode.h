@@ -275,21 +275,25 @@ namespace crt
 			bool hasApiRef = body.indexOf("/api/measurements/1") >= 0;
 			bool hasHistogram = body.indexOf("histogram") >= 0;
 			bool hasStatsTable = body.indexOf("stats-table") >= 0;
+			bool hasNormalize = body.indexOf("Normalize") >= 0;
+			bool hasColorize = body.indexOf("Colorize") >= 0;
 
-			if (hasTitle && hasNav && hasGridContainer && hasApiRef && hasHistogram && hasStatsTable)
+			if (hasTitle && hasNav && hasGridContainer && hasApiRef && hasHistogram && hasStatsTable && hasNormalize && hasColorize)
 			{
-				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, api, histogram, stats present");
+				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, api, histogram, stats, buttons present");
 			}
 			else
 			{
-				char msg[128];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s",
+				char msg[160];
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s",
 					hasTitle ? "" : "title ",
 					hasNav ? "" : "nav ",
-					hasGridContainer ? "" : "grid-container ",
-					hasApiRef ? "" : "measurements-api ",
+					hasGridContainer ? "" : "grid ",
+					hasApiRef ? "" : "api ",
 					hasHistogram ? "" : "histogram ",
-					hasStatsTable ? "" : "stats-table ");
+					hasStatsTable ? "" : "stats ",
+					hasNormalize ? "" : "normalize ",
+					hasColorize ? "" : "colorize ");
 				logResult(TEST_NAME, false, msg);
 			}
 		}

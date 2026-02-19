@@ -48,6 +48,28 @@ namespace crt
       color: #666;
       margin-bottom: 1rem;
     }
+    .controls {
+      text-align: center;
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+    }
+    .toggle-btn {
+      padding: 0.4rem 1rem;
+      border: 2px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .toggle-btn.active {
+      background: #333;
+      color: #fff;
+      border-color: #333;
+    }
     .grid-container {
       display: flex;
       flex-direction: column;
@@ -124,7 +146,11 @@ namespace crt
   </nav>
   <div class="page">
     <h1>Sensor 1 - Grid View</h1>
-    <div class="info">Each circle shows one measurement. Gray intensity is proportional to value (0=white, 1023=black). Arranged in a diamond pattern.</div>
+    <div class="info">Each circle shows one measurement. Arranged in a diamond pattern.</div>
+    <div class="controls">
+      <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Normalize</button>
+      <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Colorize</button>
+    </div>
     <div class="grid-container" id="grid"></div>
     <h2>Value Distribution</h2>
     <div class="histogram" id="histogram"></div>
@@ -236,10 +262,66 @@ namespace crt
       statStdEl.textContent = std.toFixed(1);
     }
 
-    function grayValue(v) {
-      const clamped = Math.max(0, Math.min(MAX_VALUE, v));
-      const gray = Math.round(255 * (1 - clamped / MAX_VALUE));
-      return gray;
+    let normalized = false;
+    let colorized = false;
+    let lastValues = [];
+
+    function toggleNormalize() {
+      normalized = !normalized;
+      document.getElementById("btnNormalize").classList.toggle("active", normalized);
+      recolor();
+    }
+    function toggleColorize() {
+      colorized = !colorized;
+      document.getElementById("btnColorize").classList.toggle("active", colorized);
+      recolor();
+    }
+
+    function colorForValue(v, minV, maxV) {
+      // Map v to 0..1 range
+      const range = (maxV > minV) ? (maxV - minV) : 1;
+      const lo = normalized ? minV : 0;
+      const hi = normalized ? maxV : MAX_VALUE;
+      const r = (hi > lo) ? (hi - lo) : 1;
+      const t = Math.max(0, Math.min(1, (v - lo) / r));
+
+      if (!colorized) {
+        const gray = Math.round(255 * (1 - t));
+        return { bg: `rgb(${gray},${gray},${gray})`, dark: gray < 128 };
+      }
+      // Color gradient: black -> blue -> green -> yellow -> red
+      let cr, cg, cb;
+      if (t < 0.25) {
+        const s = t / 0.25;
+        cr = 0; cg = 0; cb = Math.round(255 * s);
+      } else if (t < 0.5) {
+        const s = (t - 0.25) / 0.25;
+        cr = 0; cg = Math.round(255 * s); cb = Math.round(255 * (1 - s));
+      } else if (t < 0.75) {
+        const s = (t - 0.5) / 0.25;
+        cr = Math.round(255 * s); cg = 255; cb = 0;
+      } else {
+        const s = (t - 0.75) / 0.25;
+        cr = 255; cg = Math.round(255 * (1 - s)); cb = 0;
+      }
+      const lum = 0.299 * cr + 0.587 * cg + 0.114 * cb;
+      return { bg: `rgb(${cr},${cg},${cb})`, dark: lum < 128 };
+    }
+
+    function recolor() {
+      if (lastValues.length === 0) return;
+      let minV = lastValues[0], maxV = lastValues[0];
+      for (const v of lastValues) {
+        if (v < minV) minV = v;
+        if (v > maxV) maxV = v;
+      }
+      lastValues.forEach((v, i) => {
+        if (i < cells.length) {
+          const c = colorForValue(v, minV, maxV);
+          cells[i].style.background = c.bg;
+          cells[i].style.color = c.dark ? "#ddd" : "#444";
+        }
+      });
     }
 
     async function fetchMeasurements() {
@@ -252,12 +334,19 @@ namespace crt
           createGrid(data.count);
         }
 
+        lastValues = data.values;
+        let minV = data.values[0], maxV = data.values[0];
+        for (const v of data.values) {
+          if (v < minV) minV = v;
+          if (v > maxV) maxV = v;
+        }
+
         data.values.forEach((v, i) => {
           if (i < cells.length) {
-            const g = grayValue(v);
-            cells[i].style.background = `rgb(${g},${g},${g})`;
+            const c = colorForValue(v, minV, maxV);
+            cells[i].style.background = c.bg;
             cells[i].textContent = v;
-            cells[i].style.color = g < 128 ? "#ddd" : "#444";
+            cells[i].style.color = c.dark ? "#ddd" : "#444";
           }
         });
 

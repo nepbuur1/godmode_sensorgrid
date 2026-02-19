@@ -216,3 +216,19 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Server and client re-flashed and tested
 - Client_v4: all 8/8 HTTP tests passed
 
+### Phase 4e: Normalize and Colorize buttons
+
+#### Changes
+- **`crt_GridHtml.h`**: Added two toggle buttons above the diamond:
+  - **Normalize**: maps gray/color range to current min-max instead of 0-1023
+  - **Colorize**: switches from gray-scale to color gradient (black → blue → green → yellow → red)
+  - Both can be active simultaneously (full color range mapped to current data range)
+  - Buttons toggle visually (dark background when active)
+  - `recolor()` function allows instant re-rendering on toggle without waiting for next poll
+- **`crt_ClientNode.h`**: Added `hasNormalize` and `hasColorize` checks to `testGridPage()`
+- Updated sensorgrid_v4.md and test.md
+
+#### Test results
+- Server and client re-flashed and tested
+- Client_v4: all 8/8 HTTP tests passed
+

@@ -135,3 +135,8 @@ Below the circle-grid, please put a histogram that shows the current distributio
 #### Phase 4d
 Below the histogram, please put a table with 3 columns, one header row and one content row. The headers are called "max", "average", "sqrt(var)". 
 The content row contains the figures for the measures currently shown in the grid: the maximum, the average and the square of the variance.
+#### Phase 4e
+On the same page, I'd also like two buttons. Each of them can toggle an aspect of the way the circle-grid is colored:
+- One button "Normalize" can toggle whether the gray-range is normalised over the range of current measurements or not.
+- Another button "Colorize" can toggle whether the gray-range is used, or a color-range (from black to blue to green to yellow to red).
+- If "color mode" is selected while normalised mode is selected, the full color range is mapped to the current measurements.
