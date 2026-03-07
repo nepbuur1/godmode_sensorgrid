@@ -11,8 +11,8 @@ A polling-based sensor grid system consisting of five ESP32-S3 devices communica
 
 | App | Device(s) | Responsibility |
 |-----|-----------|---------------|
-| **sensor_v5** | ACM1 (ID=1), ACM0 (ID=2), USB0 (ID=3) | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 64 cached uint16_t measurements. Uses double-buffered arrays and 20ms simulated I2C delay. Each instance has a unique sensor ID. |
-| **server_v5** | ACM3 | Runs a WiFi access point, discovers and registers 3 sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses, caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor), a grid visualization page (showing all measurements of sensors 1-4 in a single-row layout with diamond grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
+| **sensor_v5** | ACM1 (ID=1), ACM0 (ID=2), USB0 (ID=3) | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 128 cached uint16_t measurements (8×16 grid). At startup, probes I2C for MCP23017: if found, reads real pressure sensor grid via 8× ADS1220 ADCs and ADG706 mux; if not, falls back to stub mode with simulated data. Uses double-buffered arrays. Each instance has a unique sensor ID. |
+| **server_v5** | ACM3 | Runs a WiFi access point, discovers and registers 3 sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses (2 packets per sensor for 128 measurements), caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor, 0-65535 range), a grid visualization page (showing all 128 measurements of sensors 1-4 in a single-row layout with hex-packed grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
 | **client_v5** | ACM2 | Connects to the server's WiFi AP and runs automated HTTP tests against all web endpoints, reporting PASS/FAIL results via serial log. |
 
 ### Communication Protocol
@@ -43,18 +43,31 @@ A polling-based sensor grid system consisting of five ESP32-S3 devices communica
 
 #### DataPacket wire format (ESP-NOW, binary)
 
-With 64 measurements (128 bytes), the DataPacket fits in a single ESP-NOW frame:
+With 128 measurements (256 bytes), the DataPacket is split across 2 ESP-NOW frames:
+
+**Packet 1/2:**
 
 | Byte(s) | Field | Example value |
 |---------|-------|---------------|
 | 0 | messageType | `0x04` (DATA) |
 | 1 | sensorId | `1` |
 | 2 | packetIndex | `0` |
-| 3 | totalPackets | `1` |
-| 4 | payloadSize | `128` |
-| 5–132 | payload | 64 × uint16_t raw bytes |
+| 3 | totalPackets | `2` |
+| 4 | payloadSize | `245` |
+| 5–249 | payload | first 245 bytes of 128 × uint16_t |
 
-For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automatically splits across multiple packets using packetIndex/totalPackets, and the server reassembles them. The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minus the 5-byte header).
+**Packet 2/2:**
+
+| Byte(s) | Field | Example value |
+|---------|-------|---------------|
+| 0 | messageType | `0x04` (DATA) |
+| 1 | sensorId | `1` |
+| 2 | packetIndex | `1` |
+| 3 | totalPackets | `2` |
+| 4 | payloadSize | `11` |
+| 5–15 | payload | remaining 11 bytes |
+
+The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minus the 5-byte header).
 
 #### JSON API responses
 
@@ -77,7 +90,7 @@ For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automaticall
 ```json
 {
   "id": 1,
-  "count": 64,
+  "count": 128,
   "values": [258, 259, 260, 261, ...]
 }
 ```
@@ -87,8 +100,8 @@ For larger payloads (e.g. 200 measurements = 400 bytes), the sensor automaticall
 ```json
 {
   "sensors": [
-    {"id": 1, "count": 64, "values": [258, 259, ...]},
-    {"id": 2, "count": 64, "values": [480, 481, ...]},
+    {"id": 1, "count": 128, "values": [258, 259, ...]},
+    {"id": 2, "count": 128, "values": [480, 481, ...]},
     {"id": 3, "count": 0, "values": []},
     {"id": 4, "count": 0, "values": []}
   ]
@@ -207,7 +220,7 @@ Both pages include a **navigation bar** at the top with links to **Home** (`/`) 
 The page titled **Sensormetingen** shows real-time bar charts for up to 8 sensors, arranged in two columns (sensors 1-4 on the left, sensors 5-8 on the right).
 
 For each sensor:
-- A **horizontal bar** shows the current value (0-1023). The bar color transitions from yellow (low) to red (high).
+- A **horizontal bar** shows the current value (0-65535). The bar color transitions from yellow (low) to red (high).
 - The **numeric value** is displayed next to the bar.
 - If a sensor has not reported for more than 5 seconds, its bar gets a **blue border** (stale).
 - If a sensor has never reported or has been missing for over 60 seconds, the bar shows a **diagonal stripe pattern** and displays `?`.
@@ -220,24 +233,24 @@ At the bottom of the page:
 
 #### Grid View page
 
-The page titled **Grid View** shows all 64 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a diamond grid, histogram, and statistics table.
+The page titled **Grid View** shows all 128 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a hex-packed circle grid, histogram, and statistics table.
 
 Each sensor's measurements are shown as circles arranged in a **rectangular hex-packed grid** with 8 circles per row. Odd rows are offset horizontally by half a cell width, creating compact hex packing where circle centers are equidistant in all 6 directions. The last row may be partial if the measurement count is not a multiple of 8.
 
-For example, with 64 measurements: 8 rows of 8 circles each.
+For example, with 128 measurements: 16 rows of 8 circles each.
 
 For each measurement:
-- The circle's **gray-scale** is proportional to the value: 0 = black, 1023 = white.
+- The circle's **gray-scale** is proportional to the value: 0 = black, 65535 = white.
 - The **numeric value** is shown inside each circle, with text color adjusted for contrast (light text on dark circles, dark text on light circles).
 
 The diamonds dynamically adjust when the measurement count changes. The page polls `/api/allmeasurements` every 100ms (using a `setTimeout`-based loop that accounts for response time), fetching all four sensors' data in a single HTTP request.
 
-Below each diamond, a **histogram** shows the distribution of the current measurement values across 50 bins (0-1023 range). Bar heights are proportional to the most populated bin.
+Below each diamond, a **histogram** shows the distribution of the current measurement values across 50 bins (0-65535 range). Bar heights are proportional to the most populated bin.
 
 Below each histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
 
 Above the diamonds, two toggle buttons control circle coloring (applied to all four sensors simultaneously):
-- **Normalize** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-1023 range.
+- **Normalize** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-65535 range.
 - **Colorize** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
 - When both are active, the full color gradient is mapped to the current measurement range.
 

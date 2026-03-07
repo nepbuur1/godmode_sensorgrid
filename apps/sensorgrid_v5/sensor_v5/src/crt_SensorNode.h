@@ -5,7 +5,12 @@
 #include <WiFi.h>
 #include <esp_now.h>
 #include <esp_wifi.h>
+#include <Wire.h>
 #include <crt_SensorGridPacket.h>
+#include "crt_IMeasurementProvider.h"
+#include "crt_StubMeasurement.h"
+#include "crt_MCP23017.h"
+#include "crt_RealMeasurement.h"
 
 namespace crt
 {
@@ -16,12 +21,16 @@ namespace crt
 		int channel;
 		unsigned long sampleIntervalMs;
 		unsigned long lastSampleMs;
-		uint16_t counter;
 
 		// Double-buffered measurements: update() writes to one buffer,
 		// handlePoll() reads from the other. No race condition.
 		uint16_t measurements[2][MEASUREMENT_COUNT];
 		volatile uint8_t readyIndex;
+
+		// Measurement provider (stub or real)
+		IMeasurementProvider* measurementProvider;
+		StubMeasurement stubProvider;
+		RealMeasurement realProvider;
 
 		static SensorNode* instance;
 		static bool serverPeerAdded;
@@ -127,7 +136,10 @@ namespace crt
 		SensorNode(uint8_t sensorId, int channel, unsigned long sampleIntervalMs)
 			: sensorId(sensorId), channel(channel),
 			  sampleIntervalMs(sampleIntervalMs),
-			  lastSampleMs(0), counter(0), readyIndex(0)
+			  lastSampleMs(0), readyIndex(0),
+			  measurementProvider(nullptr),
+			  stubProvider(sensorId),
+			  realProvider()
 		{
 			memset(measurements, 0, sizeof(measurements));
 			instance = this;
@@ -138,8 +150,29 @@ namespace crt
 			ESP_LOGI("SensorNode", "Sensor node v5 starting, id=%u, channel=%d",
 					 sensorId, channel);
 
-			neopixelWrite(RGB_BUILTIN, 0, 0, 0);
+			rgbLedWrite(RGB_BUILTIN, 0, 0, 0);
 
+			// Reset MCP23017 via hardware reset pin before probing I2C
+			::pinMode(14, OUTPUT);
+			::digitalWrite(14, LOW);
+			delay(10);
+			::digitalWrite(14, HIGH);
+			delay(10);
+
+			// Detect MCP23017 on I2C to choose measurement mode
+			if (MCP23017::detect(0x24, &Wire, 4, 5))
+			{
+				ESP_LOGI("SensorNode", "MCP23017 detected, using real measurement");
+				measurementProvider = &realProvider;
+			}
+			else
+			{
+				ESP_LOGI("SensorNode", "MCP23017 not detected, using stub measurement");
+				measurementProvider = &stubProvider;
+			}
+			measurementProvider->init();
+
+			// WiFi + ESP-NOW init
 			WiFi.mode(WIFI_STA);
 
 			esp_wifi_set_promiscuous(true);
@@ -168,15 +201,8 @@ namespace crt
 				// Write to the non-ready buffer (safe from handlePoll reads)
 				uint8_t writeIdx = 1 - readyIndex;
 
-				// Simulate 20ms I2C measurement processing time
-				delay(20);
-
-				counter += 10 * sensorId;
-				measurements[writeIdx][0] = counter % 1024;
-				for (uint8_t i = 1; i < MEASUREMENT_COUNT; i++)
-				{
-					measurements[writeIdx][i] = (counter + i) % 1024;
-				}
+				// Delegate to the active measurement provider
+				measurementProvider->measure(measurements[writeIdx]);
 
 				// Atomic swap: single byte write = atomic on ESP32-S3
 				readyIndex = writeIdx;

@@ -170,28 +170,28 @@ namespace crt
         <h3>Sensor 1</h3>
         <div class="grid-container" id="grid1"></div>
         <div class="histogram" id="hist1"></div>
-        <div class="hist-axis"><span>0</span><span>512</span><span>1023</span></div>
+        <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max1">-</td><td id="avg1">-</td><td id="std1">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw2">
         <h3>Sensor 2</h3>
         <div class="grid-container" id="grid2"></div>
         <div class="histogram" id="hist2"></div>
-        <div class="hist-axis"><span>0</span><span>512</span><span>1023</span></div>
+        <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max2">-</td><td id="avg2">-</td><td id="std2">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw3">
         <h3>Sensor 3</h3>
         <div class="grid-container" id="grid3"></div>
         <div class="histogram" id="hist3"></div>
-        <div class="hist-axis"><span>0</span><span>512</span><span>1023</span></div>
+        <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max3">-</td><td id="avg3">-</td><td id="std3">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw4">
         <h3>Sensor 4</h3>
         <div class="grid-container" id="grid4"></div>
         <div class="histogram" id="hist4"></div>
-        <div class="hist-axis"><span>0</span><span>512</span><span>1023</span></div>
+        <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max4">-</td><td id="avg4">-</td><td id="std4">-</td></tr></table>
       </div>
     </div>
@@ -199,7 +199,7 @@ namespace crt
   </div>
 
   <script>
-    const MAX_VALUE = 1023;
+    const MAX_VALUE = 65535;
     const POLL_MS = 100;
     const NUM_BINS = 50;
     const SENSOR_IDS = [1, 2, 3, 4];

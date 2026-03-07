@@ -136,7 +136,7 @@ namespace crt
 
   <script>
     const SENSOR_IDS = [1,2,3,4, 8,7,6,5];
-    const MAX_VALUE = 1023;
+    const MAX_VALUE = 65535;
     const STALE_MS = 5000;
     const MISSING_MS = 60000;
     const POLL_MS = 200;

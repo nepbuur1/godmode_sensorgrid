@@ -2,9 +2,9 @@
 
 ## Test Environment
 - Server: server_v5 running on ACM3
-- Sensors: sensor_v5 (ID=1) on ACM1, sensor_v5 (ID=2) on ACM0, sensor_v5 (ID=3) on USB0
+- Sensors: sensor_v5 (ID=1) on ACM1, sensor_v5 (ID=2) on ACM0, sensor_v5 (ID=3) on USB0 — all in stub mode (no MCP23017 connected), 128 measurements each, 2 ESP-NOW packets per sensor
 - Client: client_v5 on ACM2
-- Date: 2026-03-07
+- Date: 2026-03-07 (Phase 5b)
 
 ## Test Results
 

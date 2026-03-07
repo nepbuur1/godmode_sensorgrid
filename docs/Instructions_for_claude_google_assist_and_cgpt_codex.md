@@ -177,3 +177,15 @@ per row. Still, the horizontal and vertical spacing between circles should remai
 the same. Therefore, the odd rows should start at an x value that is larger than
 that of the even rows (such that the circles are compactly stacked, without touching).
 
+#### Phase 5b
+The "sensors" we created so far, have shown "stub behaviour". It is the behaviour they should 
+have when no devices are connected to them. However, sensors may have an MCP23017_ML and more.
+If the MCP23017_ML is detected, the sensor should not send stub information, but instead 
+send the real measurements. For your reference, I have added a folder with ScoliosePCB2,
+with which I successfully tested standalone measurements of such a sensor.
+In the code, the sensor data is stored in an array of max 8 rows and max 16 cols.
+I'd like to see that when it sends its data to the server, that rows and cols are swapped.
+So if the sensor is to send 8 rows and 16 cols, it should be sent in such a way that
+the grid shows up on the server as 8 cols and 16 rows.
+Make sure that stub and measure mode/behaviour are nicely separated. for instance over
+multiple files.

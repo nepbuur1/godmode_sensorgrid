@@ -352,3 +352,35 @@ Created sensorgrid_v5 by copying sensorgrid_v4 and renaming all sub-apps from v4
 - Server_v5 re-flashed to /dev/ttyACM3
 - Client_v5 re-flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
 
+### Phase 5b: Real MCP23017 sensor measurements
+
+#### Summary
+Added real hardware measurement support using MCP23017 GPIO expander, ADG706 column multiplexer, and 8x ADS1220 24-bit ADCs. When an MCP23017 is detected on I2C at startup, the sensor reads a physical 8×16 pressure sensor grid. If not detected, stub mode continues as before with simulated data. Measurement count increased from 64 to 128 (8×16 grid), requiring 2 ESP-NOW packets per sensor. MAX_VALUE updated from 1023 to 65535 for full 16-bit ADC range.
+
+#### Created files (in `apps/sensorgrid_v5/sensor_v5/src/`)
+- **`crt_IMeasurementProvider.h`** — abstract interface with `init()` and `measure(uint16_t* buffer)` methods
+- **`crt_StubMeasurement.h`** — stub provider: generates 128 simulated values with 20ms delay, extracted from previous inline SensorNode code
+- **`crt_MCP23017.h`** — header-only MCP23017 I2C GPIO expander driver with `McpPin` enum, register constants, and static `detect()` method for probing
+- **`crt_ADG706.h`** — header-only ADG706 16-channel analog mux driver, controlled via MCP23017 pins
+- **`crt_ADS1220.h`** — header-only ADS1220 24-bit ADC driver with turbo mode options table and `rawToUint16()` conversion
+- **`crt_RealMeasurement.h`** — real measurement provider: full 16-column scan loop with batch ADC operations, EMA filter (factor 0.5), and row/column transposition for server display
+
+#### Modified files
+- **`crt_SensorGridPacket.h`** — `MEASUREMENT_COUNT`: 64 → 128 (256 bytes, 2 ESP-NOW packets)
+- **`crt_SensorNode.h`** — refactored with `IMeasurementProvider` pattern: probes MCP23017 at init, selects real or stub provider, delegates `measure()` calls. Fixed deprecated `neopixelWrite` → `rgbLedWrite`.
+- **`crt_GridHtml.h`** — `MAX_VALUE`: 1023 → 65535, histogram axis labels: 0/32768/65535
+- **`crt_IndexHtml.h`** — `MAX_VALUE`: 1023 → 65535
+
+#### Key design decisions
+- Both `StubMeasurement` and `RealMeasurement` are always constructed as members (~200 bytes extra RAM), avoiding heap allocation. Only the active provider's `init()` is called.
+- Data transposition in `measure()`: `buffer[col*8 + row] = sensorValues[row][col]` — server grid row = physical column, resulting in 16 rows × 8 columns display.
+- Hardware pin assignments from ScoliosePCB2: I2C SDA=4, SCL=5; SPI SCLK=12, MISO=13, MOSI=11, CS=10; MCP reset=14, addr=0x24
+
+#### Test results
+- Server_v5 re-flashed to /dev/ttyACM3 — all 3 sensors discovered and polled
+- Sensor_v5 (ID=1) flashed to /dev/ttyACM1 — stub mode, 128 measurements in 2 packets
+- Sensor_v5 (ID=2) flashed to /dev/ttyACM0 — stub mode, 128 measurements in 2 packets
+- Sensor_v5 (ID=3) flashed to /dev/ttyUSB0 — stub mode, 128 measurements in 2 packets
+- Client_v5 flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
+- Server serial confirmed: `pkt 1/2 (245 bytes)`, `pkt 2/2 (11 bytes)`, `128 measurements` per sensor
+
