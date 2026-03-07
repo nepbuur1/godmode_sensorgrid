@@ -168,3 +168,12 @@ The first one should be programmed as server_v5.
 The second one should be programmed as client_v5.
 The other three should be programmed as sensor_v5.
 
+#### Phase 5a
+I'd like to change the arrangement of the circles in the server that display 
+the sensor values. The spacings can remain the same. Only the amount of circles
+of each row should be different: instead of letting it increase and for the 
+lower rows decrease again, let's add rows of equal amount of circles: 8 circles
+per row. Still, the horizontal and vertical spacing between circles should remain
+the same. Therefore, the odd rows should start at an x value that is larger than
+that of the even rows (such that the circles are compactly stacked, without touching).
+

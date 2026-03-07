@@ -337,3 +337,18 @@ Created sensorgrid_v5 by copying sensorgrid_v4 and renaming all sub-apps from v4
 - Sensor_v5 (ID=3) flashed to /dev/ttyUSB0 — responding to POLL with 64 measurements
 - Client_v5 flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
 
+### Phase 5a: Rectangular hex-packed circle grid
+
+#### Changes
+- **`crt_GridHtml.h`**: Changed circle grid layout from diamond pattern to rectangular hex-packed grid:
+  - `computeRowSizes()` now returns rows of 8 circles (configurable via `COLS` constant) instead of the diamond 1, 2, ..., W, ..., 2, 1 pattern
+  - Odd rows are offset by 12px (`marginLeft`) to create hex packing — circle centers remain equidistant in all 6 directions
+  - `.grid-container` changed from `align-items: center` to `align-items: flex-start` with `width: fit-content` for proper left-aligned layout
+  - `.row` removed `justify-content: center` since all rows have equal width
+  - For 64 measurements: 8 rows of 8 circles each
+- Updated sensorgrid_v5.md (grid view description updated from diamond to rectangular hex-packed)
+
+#### Test results
+- Server_v5 re-flashed to /dev/ttyACM3
+- Client_v5 re-flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
+

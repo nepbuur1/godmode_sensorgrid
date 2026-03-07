@@ -85,14 +85,14 @@ namespace crt
     .grid-container {
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start;
       gap: 0;
       margin: 0 auto;
+      width: fit-content;
     }
     .row {
       display: flex;
       gap: 2px;
-      justify-content: center;
       margin-top: -1px;
     }
     .row:first-child {
@@ -235,18 +235,14 @@ namespace crt
       recolorAll();
     }
 
+    const COLS = 8;
+
     function computeRowSizes(n) {
       if (n <= 0) return [];
-      const w = Math.ceil(Math.sqrt(n));
       const rows = [];
       let remaining = n;
-      for (let r = 1; r <= w && remaining > 0; r++) {
-        const s = Math.min(r, remaining);
-        rows.push(s);
-        remaining -= s;
-      }
-      for (let r = w - 1; r >= 1 && remaining > 0; r--) {
-        const s = Math.min(r, remaining);
+      while (remaining > 0) {
+        const s = Math.min(COLS, remaining);
         rows.push(s);
         remaining -= s;
       }
@@ -258,9 +254,12 @@ namespace crt
       s.cells = [];
       s.currentCount = count;
       const rowSizes = computeRowSizes(count);
-      for (const size of rowSizes) {
+      rowSizes.forEach((size, rowIdx) => {
         const rowEl = document.createElement("div");
         rowEl.className = "row";
+        if (rowIdx % 2 === 1) {
+          rowEl.style.marginLeft = "12px";
+        }
         for (let i = 0; i < size; i++) {
           const cell = document.createElement("div");
           cell.className = "cell";
@@ -269,7 +268,7 @@ namespace crt
           s.cells.push(cell);
         }
         s.gridEl.appendChild(rowEl);
-      }
+      });
     }
 
     function createHistogram(s) {
