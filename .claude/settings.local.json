@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(wsl -d Ubuntu_22_04_GodMode -e bash -c:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(source:*)",
+      "Bash(idf.py build:*)",
+      "Bash(idf.py:*)",
+      "Bash(timeout 45 python3:*)"
     ]
   }
 }
