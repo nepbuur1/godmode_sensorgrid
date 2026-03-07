@@ -304,3 +304,36 @@ Created sensorgrid_v4 by copying sensorgrid_v3 and renaming all sub-apps from v3
 - Server and client re-flashed and tested
 - Client_v4: all 9/9 HTTP tests passed
 
+## Phase 5
+
+### Summary
+Created sensorgrid_v5 by copying sensorgrid_v4 and renaming all sub-apps from v4 to v5. The system now uses 5 devices (up from 4) with 3 physical sensors (up from 2). Device assignments changed: server moved to ACM3, client to ACM2, and a third sensor connects via a CP210x USB-to-UART bridge on /dev/ttyUSB0.
+
+### What was done
+- Copied `apps/sensorgrid_v4/` to `apps/sensorgrid_v5/`
+- Renamed directories: `sensor_v4/` → `sensor_v5/`, `server_v4/` → `server_v5/`, `client_v4/` → `client_v5/`
+- Renamed all source files (`*_v4*` → `*_v5*`)
+- Updated all includes, log strings, and doc references from "v4" to "v5"
+- Changed `EXPECTED_SENSOR_COUNT` from 2 to 3 in `server_v5_ino.h`
+- Added v5 include paths to `main/CMakeLists.txt` (listed first before v4)
+- Added v5 includes to `main/main.cpp` (commented out)
+- Updated documentation with new device assignments (5 devices, 3 sensors)
+- Updated system-level mermaid diagram (sensor count x2 → x3)
+- Regenerated SVGs: 20/20 successful (4×v1 + 4×v2 + 4×v3 + 4×v4 + 4×v5)
+
+### Device assignments
+| Port | USB Device | Role |
+|------|-----------|------|
+| /dev/ttyACM3 | Espressif USB JTAG (Bus Dev 006) | server_v5 |
+| /dev/ttyACM2 | Espressif USB JTAG (Bus Dev 005) | client_v5 |
+| /dev/ttyACM1 | Espressif USB JTAG (Bus Dev 004) | sensor_v5 (ID=1) |
+| /dev/ttyACM0 | Espressif USB JTAG (Bus Dev 003) | sensor_v5 (ID=2) |
+| /dev/ttyUSB0 | CP210x UART Bridge (Bus Dev 002) | sensor_v5 (ID=3) |
+
+### Test results
+- Server_v5 flashed to /dev/ttyACM3 — all 3 sensors discovered, registered, and polled successfully
+- Sensor_v5 (ID=1) flashed to /dev/ttyACM1 — responding to POLL with 64 measurements
+- Sensor_v5 (ID=2) flashed to /dev/ttyACM0 — responding to POLL with 64 measurements
+- Sensor_v5 (ID=3) flashed to /dev/ttyUSB0 — responding to POLL with 64 measurements
+- Client_v5 flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
+

@@ -1,0 +1,21 @@
+graph LR
+    sensor_v5["sensor_v5
+(x3)"]
+    server_v5["server_v5"]
+    client_v5["client_v5"]
+
+    server_v5 -- "ESP-NOW broadcast
+DiscoverPacket" --> sensor_v5
+    sensor_v5 -- "ESP-NOW unicast
+RegisterPacket" --> server_v5
+    server_v5 -- "ESP-NOW unicast
+PollPacket" --> sensor_v5
+    sensor_v5 -- "ESP-NOW unicast
+DataPacket(s) 64×uint16_t" --> server_v5
+    client_v5 -- "WiFi STA
+connectToAp(ssid, pass)" --> server_v5
+    client_v5 -- "HTTP GET
+/, /grid, /api/sensors,
+/api/allmeasurements" --> server_v5
+    server_v5 -- "HTTP response
+(html, json)" --> client_v5

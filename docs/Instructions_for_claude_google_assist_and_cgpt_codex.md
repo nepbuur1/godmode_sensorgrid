@@ -154,3 +154,17 @@ The grid view page currently fetches measurement data for each sensor via a sepa
 #### Phase 4j
 Please update the freertos tick rate to 1000Hz.
 Furthermore, lower the JS polling interval to 100ms. Instead of `setInterval`, use a `setTimeout`-based loop: measure how long `fetchAll()` took, then wait only the remaining milliseconds to reach 100ms total cycle time. If `fetchAll()` took longer than 100ms, don't add extra wait.
+
+### Phase 5
+Now we move on to a new project, called sensorgrid_v5.
+For starters, by fully copying sensorgrid_v5. (and renaming the sub-apps to server_v5, sensor_v5 and client_v5).
+Right now, 5 devices can be accessed/programmed via their USB busses:
+  Bus 001 Device 006: ID 303a:1001 Espressif USB JTAG/serial debug unit
+  Bus 001 Device 005: ID 303a:1001 Espressif USB JTAG/serial debug unit
+  Bus 001 Device 004: ID 303a:1001 Espressif USB JTAG/serial debug unit
+  Bus 001 Device 003: ID 303a:1001 Espressif USB JTAG/serial debug unit
+  Bus 001 Device 002: ID 10c4:ea60 Silicon Labs CP210x UART Bridge
+The first one should be programmed as server_v5.
+The second one should be programmed as client_v5.
+The other three should be programmed as sensor_v5.
+

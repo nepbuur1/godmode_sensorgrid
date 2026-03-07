@@ -119,7 +119,13 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 "../apps/pong/pong"
 
-# Sensor Grid apps (sensorgrid_v4) - listed first: latest crt_SensorGridPacket.h
+# Sensor Grid apps (sensorgrid_v5) - listed first: latest crt_SensorGridPacket.h
+"../apps/sensorgrid_v5/sensorgrid_common"
+"../apps/sensorgrid_v5/server_v5/src"
+"../apps/sensorgrid_v5/sensor_v5/src"
+"../apps/sensorgrid_v5/client_v5/src"
+
+# Sensor Grid apps (sensorgrid_v4)
 "../apps/sensorgrid_v4/sensorgrid_common"
 "../apps/sensorgrid_v4/server_v4/src"
 "../apps/sensorgrid_v4/sensor_v4/src"
