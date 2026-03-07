@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wsl -d Ubuntu_22_04_GodMode -e bash -c:*)"
+      "Bash(wsl -d Ubuntu_22_04_GodMode -e bash -c:*)",
+      "Bash(git add:*)"
     ]
   }
 }
