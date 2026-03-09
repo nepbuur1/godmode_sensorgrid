@@ -204,6 +204,7 @@ namespace crt
         <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
         <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8"/></label>
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8"/></label>
+        <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8"/></label>
       </div>
     </div>
     <div class="sensor-layout">
@@ -213,7 +214,7 @@ namespace crt
         <div class="grid-container" id="grid1"></div>
         <div class="histogram" id="hist1"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max1">-</td><td id="avg1">-</td><td id="std1">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum1">-</td><td id="max1">-</td><td id="avg1">-</td><td id="std1">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw2">
         <h3>Sensor 2</h3>
@@ -221,7 +222,7 @@ namespace crt
         <div class="grid-container" id="grid2"></div>
         <div class="histogram" id="hist2"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max2">-</td><td id="avg2">-</td><td id="std2">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum2">-</td><td id="max2">-</td><td id="avg2">-</td><td id="std2">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw3">
         <h3>Sensor 3</h3>
@@ -229,7 +230,7 @@ namespace crt
         <div class="grid-container" id="grid3"></div>
         <div class="histogram" id="hist3"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max3">-</td><td id="avg3">-</td><td id="std3">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum3">-</td><td id="max3">-</td><td id="avg3">-</td><td id="std3">-</td></tr></table>
       </div>
       <div class="sensor-widget" id="sw4">
         <h3>Sensor 4</h3>
@@ -237,7 +238,7 @@ namespace crt
         <div class="grid-container" id="grid4"></div>
         <div class="histogram" id="hist4"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="max4">-</td><td id="avg4">-</td><td id="std4">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum4">-</td><td id="max4">-</td><td id="avg4">-</td><td id="std4">-</td></tr></table>
       </div>
     </div>
     <div id="status">...</div>
@@ -263,6 +264,7 @@ namespace crt
       sensors[id] = {
         gridEl: document.getElementById("grid" + id),
         histEl: document.getElementById("hist" + id),
+        sumEl: document.getElementById("sum" + id),
         maxEl: document.getElementById("max" + id),
         avgEl: document.getElementById("avg" + id),
         stdEl: document.getElementById("std" + id),
@@ -270,7 +272,11 @@ namespace crt
         histBars: [],
         currentCount: 0,
         lastValues: [],
-        offsets: null
+        offsets: null,
+        filteredSum: null,
+        filteredMax: null,
+        filteredAvg: null,
+        filteredStd: null
       };
     });
     const statusEl = document.getElementById("status");
@@ -420,6 +426,13 @@ namespace crt
       }
     }
 
+    function getStatsFilter() {
+      const v = parseFloat(document.getElementById("fldStatsFilter").value);
+      if (isNaN(v) || v < 0) return 0;
+      if (v > 1) return 1;
+      return v;
+    }
+
     function updateStats(s, values) {
       if (values.length === 0) return;
       let max = values[0], sum = 0;
@@ -434,9 +447,22 @@ namespace crt
         sumSqDiff += d * d;
       }
       const std = Math.sqrt(sumSqDiff / values.length);
-      s.maxEl.textContent = Number.isInteger(max) ? max : max.toFixed(1);
-      s.avgEl.textContent = avg.toFixed(1);
-      s.stdEl.textContent = std.toFixed(1);
+      if (s.filteredSum === null) {
+        s.filteredSum = sum;
+        s.filteredMax = max;
+        s.filteredAvg = avg;
+        s.filteredStd = std;
+      } else {
+        const f = getStatsFilter();
+        s.filteredSum = s.filteredSum * f + sum * (1 - f);
+        s.filteredMax = s.filteredMax * f + max * (1 - f);
+        s.filteredAvg = s.filteredAvg * f + avg * (1 - f);
+        s.filteredStd = s.filteredStd * f + std * (1 - f);
+      }
+      s.sumEl.textContent = s.filteredSum.toFixed(1);
+      s.maxEl.textContent = s.filteredMax.toFixed(1);
+      s.avgEl.textContent = s.filteredAvg.toFixed(1);
+      s.stdEl.textContent = s.filteredStd.toFixed(1);
     }
 
     function colorForValue(v, minV, maxV) {

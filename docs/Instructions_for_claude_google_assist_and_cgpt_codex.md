@@ -242,6 +242,17 @@ differently. Subsequently, how these values are visualised, depends on the state
 
 Make sure that in the code, there can be never a division by zero (or it may crash - either esp or javascript in the browser).
 
+### Phase 5f
+At the bottom of each sensor panel, below the histogram, currently max, av and sqrt(var) are shown.
+To the left of max, I'd like to display the Sum (of all values in the circles of the sensor panel).
+
+More about those figures (sum, max, av, sqrt(var)).
+I'd like these figures to be updated as follows: `sum_displayed = sum_displayed*filterFactor + (1-filterFactor)*sum_new`.
+Let's select that filterfactor equal to 0.9 by default. Please allow to adjus it using an editable textfield. Just put it below the other editable text fields of the Grid View.
+
+### Phase 5g
+Below the stats of each panel, please add a "running plot", similar to an arduino-ide plot. use it to plot the 3 largest circle-values. The largest one in read, the middle one in green, the lowest one in blue. the horizontal axis corresponds to the 20 latest timeslots that the sensorgrid measurements arrived. The rightmost timeslot is most recent. the vertical axis correspond to the corresponding circle-value.
+The top of the vertical axis should correspond to the top value that is used for displaying. So for instance, if Fixed max display == 1300 is filled in, with "MaxFixed Display" button selected, then the top of the vertical axis should correspond to a value of 1300.
 
 
 
