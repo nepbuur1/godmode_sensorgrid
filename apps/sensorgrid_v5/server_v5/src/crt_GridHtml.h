@@ -176,6 +176,14 @@ namespace crt
       background: #f0f0f0;
       font-weight: 600;
     }
+    .running-plot {
+      display: block;
+      width: 100%;
+      height: 120px;
+      margin: 0.3rem auto 0;
+      border: 1px solid #ccc;
+      background: #111;
+    }
     #status {
       margin-top: 1rem;
       text-align: center;
@@ -215,6 +223,7 @@ namespace crt
         <div class="histogram" id="hist1"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum1">-</td><td id="max1">-</td><td id="avg1">-</td><td id="std1">-</td></tr></table>
+        <canvas class="running-plot" id="plot1" width="250" height="120"></canvas>
       </div>
       <div class="sensor-widget" id="sw2">
         <h3>Sensor 2</h3>
@@ -223,6 +232,7 @@ namespace crt
         <div class="histogram" id="hist2"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum2">-</td><td id="max2">-</td><td id="avg2">-</td><td id="std2">-</td></tr></table>
+        <canvas class="running-plot" id="plot2" width="250" height="120"></canvas>
       </div>
       <div class="sensor-widget" id="sw3">
         <h3>Sensor 3</h3>
@@ -231,6 +241,7 @@ namespace crt
         <div class="histogram" id="hist3"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum3">-</td><td id="max3">-</td><td id="avg3">-</td><td id="std3">-</td></tr></table>
+        <canvas class="running-plot" id="plot3" width="250" height="120"></canvas>
       </div>
       <div class="sensor-widget" id="sw4">
         <h3>Sensor 4</h3>
@@ -239,6 +250,7 @@ namespace crt
         <div class="histogram" id="hist4"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
         <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum4">-</td><td id="max4">-</td><td id="avg4">-</td><td id="std4">-</td></tr></table>
+        <canvas class="running-plot" id="plot4" width="250" height="120"></canvas>
       </div>
     </div>
     <div id="status">...</div>
@@ -276,7 +288,9 @@ namespace crt
         filteredSum: null,
         filteredMax: null,
         filteredAvg: null,
-        filteredStd: null
+        filteredStd: null,
+        plotCanvas: document.getElementById("plot" + id),
+        plotHistory: []
       };
     });
     const statusEl = document.getElementById("status");
@@ -465,6 +479,56 @@ namespace crt
       s.stdEl.textContent = s.filteredStd.toFixed(1);
     }
 
+    const PLOT_SLOTS = 20;
+
+    function getPlotMax() {
+      if (normalized) return null;
+      if (maxFixed) return getFixedMax();
+      return MAX_VALUE;
+    }
+
+    function updatePlot(s, displayValues) {
+      if (displayValues.length === 0) return;
+      const sorted = [...displayValues].sort((a, b) => b - a);
+      const top3 = [sorted[0], sorted[Math.min(1, sorted.length - 1)], sorted[Math.min(2, sorted.length - 1)]];
+      s.plotHistory.push(top3);
+      if (s.plotHistory.length > PLOT_SLOTS) s.plotHistory.shift();
+
+      const canvas = s.plotCanvas;
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      let yMax = getPlotMax();
+      if (yMax === null || yMax <= 0) {
+        yMax = 1;
+        for (const entry of s.plotHistory) {
+          for (const v of entry) {
+            if (v > yMax) yMax = v;
+          }
+        }
+      }
+
+      const colors = ["#ff3333", "#33cc33", "#3399ff"];
+      const len = s.plotHistory.length;
+      const xStep = len > 1 ? w / (PLOT_SLOTS - 1) : 0;
+      const xOff = (PLOT_SLOTS - len) * xStep;
+
+      for (let c = 0; c < 3; c++) {
+        ctx.beginPath();
+        ctx.strokeStyle = colors[c];
+        ctx.lineWidth = 1.5;
+        for (let i = 0; i < len; i++) {
+          const x = xOff + i * xStep;
+          const y = h - (s.plotHistory[i][c] / yMax) * h;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
+    }
+
     function colorForValue(v, minV, maxV) {
       const lo = normalized ? minV : 0;
       const hi = normalized ? maxV : (maxFixed ? getFixedMax() : MAX_VALUE);
@@ -564,6 +628,7 @@ namespace crt
       });
       updateHistogram(s, displayValues);
       updateStats(s, displayValues);
+      updatePlot(s, displayValues);
     }
 
     async function fetchAll() {
