@@ -29,11 +29,12 @@ namespace crt
 			// Simulate 20ms measurement processing time
 			delay(20);
 
-			counter += 10 * sensorId;
-			buffer[0] = counter; // uint16_t wraps at 65536
-			for (uint8_t i = 1; i < MEASUREMENT_COUNT; i++)
+			counter = (counter + 10 * sensorId) % 2501;
+			// Fill in reversed order to match RealMeasurement inversion
+			// Values range 0..2500
+			for (uint8_t i = 0; i < MEASUREMENT_COUNT; i++)
 			{
-				buffer[i] = (uint16_t)(counter + i * 100);
+				buffer[MEASUREMENT_COUNT - 1 - i] = (uint16_t)((counter + i * 19) % 2501);
 			}
 		}
 	}; // end class StubMeasurement

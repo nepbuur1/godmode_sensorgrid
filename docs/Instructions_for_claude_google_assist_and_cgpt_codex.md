@@ -189,3 +189,59 @@ So if the sensor is to send 8 rows and 16 cols, it should be sent in such a way 
 the grid shows up on the server as 8 cols and 16 rows.
 Make sure that stub and measure mode/behaviour are nicely separated. for instance over
 multiple files.
+
+#### Phase 5c
+The Grid view on the server shows one panel for each sensor.
+I'd like to add a button to each panel, called "remove offset".
+When it is pressed, for each circle, the corresponding measurement value of that 
+moment is stored as "offset" value. From hence on, the values represented 
+by the circles are the measurement values minus the offsets.
+An additional change is: for now, I'd like to invert the sequence in which the sensor 
+sends its values to the server. (I think it'll mirror the circles-grid on the website
+in both x and y direction, which I need to match the geometry of the pressure-sensors
+on the hardware)
+
+### Phase 5d
+Okay, now, to the grid view web page, let's add a button next to Normalize and Colorize button, 
+named "Max 2500". That button makes sure that the visualisation is normalized for a max value
+of 2500. When the "Max 2500" button is toggled on, the normalize button is toggled off,
+and vice versa (because both are different ways of normalizing, so mutually exclusive).
+In addition, for now, let the stub-functionality of the sensors send values that are 
+2500 at maximum, rather than 2^16-1.
+
+### Phase 5e
+Now, I'd like to add another button in de GridView, called "Capture".
+At the moment it is pressed (it should not stay selected), from the sensorgrid that currently 
+hold the maximum individual measurement value, it stores that max measurement value as
+ "maxCaptured". Furthermore, from the same sensorgrid, it stores the sum of all its measurement values.
+Both the maxCaptured value and the "maxSumCaptured" values should be displayed within textfields to the right
+of where the buttons of the GridView reside.
+
+To the right of the buttons of the GridView, I'd like to add an input/text field with a multiplier, called
+"calibrate grams". The default value of calibrateGrams should be 1000. 
+People can change that value by typing a new one in that field.
+
+The current "Normalize" button, i'd like to rename it "Norm Display" and the Colorize button "Color Display".
+Furthermore, the Max2500 button should be renamed "MaxFixed Display". For its functionality, it should no longer use 
+the hardcoded 2500 value, but a value called fixedMax, which is from a text/input field called "Fixed Max Display" that is below the input fields of "Calibrate Grams". The default value of "Fixed Max Display" is 2500.
+So the logic is: the "Norm Display" and "Max2500 display" select the way that the displayed values 
+in the circles are translated to a range of color values or gray-levels without changing the displayed
+numerical values. Both buttons cannot be "selected" at the same time. 
+"Color Display" button selectes wether its color-range or gray-levels.
+
+Speaking of which, I'd like to add another button, next to the Capture button, called "Norm MaxCap".
+MaxCap. While "Norm MaxCap" is toggled on, the value shown in each of the circles should be: 
+calibrateGrams*(measured value for that circle - offset_of_that_circle)/maxCaptured. (note: until the "remove offset" button is pressed
+for the corresponding sensorgrid, offet==0 for each circle).
+Similarly, I'd like an additional button called "Norm SumCap". While "Norm SumCap" is toggled on, 
+the value shown in each of the circles should be: 
+calibrateGrams/maxSumCaptured*(measured value for that circle - offset_of_that_circle)/maxCaptured. (note: until the "remove offset" button is pressed for the corresponding sensorgrid, offet==0 for each circle).
+
+So when "Norm MaxCap" or "Norm SumCap" is selected, the numerical values in the circles are calculated
+differently. Subsequently, how these values are visualised, depends on the states of the Buttons "Norm Display, Color Display and "Fixed Max Display".
+
+Make sure that in the code, there can be never a division by zero (or it may crash - either esp or javascript in the browser).
+
+
+
+

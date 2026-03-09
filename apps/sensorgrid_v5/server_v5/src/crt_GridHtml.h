@@ -40,11 +40,34 @@ namespace crt
       margin-bottom: 0.5rem;
     }
     .controls {
-      text-align: center;
       margin-bottom: 1rem;
       display: flex;
-      gap: 0.5rem;
+      gap: 1rem;
       justify-content: center;
+      align-items: flex-start;
+    }
+    .ctrl-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.4rem;
+    }
+    .ctrl-fields {
+      display: flex;
+      flex-direction: column;
+      gap: 0.3rem;
+      font-size: 0.75rem;
+    }
+    .ctrl-fields label {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .ctrl-fields input {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.3rem;
+      border: 1px solid #999;
+      border-radius: 3px;
+      width: 70px;
     }
     .toggle-btn {
       padding: 0.4rem 1rem;
@@ -76,6 +99,12 @@ namespace crt
       text-align: center;
       margin: 0 0 0.3rem;
       font-size: 0.8rem;
+    }
+    .offset-btn {
+      display: block;
+      margin: 0 auto 0.3rem;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
     }
     .sensor-widget .no-data {
       text-align: center;
@@ -162,12 +191,25 @@ namespace crt
   <div class="page">
     <h1>Grid View</h1>
     <div class="controls">
-      <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Normalize</button>
-      <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Colorize</button>
+      <div class="ctrl-buttons">
+        <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
+        <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
+        <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
+        <button class="toggle-btn" onclick="doCapture()">Capture</button>
+        <button class="toggle-btn" id="btnNormMaxCap" onclick="toggleNormMaxCap()">Norm MaxCap</button>
+        <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()">Norm SumCap</button>
+      </div>
+      <div class="ctrl-fields">
+        <label>maxCaptured <input type="text" id="fldMaxCap" readonly value="-" size="8"/></label>
+        <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
+        <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8"/></label>
+        <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8"/></label>
+      </div>
     </div>
     <div class="sensor-layout">
       <div class="sensor-widget" id="sw1">
         <h3>Sensor 1</h3>
+        <button class="toggle-btn offset-btn" onclick="removeOffset(1)">Remove offset</button>
         <div class="grid-container" id="grid1"></div>
         <div class="histogram" id="hist1"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
@@ -175,6 +217,7 @@ namespace crt
       </div>
       <div class="sensor-widget" id="sw2">
         <h3>Sensor 2</h3>
+        <button class="toggle-btn offset-btn" onclick="removeOffset(2)">Remove offset</button>
         <div class="grid-container" id="grid2"></div>
         <div class="histogram" id="hist2"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
@@ -182,6 +225,7 @@ namespace crt
       </div>
       <div class="sensor-widget" id="sw3">
         <h3>Sensor 3</h3>
+        <button class="toggle-btn offset-btn" onclick="removeOffset(3)">Remove offset</button>
         <div class="grid-container" id="grid3"></div>
         <div class="histogram" id="hist3"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
@@ -189,6 +233,7 @@ namespace crt
       </div>
       <div class="sensor-widget" id="sw4">
         <h3>Sensor 4</h3>
+        <button class="toggle-btn offset-btn" onclick="removeOffset(4)">Remove offset</button>
         <div class="grid-container" id="grid4"></div>
         <div class="histogram" id="hist4"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
@@ -205,7 +250,12 @@ namespace crt
     const SENSOR_IDS = [1, 2, 3, 4];
 
     let normalized = false;
+    let maxFixed = false;
     let colorized = false;
+    let normMaxCap = false;
+    let normSumCap = false;
+    let maxCaptured = null;
+    let maxSumCaptured = null;
 
     // Per-sensor state
     const sensors = {};
@@ -219,20 +269,93 @@ namespace crt
         cells: [],
         histBars: [],
         currentCount: 0,
-        lastValues: []
+        lastValues: [],
+        offsets: null
       };
     });
     const statusEl = document.getElementById("status");
 
     function toggleNormalize() {
       normalized = !normalized;
+      if (normalized && maxFixed) {
+        maxFixed = false;
+        document.getElementById("btnMaxFixed").classList.remove("active");
+      }
       document.getElementById("btnNormalize").classList.toggle("active", normalized);
+      recolorAll();
+    }
+    function toggleMaxFixed() {
+      maxFixed = !maxFixed;
+      if (maxFixed && normalized) {
+        normalized = false;
+        document.getElementById("btnNormalize").classList.remove("active");
+      }
+      document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
       recolorAll();
     }
     function toggleColorize() {
       colorized = !colorized;
       document.getElementById("btnColorize").classList.toggle("active", colorized);
       recolorAll();
+    }
+    function getCalGrams() {
+      return parseFloat(document.getElementById("fldCalGrams").value) || 1000;
+    }
+    function getFixedMax() {
+      return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
+    }
+    function doCapture() {
+      // Find the sensor grid with the maximum individual measurement value
+      // Only consider non-stub sensors (those where "Remove offset" was pressed)
+      let bestId = null;
+      let bestMax = -1;
+      SENSOR_IDS.forEach(id => {
+        const s = sensors[id];
+        if (!s.offsets) return;
+        if (s.lastValues.length === 0) return;
+        const vals = s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)));
+        for (const v of vals) {
+          if (v > bestMax) {
+            bestMax = v;
+            bestId = id;
+          }
+        }
+      });
+      if (bestId === null) return;
+      const s = sensors[bestId];
+      const vals = s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)));
+      maxCaptured = bestMax;
+      let sum = 0;
+      for (const v of vals) sum += v;
+      maxSumCaptured = sum;
+      document.getElementById("fldMaxCap").value = maxCaptured;
+      document.getElementById("fldSumCap").value = maxSumCaptured;
+      recolorAll();
+    }
+    function toggleNormMaxCap() {
+      normMaxCap = !normMaxCap;
+      if (normMaxCap) {
+        normSumCap = false;
+        document.getElementById("btnNormSumCap").classList.remove("active");
+      }
+      document.getElementById("btnNormMaxCap").classList.toggle("active", normMaxCap);
+      recolorAll();
+    }
+    function toggleNormSumCap() {
+      normSumCap = !normSumCap;
+      if (normSumCap) {
+        normMaxCap = false;
+        document.getElementById("btnNormMaxCap").classList.remove("active");
+      }
+      document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
+      recolorAll();
+    }
+
+    function removeOffset(id) {
+      const s = sensors[id];
+      if (s.lastValues.length > 0) {
+        s.offsets = [...s.lastValues];
+      }
     }
 
     const COLS = 8;
@@ -311,14 +434,14 @@ namespace crt
         sumSqDiff += d * d;
       }
       const std = Math.sqrt(sumSqDiff / values.length);
-      s.maxEl.textContent = max;
+      s.maxEl.textContent = Number.isInteger(max) ? max : max.toFixed(1);
       s.avgEl.textContent = avg.toFixed(1);
       s.stdEl.textContent = std.toFixed(1);
     }
 
     function colorForValue(v, minV, maxV) {
       const lo = normalized ? minV : 0;
-      const hi = normalized ? maxV : MAX_VALUE;
+      const hi = normalized ? maxV : (maxFixed ? getFixedMax() : MAX_VALUE);
       const r = (hi > lo) ? (hi - lo) : 1;
       const t = Math.max(0, Math.min(1, (v - lo) / r));
 
@@ -354,13 +477,32 @@ namespace crt
       return [mn, mx];
     }
 
+    function getDisplayValues(s) {
+      if (s.lastValues.length === 0) return [];
+      const offsetted = s.offsets
+        ? s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)))
+        : s.lastValues;
+      if (normMaxCap && maxCaptured != null && maxCaptured > 0) {
+        const cg = getCalGrams();
+        return offsetted.map(v => cg * v / maxCaptured);
+      }
+      if (normSumCap && maxSumCaptured != null && maxSumCaptured > 0) {
+        const cg = getCalGrams();
+        return offsetted.map(v => cg * v / maxSumCaptured);
+      }
+      return offsetted;
+    }
+
     function colorCells(s) {
       if (s.lastValues.length === 0) return;
-      const [mn, mx] = minMax(s.lastValues);
-      s.lastValues.forEach((v, i) => {
+      const displayValues = getDisplayValues(s);
+      if (displayValues.length === 0) return;
+      const [mn, mx] = minMax(displayValues);
+      displayValues.forEach((v, i) => {
         if (i < s.cells.length) {
           const c = colorForValue(v, mn, mx);
           s.cells[i].style.background = c.bg;
+          s.cells[i].textContent = Math.round(v);
           s.cells[i].style.color = c.dark ? "#ddd" : "#444";
         }
       });
@@ -383,17 +525,19 @@ namespace crt
         createGrid(s, data.count);
       }
       s.lastValues = data.values;
-      const [mn, mx] = minMax(data.values);
-      data.values.forEach((v, i) => {
+      const displayValues = getDisplayValues(s);
+      if (displayValues.length === 0) return;
+      const [mn, mx] = minMax(displayValues);
+      displayValues.forEach((v, i) => {
         if (i < s.cells.length) {
           const c = colorForValue(v, mn, mx);
           s.cells[i].style.background = c.bg;
-          s.cells[i].textContent = v;
+          s.cells[i].textContent = Math.round(v);
           s.cells[i].style.color = c.dark ? "#ddd" : "#444";
         }
       });
-      updateHistogram(s, data.values);
-      updateStats(s, data.values);
+      updateHistogram(s, displayValues);
+      updateStats(s, displayValues);
     }
 
     async function fetchAll() {

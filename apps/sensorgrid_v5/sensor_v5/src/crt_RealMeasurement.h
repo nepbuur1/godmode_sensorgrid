@@ -255,14 +255,13 @@ namespace crt
 				while ((micros() - colStartUs) < (T_LEAD_US + tMeasTimeUs)) {}
 			}
 
-			// Transpose: sensorValues[row][col] -> buffer in col-major order.
-			// Server grid uses 8 circles per row (COLS=8).
-			// Output: buffer[col*8 + row] = sensorValues[row][col]
-			// Result: 16 groups of 8 values, displayed as 16 rows x 8 cols.
+			// Transpose + invert: sensorValues[row][col] -> buffer in
+			// reversed col-major order to mirror grid in both X and Y,
+			// matching physical pressure-sensor geometry.
 			uint16_t idx = 0;
-			for (int col = 0; col < NUM_COLS; col++)
+			for (int col = NUM_COLS - 1; col >= 0; col--)
 			{
-				for (int row = 0; row < NUM_ROWS; row++)
+				for (int row = NUM_ROWS - 1; row >= 0; row--)
 				{
 					buffer[idx++] = sensorValues[row][col];
 				}

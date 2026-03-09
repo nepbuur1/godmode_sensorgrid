@@ -384,3 +384,40 @@ Added real hardware measurement support using MCP23017 GPIO expander, ADG706 col
 - Client_v5 flashed to /dev/ttyACM2 — all 9/9 HTTP tests passed
 - Server serial confirmed: `pkt 1/2 (245 bytes)`, `pkt 2/2 (11 bytes)`, `128 measurements` per sensor
 
+### Phase 5c: Remove-offset button + inverted sensor sequence
+
+#### Summary
+Added a "Remove offset" button to each sensor panel in the grid view. When pressed, current measurement values are captured as baseline offsets; subsequent readings display the difference (value minus offset), clamped to zero. Also inverted the sensor value output order in both RealMeasurement and StubMeasurement to mirror the grid display in both X and Y, matching the physical pressure-sensor geometry.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added per-sensor `offsets` state, "Remove offset" button in each sensor widget, `removeOffset()` JS handler, offset subtraction in `updateSensor()` and `colorCells()`
+- **`crt_RealMeasurement.h`** — reversed transpose loop order (col high→low, row high→low) to invert value sequence
+- **`crt_StubMeasurement.h`** — reversed buffer fill order for consistency with real mode
+
+#### Test results
+- All 5 devices re-flashed, client_v5 9/9 HTTP tests passed
+
+### Phase 5d: Max 2500 normalization button + stub value range
+
+#### Summary
+Added a "Max 2500" toggle button to the grid view, next to Normalize and Colorize. When active, the color scale normalizes to a max value of 2500 (matching the sensor output range). Max 2500 and Normalize are mutually exclusive — toggling one turns the other off. Stub measurement values now range 0–2500 instead of 0–65535.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added "Max 2500" button, `max2500` state, `toggleMax2500()` with mutual exclusion against Normalize, updated `colorForValue()` to use 2500 as hi when `max2500` is active
+- **`crt_StubMeasurement.h`** — counter wraps at 2501, per-index values computed as `(counter + i*19) % 2501` keeping all values in 0–2500 range
+
+#### Test results
+- All 5 devices re-flashed, client_v5 9/9 HTTP tests passed
+
+### Phase 5e: Capture, calibration, and value normalization modes
+
+#### Summary
+Major overhaul of the grid view control panel. Renamed buttons ("Normalize" → "Norm Display", "Max 2500" → "MaxFixed Display", "Colorize" → "Color Display"). Made the fixed max value configurable via a "Fixed Max Display" input field (default 2500). Added a "Capture" button that identifies the sensor grid with the highest individual measurement, storing its max value (`maxCaptured`) and sum of all values (`maxSumCaptured`). Added "Calibrate Grams" input field (default 1000). Added two new value normalization modes: "Norm MaxCap" transforms displayed values to `calibrateGrams * (value - offset) / maxCaptured`, and "Norm SumCap" transforms to `calibrateGrams / maxSumCaptured * (value - offset) / maxCaptured`. These value normalization modes are separate from the display normalization (Norm Display, MaxFixed Display, Color Display) which controls color/gray mapping.
+
+#### Modified files
+- **`crt_GridHtml.h`** — renamed buttons, restructured controls into buttons + fields layout, added Capture/NormMaxCap/NormSumCap buttons, added maxCaptured/maxSumCaptured/calibrateGrams/fixedMax input fields, added `getDisplayValues()` function for value normalization pipeline, updated `colorForValue()` to use configurable fixedMax
+- **`crt_ClientNode.h`** — updated test assertions from "Normalize"/"Colorize" to "Norm Display"/"Color Display"
+
+#### Test results
+- All 5 devices re-flashed, client_v5 9/9 HTTP tests passed
+
