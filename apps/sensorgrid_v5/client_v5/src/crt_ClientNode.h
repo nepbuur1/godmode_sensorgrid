@@ -280,16 +280,20 @@ namespace crt
 			bool hasNormalize = body.indexOf("Norm Display") >= 0;
 			bool hasColorize = body.indexOf("Color Display") >= 0;
 			bool hasLayout = body.indexOf("sensor-layout") >= 0;
+			bool hasLoadcell = body.indexOf("loadcell-section") >= 0;
+			bool hasTare = body.indexOf("Tare") >= 0;
+			bool hasCalibrate = body.indexOf("Calibrate") >= 0;
 
 			if (hasTitle && hasNav && hasGridContainer && hasSensor1 && hasSensor4 &&
-				hasAllApi && hasHistogram && hasStatsTable && hasNormalize && hasColorize && hasLayout)
+				hasAllApi && hasHistogram && hasStatsTable && hasNormalize && hasColorize &&
+				hasLayout && hasLoadcell && hasTare && hasCalibrate)
 			{
-				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, sensors 1-4, allapi, histogram, stats, buttons, layout");
+				logResult(TEST_NAME, true, "Grid page OK: title, nav, grid, sensors 1-4, allapi, histogram, stats, buttons, layout, loadcell UI");
 			}
 			else
 			{
-				char msg[180];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s%s%s%s",
+				char msg[220];
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s%s%s%s%s%s%s%s",
 					hasTitle ? "" : "title ",
 					hasNav ? "" : "nav ",
 					hasGridContainer ? "" : "grid ",
@@ -300,7 +304,10 @@ namespace crt
 					hasStatsTable ? "" : "stats ",
 					hasNormalize ? "" : "normalize ",
 					hasColorize ? "" : "colorize ",
-					hasLayout ? "" : "layout ");
+					hasLayout ? "" : "layout ",
+					hasLoadcell ? "" : "loadcell ",
+					hasTare ? "" : "tare ",
+					hasCalibrate ? "" : "calibrate ");
 				logResult(TEST_NAME, false, msg);
 			}
 		}
@@ -369,20 +376,24 @@ namespace crt
 			bool hasId2 = body.indexOf("\"id\":2") >= 0;
 			bool hasCount = body.indexOf("\"count\":") >= 0;
 			bool hasValues = body.indexOf("\"values\":[") >= 0;
+			bool hasLoadcell = body.indexOf("\"hasLoadcell\":") >= 0;
+			bool hasLoadcellRaw = body.indexOf("\"loadcellRaw\":") >= 0;
 
-			if (hasSensors && hasId1 && hasId2 && hasCount && hasValues)
+			if (hasSensors && hasId1 && hasId2 && hasCount && hasValues && hasLoadcell && hasLoadcellRaw)
 			{
-				logResult(TEST_NAME, true, "All measurements JSON OK: sensors[], id:1, id:2, count, values[] present");
+				logResult(TEST_NAME, true, "All measurements JSON OK: sensors[], id:1, id:2, count, values[], hasLoadcell, loadcellRaw present");
 			}
 			else
 			{
-				char msg[128];
-				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s",
+				char msg[180];
+				snprintf(msg, sizeof(msg), "Missing: %s%s%s%s%s%s%s",
 					hasSensors ? "" : "sensors ",
 					hasId1 ? "" : "id1 ",
 					hasId2 ? "" : "id2 ",
 					hasCount ? "" : "count ",
-					hasValues ? "" : "values ");
+					hasValues ? "" : "values ",
+					hasLoadcell ? "" : "hasLoadcell ",
+					hasLoadcellRaw ? "" : "loadcellRaw ");
 				logResult(TEST_NAME, false, msg);
 			}
 		}

@@ -51,4 +51,11 @@ namespace crt
 		uint8_t payload[DATA_PAYLOAD_MAX_SIZE];
 	} __attribute__((packed));
 
+	// Appended after measurement data in the DATA payload when a loadcell is present.
+	struct LoadcellAppendix
+	{
+		uint8_t hasLoadcell;   // 0 = not present, 1 = present
+		int32_t rawValue;      // raw HX711 reading (signed 24-bit extended to 32-bit)
+	} __attribute__((packed));
+
 } // end namespace crt

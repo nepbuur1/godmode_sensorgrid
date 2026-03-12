@@ -11,6 +11,7 @@
 #include "crt_StubMeasurement.h"
 #include "crt_MCP23017.h"
 #include "crt_RealMeasurement.h"
+#include "crt_HX711Measurement.h"
 
 namespace crt
 {
@@ -31,6 +32,9 @@ namespace crt
 		IMeasurementProvider* measurementProvider;
 		StubMeasurement stubProvider;
 		RealMeasurement realProvider;
+
+		// Optional HX711 loadcell
+		HX711Measurement hx711;
 
 		static SensorNode* instance;
 		static bool serverPeerAdded;
@@ -104,10 +108,21 @@ namespace crt
 		{
 			ensureServerPeer(mac);
 
-			const uint16_t totalBytes = MEASUREMENT_COUNT * sizeof(uint16_t);
+			// Build combined payload: measurements + loadcell appendix
+			const uint16_t measBytes = MEASUREMENT_COUNT * sizeof(uint16_t);
+			LoadcellAppendix lcAppendix = {};
+			lcAppendix.hasLoadcell = hx711.isDetected() ? 1 : 0;
+			lcAppendix.rawValue = hx711.getRawValue();
+
+			const uint16_t totalBytes = measBytes + sizeof(LoadcellAppendix);
+
+			// Copy measurement data + appendix into a contiguous send buffer
+			uint8_t sendBuffer[measBytes + sizeof(LoadcellAppendix)];
+			memcpy(sendBuffer, measurements[readyIndex], measBytes);
+			memcpy(sendBuffer + measBytes, &lcAppendix, sizeof(LoadcellAppendix));
+
 			const uint8_t maxPerPacket = DATA_PAYLOAD_MAX_SIZE;
 			const uint8_t totalPackets = (totalBytes + maxPerPacket - 1) / maxPerPacket;
-			const uint8_t* src = (const uint8_t*)measurements[readyIndex];
 
 			uint16_t offset = 0;
 			for (uint8_t i = 0; i < totalPackets; i++)
@@ -121,15 +136,16 @@ namespace crt
 				data.packetIndex = i;
 				data.totalPackets = totalPackets;
 				data.payloadSize = chunk;
-				memcpy(data.payload, src + offset, chunk);
+				memcpy(data.payload, sendBuffer + offset, chunk);
 
 				size_t sendSize = sizeof(DataPacket) - DATA_PAYLOAD_MAX_SIZE + chunk;
 				esp_now_send(mac, (uint8_t*)&data, sendSize);
 				offset += chunk;
 			}
 
-			ESP_LOGI("SensorNode", "Received POLL, sent %u pkt(s) id=%u val=%u (%u measurements)",
-					 totalPackets, sensorId, measurements[readyIndex][0], MEASUREMENT_COUNT);
+			ESP_LOGI("SensorNode", "Received POLL, sent %u pkt(s) id=%u val=%u lc=%u (%u measurements)",
+					 totalPackets, sensorId, measurements[readyIndex][0],
+					 lcAppendix.hasLoadcell, MEASUREMENT_COUNT);
 		}
 
 	public:
@@ -172,6 +188,9 @@ namespace crt
 			}
 			measurementProvider->init();
 
+			// Detect and initialize optional HX711 loadcell
+			hx711.init();
+
 			// WiFi + ESP-NOW init
 			WiFi.mode(WIFI_STA);
 
@@ -203,6 +222,9 @@ namespace crt
 
 				// Delegate to the active measurement provider
 				measurementProvider->measure(measurements[writeIdx]);
+
+				// Read HX711 if present (non-blocking)
+				hx711.update();
 
 				// Atomic swap: single byte write = atomic on ESP32-S3
 				readyIndex = writeIdx;

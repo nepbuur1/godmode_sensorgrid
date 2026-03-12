@@ -21,6 +21,9 @@ namespace crt
 	const unsigned int pinButtonDump = 22; // Pressing a button connected to this pin dumps the latest logs to serial monitor.
 	Logger<100> theLogger("Logger", 2 /*priority*/, ARDUINO_RUNNING_CORE, pinButtonDump);
 	ILogger& logger = theLogger; // Global logger instance used by CleanGUI components.
+
+	// Critical section mutex required by TaskCriticalSection (used by HX711 lib).
+	portMUX_TYPE criticalSectionMutex = portMUX_INITIALIZER_UNLOCKED;
 }
 
 // Voorbeeld van een kopie van een voorbeeld uit de ESP-IDF

@@ -38,6 +38,8 @@ namespace crt
 			uint16_t measurements[MEASUREMENT_COUNT];
 			uint8_t measurementCount;
 			unsigned long lastSeenMs;
+			bool hasLoadcell;
+			int32_t loadcellRaw;
 		};
 
 		const char* apSsid;
@@ -310,7 +312,14 @@ namespace crt
 
 				if (reassemblySensorId == expectedId)
 				{
-					uint8_t count = reassemblyBytesReceived / sizeof(uint16_t);
+					const uint16_t measBytes = MEASUREMENT_COUNT * sizeof(uint16_t);
+					const uint16_t expectedTotal = measBytes + sizeof(LoadcellAppendix);
+
+					uint8_t count = MEASUREMENT_COUNT;
+					if (reassemblyBytesReceived < measBytes)
+					{
+						count = reassemblyBytesReceived / sizeof(uint16_t);
+					}
 					if (count > MEASUREMENT_COUNT) count = MEASUREMENT_COUNT;
 
 					memcpy(sensors[expectedId].measurements, reassemblyBuffer,
@@ -319,8 +328,23 @@ namespace crt
 					sensors[expectedId].lastSeenMs = millis();
 					sensors[expectedId].seen = true;
 
-					ESP_LOGI("ServerNode", "Sensor %u -> %u measurements, first=%u",
-							 expectedId, count, sensors[expectedId].measurements[0]);
+					// Extract loadcell appendix if present
+					if (reassemblyBytesReceived >= expectedTotal)
+					{
+						LoadcellAppendix lc;
+						memcpy(&lc, reassemblyBuffer + measBytes, sizeof(LoadcellAppendix));
+						sensors[expectedId].hasLoadcell = (lc.hasLoadcell != 0);
+						sensors[expectedId].loadcellRaw = lc.rawValue;
+					}
+					else
+					{
+						sensors[expectedId].hasLoadcell = false;
+						sensors[expectedId].loadcellRaw = 0;
+					}
+
+					ESP_LOGI("ServerNode", "Sensor %u -> %u measurements, first=%u lc=%d raw=%ld",
+							 expectedId, count, sensors[expectedId].measurements[0],
+							 sensors[expectedId].hasLoadcell, (long)sensors[expectedId].loadcellRaw);
 
 					currentPollIndex++;
 					currentState = State::POLLING;
@@ -424,6 +448,8 @@ namespace crt
 				SensorState& s = sensors[id];
 				json += "{\"id\":" + String(id) + ",";
 				json += "\"count\":" + String(s.seen ? (int)s.measurementCount : 0) + ",";
+				json += "\"hasLoadcell\":" + String(s.hasLoadcell ? "true" : "false") + ",";
+				json += "\"loadcellRaw\":" + String(s.loadcellRaw) + ",";
 				json += "\"values\":[";
 				if (s.seen)
 				{

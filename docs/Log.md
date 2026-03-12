@@ -421,3 +421,33 @@ Major overhaul of the grid view control panel. Renamed buttons ("Normalize" → 
 #### Test results
 - All 5 devices re-flashed, client_v5 9/9 HTTP tests passed
 
+### Phase 5i: HX711 loadcell support
+
+#### Summary
+Added optional HX711 loadcell support to each sensor device. On startup, each sensor probes for an HX711 on IO6 (power), IO9 (ground), IO7 (SCK), IO8 (DOUT). If detected, raw loadcell readings are appended to the measurement data sent to the server via a 5-byte `LoadcellAppendix` (1 byte flag + 4 bytes int32_t raw value). The server parses this appendix, stores it per sensor, and exposes `hasLoadcell` and `loadcellRaw` in the `/api/allmeasurements` JSON endpoint.
+
+The Grid View web page shows a per-sensor "Loadcell" section (hidden unless HX711 is detected) with:
+- Current weight in grams
+- Tare button (stores current raw value as zero offset)
+- Known weight input field + Calibrate button (computes scale factor from known weight)
+- Calibration parameters (tare offset, scale factor) stored in browser cookies for persistence
+
+Calibration is done entirely in JavaScript using raw values from the sensor. Formula: `weight = (raw - tareOffset) / scaleFactor`.
+
+#### New files
+- **`sensor_v5/src/crt_HX711Measurement.h`** — HX711 wrapper class: powers HX711 via GPIO, detects presence via `wait_ready_timeout()`, non-blocking reads via `is_ready()` + `read()`
+
+#### Modified files
+- **`sensorgrid_common/crt_SensorGridPacket.h`** — added `LoadcellAppendix` packed struct
+- **`sensor_v5/src/crt_SensorNode.h`** — integrated HX711Measurement: init/detect in `init()`, read in `update()`, append loadcell data in `handlePoll()`
+- **`server_v5/src/crt_ServerNode.h`** — added `hasLoadcell`/`loadcellRaw` to `SensorState`, parse `LoadcellAppendix` from reassembly buffer, include in `/api/allmeasurements` JSON
+- **`server_v5/src/crt_GridHtml.h`** — added loadcell CSS, HTML section per sensor panel (weight display, tare, calibrate), JavaScript for calibration/cookie storage
+- **`client_v5/src/crt_ClientNode.h`** — added test assertions for `hasLoadcell`/`loadcellRaw` in API and loadcell UI elements in grid page
+- **`main/main.cpp`** — added `crt::criticalSectionMutex` (required by HX711 lib's `TaskCriticalSection`)
+- **`server_v5/src/server_v5_ino.h`** — temporarily changed `EXPECTED_SENSOR_COUNT` to 2 (only 2 ESP32-S3 sensors available this session)
+
+#### Test results
+- Server (ACM0), sensor id=1 (ACM2), sensor id=2 (ACM3), client (ACM1) flashed and running
+- Server logs confirm: `lc=1 raw=0` parsed correctly for both sensors (stub sensors, no physical HX711 attached)
+- Client_v5 9/9 HTTP tests passed, including new loadcell field verification
+

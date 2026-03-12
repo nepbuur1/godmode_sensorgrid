@@ -7,7 +7,7 @@
 static const char* AP_SSID = "SCOLIOSE";
 static const char* AP_PASS = "scoliose";
 static const int AP_CHANNEL = 1;
-static const uint8_t EXPECTED_SENSOR_COUNT = 3;
+static const uint8_t EXPECTED_SENSOR_COUNT = 2;
 
 namespace crt
 {
