@@ -254,5 +254,39 @@ Let's select that filterfactor equal to 0.9 by default. Please allow to adjus it
 Below the stats of each panel, please add a "running plot", similar to an arduino-ide plot. use it to plot the 3 largest circle-values. The largest one in read, the middle one in green, the lowest one in blue. the horizontal axis corresponds to the 20 latest timeslots that the sensorgrid measurements arrived. The rightmost timeslot is most recent. the vertical axis correspond to the corresponding circle-value.
 The top of the vertical axis should correspond to the top value that is used for displaying. So for instance, if Fixed max display == 1300 is filled in, with "MaxFixed Display" button selected, then the top of the vertical axis should correspond to a value of 1300.
 
+### Phase 5h
+Add a per-panel toggle button (e.g. "3D Surface") that switches the circle grid between the current 2D view and a 3D surface view. Use lightweight custom WebGL (no external libraries like Three.js) to keep the embedded HTML small enough for the ESP32's flash.
+
+The 3D surface is a height-mapped mesh corresponding to the same grid of values displayed by the circles:
+- The vertex positions form a grid matching the circle layout (e.g. 8 columns x 16 rows for 128 measurements).
+- The height (Y-axis) of each vertex corresponds to the circle value at that position.
+- The vertex colors use the same color/gray mapping as the 2D circle view (respecting Norm Display, MaxFixed Display, Color Display settings).
+- All vertex normals point straight up, so the surface appears smooth under lighting.
+- The vertical scale of the surface should correspond to the current display range (e.g. if MaxFixed Display = 1300, the top of the surface corresponds to 1300).
+
+When toggled back to 2D, the circle grid is shown as before. The histogram, stats table, and running plot remain visible in both modes and continue updating regardless of which view is active.
+
+So far, when we applied colors on the circles and 3d surface, the lowest value was represented by black. let's change that to medium-gray.
+
+### Phase 5i
+From now on, every sensor device may or may not have attached a hx711 with loadcell to it. If it has a hx711 with loadcell attached to it, then it is connected as follows: 
+- **IO6** = voeding voor HX711
+- **IO9** = ground voor HX711
+- **IO7** = SCK
+- **IO8** = DT / DOUT
+For your reference, a working example has been included in the folder _not_part_of_this_project_reference_for_inspiration/Loadcell.
+Now, on our gridview webpage, every sensor device has its own panel. at the bottom of each panel, there is statistical info and the running curves.
+Below that, I'd like to add a section with UI for the loadcell, in case the sensor has a loadcell attached:
+A field with the measured weight in grams. Below it, some widgets for calibration:
+A tare button that can be pressed if there is no weight on the loadcell.
+A "known weight" field, where a value in grams can be entered, indicating a known weight that is
+currently on the loadcell. And a "Calibrate" button next to it, to indicate that the known weight
+is currently on the loadcell. Using these fields, the calibration parameters that are calculated to 
+show the correct weight in the measured weight field can be calculated. 
+
+Implementation choicees for now: please store these parameters in a cookie, such that they can be 
+initialialized the next time the webpage is visited and just transfer the raw measurement data from the hx711 
+to the server/webpage.
+
 
 

@@ -48,6 +48,5 @@ A dependency to the arduino component is included. So it is no problem to use ar
   So each function call is prepended with either ! or ?.
   ! is used when the function is always called when its parent function is called.
   ? is used when the functional optionally could be called when its parent function is called. 
-- When a step is successfull, stage and commit it in the git repo with appropriate comments.
 
 

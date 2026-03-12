@@ -422,7 +422,9 @@ namespace crt
         lcKnownEl: document.getElementById("lcKnown" + id),
         lcTareOffset: 0,
         lcScale: 1,
-        lcVisible: false
+        lcVisible: false,
+        lcLastRaw: 0,
+        filteredWeight: null
       };
     });
     const statusEl = document.getElementById("status");
@@ -942,8 +944,8 @@ namespace crt
 
     function lcTare(id) {
       const s = sensors[id];
-      // Store the current raw value as tare offset
       s.lcTareOffset = s.lcLastRaw || 0;
+      s.filteredWeight = null;
       setCookie("lcTare" + id, s.lcTareOffset, 365);
     }
 
@@ -952,8 +954,9 @@ namespace crt
       const knownGrams = parseFloat(s.lcKnownEl.value);
       if (!knownGrams || knownGrams <= 0) return;
       const rawMinusTare = (s.lcLastRaw || 0) - s.lcTareOffset;
-      if (rawMinusTare === 0) return; // avoid division by zero
+      if (rawMinusTare === 0) return;
       s.lcScale = rawMinusTare / knownGrams;
+      s.filteredWeight = null;
       setCookie("lcScale" + id, s.lcScale, 365);
     }
 
@@ -968,7 +971,13 @@ namespace crt
         const weightGrams = s.lcScale !== 0
           ? (rawValue - s.lcTareOffset) / s.lcScale
           : 0;
-        s.lcWeightEl.textContent = weightGrams.toFixed(1) + " g";
+        if (s.filteredWeight === null) {
+          s.filteredWeight = weightGrams;
+        } else {
+          const f = getStatsFilter() * 0.8;
+          s.filteredWeight = s.filteredWeight * f + weightGrams * (1 - f);
+        }
+        s.lcWeightEl.textContent = s.filteredWeight.toFixed(1) + " g";
       } else {
         if (s.lcVisible) {
           s.lcEl.style.display = "none";

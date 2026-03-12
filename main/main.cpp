@@ -99,7 +99,7 @@ namespace crt
 //#include <client_v3.ino>
 
 // **** Sensor Grid apps (sensorgrid_v5) ****
-//#include <server_v5.ino>
+#include <server_v5.ino>
 //#include <sensor_v5.ino>
 //#include <client_v5.ino>
 
