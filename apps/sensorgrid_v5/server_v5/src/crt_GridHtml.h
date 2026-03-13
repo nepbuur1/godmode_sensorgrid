@@ -266,6 +266,7 @@ namespace crt
       <div class="ctrl-fields">
         <label>maxCaptured <input type="text" id="fldMaxCap" readonly value="-" size="8"/></label>
         <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
+        <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
         <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8"/></label>
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8"/></label>
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8"/></label>
@@ -389,6 +390,12 @@ namespace crt
     let normSumCap = false;
     let maxCaptured = null;
     let maxSumCaptured = null;
+    let avResidualNoiseSum = 0;
+    // Residual noise measurement state
+    let residualCollecting = false;
+    let residualSensorId = null;
+    let residualStartTime = 0;
+    let residualSamples = [];
 
     // Per-sensor state
     const sensors = {};
@@ -467,7 +474,7 @@ namespace crt
         const s = sensors[id];
         if (!s.offsets) return;
         if (s.lastValues.length === 0) return;
-        const vals = s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)));
+        const vals = s.lastValues.map((v, i) => v - (s.offsets[i] || 0));
         for (const v of vals) {
           if (v > bestMax) {
             bestMax = v;
@@ -477,7 +484,7 @@ namespace crt
       });
       if (bestId === null) return;
       const s = sensors[bestId];
-      const vals = s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)));
+      const vals = s.lastValues.map((v, i) => v - (s.offsets[i] || 0));
       maxCaptured = bestMax;
       let sum = 0;
       for (const v of vals) sum += v;
@@ -509,6 +516,11 @@ namespace crt
       const s = sensors[id];
       if (s.lastValues.length > 0) {
         s.offsets = [...s.lastValues];
+        // Start collecting grid-sum samples for 1 second to compute avResidualNoiseSum
+        residualCollecting = true;
+        residualSensorId = id;
+        residualStartTime = Date.now();
+        residualSamples = [];
       }
     }
 
@@ -880,15 +892,18 @@ namespace crt
     function getDisplayValues(s) {
       if (s.lastValues.length === 0) return [];
       const offsetted = s.offsets
-        ? s.lastValues.map((v, i) => Math.max(0, v - (s.offsets[i] || 0)))
+        ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
         : s.lastValues;
       if (normMaxCap && maxCaptured != null && maxCaptured > 0) {
         const cg = getCalGrams();
         return offsetted.map(v => cg * v / maxCaptured);
       }
-      if (normSumCap && maxSumCaptured != null && maxSumCaptured > 0) {
-        const cg = getCalGrams();
-        return offsetted.map(v => cg * v / maxSumCaptured);
+      if (normSumCap && maxSumCaptured != null) {
+        const denom = maxSumCaptured - avResidualNoiseSum;
+        if (denom > 0) {
+          const cg = getCalGrams();
+          return offsetted.map(v => cg * v / denom);
+        }
       }
       return offsetted;
     }
@@ -1027,6 +1042,28 @@ namespace crt
         for (const data of all.sensors) {
           updateSensor(data.id, data);
           updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw);
+        }
+        // Collect residual noise samples after offset removal
+        if (residualCollecting && residualSensorId !== null) {
+          const s = sensors[residualSensorId];
+          if (s.lastValues.length > 0 && s.offsets) {
+            let sum = 0;
+            for (let i = 0; i < s.lastValues.length; i++) {
+              sum += s.lastValues[i] - (s.offsets[i] || 0);
+            }
+            residualSamples.push(sum);
+          }
+          if (Date.now() - residualStartTime >= 1000) {
+            residualCollecting = false;
+            if (residualSamples.length > 0) {
+              let total = 0;
+              for (const v of residualSamples) total += v;
+              avResidualNoiseSum = total / residualSamples.length;
+            } else {
+              avResidualNoiseSum = 0;
+            }
+            document.getElementById("fldResNoise").value = avResidualNoiseSum.toFixed(1);
+          }
         }
       } catch (e) {
         // leave as-is on error

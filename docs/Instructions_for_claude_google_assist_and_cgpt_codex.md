@@ -288,5 +288,16 @@ Implementation choicees for now: please store these parameters in a cookie, such
 initialialized the next time the webpage is visited and just transfer the raw measurement data from the hx711 
 to the server/webpage.
 
+### Phase 5j
+On remove offset button press, after storing the offset values, I'd like to calculate the average of the grid-sum
+over the following second. Let's call it "avResidualNoiseSum". That figure is to be displayed in a teext field below the maxSumCaptured textfield. I'd like to update next aspect from phase 5e:
+While "Norm SumCap" is toggled on, the value shown in each of the circles should be: 
+calibrateGrams/(maxSumCaptured-avResidualNoiseSum)*(measured value for that circle - offset_of_that_circle).
+Of course, as always, make sure that division by zero cannot occur ever.
+Furthermore, the values in the circles no longer need to be positive. So after subtracting offset levels, noise may cause temporarily negative values.
+
+### Phase 5k
+
+
 
 
