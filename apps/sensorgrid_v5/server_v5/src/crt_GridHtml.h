@@ -267,9 +267,9 @@ namespace crt
         <label>maxCaptured <input type="text" id="fldMaxCap" readonly value="-" size="8"/></label>
         <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
         <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
-        <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8"/></label>
-        <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8"/></label>
-        <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8"/></label>
+        <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="setCookie('gvCalGrams',this.value,365)"/></label>
+        <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
+        <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
       </div>
     </div>
     <div class="sensor-layout">
@@ -436,6 +436,12 @@ namespace crt
     });
     const statusEl = document.getElementById("status");
 
+    function saveToggleStates() {
+      setCookie("gvNormalized", normalized ? "1" : "0", 365);
+      setCookie("gvMaxFixed", maxFixed ? "1" : "0", 365);
+      setCookie("gvNormMaxCap", normMaxCap ? "1" : "0", 365);
+      setCookie("gvNormSumCap", normSumCap ? "1" : "0", 365);
+    }
     function toggleNormalize() {
       normalized = !normalized;
       if (normalized && maxFixed) {
@@ -443,6 +449,7 @@ namespace crt
         document.getElementById("btnMaxFixed").classList.remove("active");
       }
       document.getElementById("btnNormalize").classList.toggle("active", normalized);
+      saveToggleStates();
       recolorAll();
     }
     function toggleMaxFixed() {
@@ -452,11 +459,13 @@ namespace crt
         document.getElementById("btnNormalize").classList.remove("active");
       }
       document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
+      saveToggleStates();
       recolorAll();
     }
     function toggleColorize() {
       colorized = !colorized;
       document.getElementById("btnColorize").classList.toggle("active", colorized);
+      setCookie("gvColorized", colorized ? "1" : "0", 365);
       recolorAll();
     }
     function getCalGrams() {
@@ -491,6 +500,8 @@ namespace crt
       maxSumCaptured = sum;
       document.getElementById("fldMaxCap").value = maxCaptured;
       document.getElementById("fldSumCap").value = maxSumCaptured;
+      setCookie("gvMaxCaptured", maxCaptured, 365);
+      setCookie("gvMaxSumCaptured", maxSumCaptured, 365);
       recolorAll();
     }
     function toggleNormMaxCap() {
@@ -500,6 +511,7 @@ namespace crt
         document.getElementById("btnNormSumCap").classList.remove("active");
       }
       document.getElementById("btnNormMaxCap").classList.toggle("active", normMaxCap);
+      saveToggleStates();
       recolorAll();
     }
     function toggleNormSumCap() {
@@ -509,6 +521,7 @@ namespace crt
         document.getElementById("btnNormMaxCap").classList.remove("active");
       }
       document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
+      saveToggleStates();
       recolorAll();
     }
 
@@ -953,9 +966,35 @@ namespace crt
       const s = sensors[id];
       const savedTare = getCookie("lcTare" + id);
       const savedScale = getCookie("lcScale" + id);
+      const savedKnown = getCookie("lcKnown" + id);
       if (savedTare !== null) s.lcTareOffset = parseFloat(savedTare) || 0;
       if (savedScale !== null) s.lcScale = parseFloat(savedScale) || 1;
+      if (savedKnown !== null) s.lcKnownEl.value = savedKnown;
     });
+
+    // Restore grid view settings from cookies
+    (function restoreSettings() {
+      const sv = (key, elId, dflt) => {
+        const v = getCookie(key);
+        if (v !== null) document.getElementById(elId).value = v;
+      };
+      sv("gvCalGrams", "fldCalGrams");
+      sv("gvFixedMax", "fldFixedMax");
+      sv("gvStatsFilter", "fldStatsFilter");
+
+      const mc = getCookie("gvMaxCaptured");
+      if (mc !== null) { maxCaptured = parseFloat(mc); document.getElementById("fldMaxCap").value = mc; }
+      const ms = getCookie("gvMaxSumCaptured");
+      if (ms !== null) { maxSumCaptured = parseFloat(ms); document.getElementById("fldSumCap").value = ms; }
+      const rn = getCookie("gvResNoise");
+      if (rn !== null) { avResidualNoiseSum = parseFloat(rn); document.getElementById("fldResNoise").value = parseFloat(rn).toFixed(1); }
+
+      if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
+      if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
+      if (getCookie("gvMaxFixed") === "1") { maxFixed = true; document.getElementById("btnMaxFixed").classList.add("active"); }
+      if (getCookie("gvNormMaxCap") === "1") { normMaxCap = true; document.getElementById("btnNormMaxCap").classList.add("active"); }
+      if (getCookie("gvNormSumCap") === "1") { normSumCap = true; document.getElementById("btnNormSumCap").classList.add("active"); }
+    })();
 
     function lcTare(id) {
       const s = sensors[id];
@@ -973,6 +1012,7 @@ namespace crt
       s.lcScale = rawMinusTare / knownGrams;
       s.filteredWeight = null;
       setCookie("lcScale" + id, s.lcScale, 365);
+      setCookie("lcKnown" + id, knownGrams, 365);
     }
 
     function updateLoadcell(id, hasLoadcell, rawValue) {
@@ -1063,6 +1103,7 @@ namespace crt
               avResidualNoiseSum = 0;
             }
             document.getElementById("fldResNoise").value = avResidualNoiseSum.toFixed(1);
+            setCookie("gvResNoise", avResidualNoiseSum, 365);
           }
         }
       } catch (e) {
