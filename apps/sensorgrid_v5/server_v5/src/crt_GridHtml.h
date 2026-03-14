@@ -270,6 +270,7 @@ namespace crt
         <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="setCookie('gvCalGrams',this.value,365)"/></label>
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
+        <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365)"/></label>
       </div>
     </div>
     <div class="sensor-layout">
@@ -431,7 +432,8 @@ namespace crt
         lcScale: 1,
         lcVisible: false,
         lcLastRaw: 0,
-        filteredWeight: null
+        filteredWeight: null,
+        filteredValues: null
       };
     });
     const statusEl = document.getElementById("status");
@@ -601,6 +603,13 @@ namespace crt
 
     function getStatsFilter() {
       const v = parseFloat(document.getElementById("fldStatsFilter").value);
+      if (isNaN(v) || v < 0) return 0;
+      if (v > 1) return 1;
+      return v;
+    }
+
+    function getValueFilter() {
+      const v = parseFloat(document.getElementById("fldValueFilter").value);
       if (isNaN(v) || v < 0) return 0;
       if (v > 1) return 1;
       return v;
@@ -981,6 +990,7 @@ namespace crt
       sv("gvCalGrams", "fldCalGrams");
       sv("gvFixedMax", "fldFixedMax");
       sv("gvStatsFilter", "fldStatsFilter");
+      sv("gvValueFilter", "fldValueFilter");
 
       const mc = getCookie("gvMaxCaptured");
       if (mc !== null) { maxCaptured = parseFloat(mc); document.getElementById("fldMaxCap").value = mc; }
@@ -1056,11 +1066,21 @@ namespace crt
       s.lastValues = data.values;
       const displayValues = getDisplayValues(s);
       if (displayValues.length === 0) return;
-      const [mn, mx] = minMax(displayValues);
-      if (s.is3D && s.gl) {
-        renderSurface(s, displayValues, mn, mx);
+      // Apply per-circle EMA filtering
+      const vf = getValueFilter();
+      if (s.filteredValues === null || s.filteredValues.length !== displayValues.length) {
+        s.filteredValues = [...displayValues];
       } else {
-        displayValues.forEach((v, i) => {
+        for (let i = 0; i < displayValues.length; i++) {
+          s.filteredValues[i] = s.filteredValues[i] * vf + displayValues[i] * (1 - vf);
+        }
+      }
+      const filteredDisplay = s.filteredValues;
+      const [mn, mx] = minMax(filteredDisplay);
+      if (s.is3D && s.gl) {
+        renderSurface(s, filteredDisplay, mn, mx);
+      } else {
+        filteredDisplay.forEach((v, i) => {
           if (i < s.cells.length) {
             const c = colorForValue(v, mn, mx);
             s.cells[i].style.background = c.bg;
@@ -1069,9 +1089,9 @@ namespace crt
           }
         });
       }
-      updateHistogram(s, displayValues);
-      updateStats(s, displayValues);
-      updatePlot(s, displayValues);
+      updateHistogram(s, filteredDisplay);
+      updateStats(s, filteredDisplay);
+      updatePlot(s, filteredDisplay);
     }
 
     async function fetchAll() {

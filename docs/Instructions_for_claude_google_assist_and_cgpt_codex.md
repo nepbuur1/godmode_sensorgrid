@@ -300,5 +300,9 @@ Furthermore, the values in the circles no longer need to be positive. So after s
 I'd like the browser to remember some settings of the Grid view page. I think the calibration parameters are already stored.
 Only: the weight in the "known weight" field of the loadcell at the time the calibrate button of the loadcell was pressed for the last time, should be stored too (and still visible when returning to the webpage later). The same holds for : thee states of the top line of buttons in Grid View that have toggleable states: "Norm Display", "MaxFixed Display", "Color Display,", "Norm MaxCap" and "Norm SumCap", the fields maxCaptured, maxSumCaptured, avResidualNoiseSum, "Calibrate Grams", "Fixed Max Display" and "Stats Filter".
 
+### Phase 5l
+In a similar way that the stats are filtered, I'd like to filter each of the circle values, but with a separate filter constant.
+Please, implement that, and allow thee new filter constant to be edited on a new textfield, called "Value Filter" (below the current "Stats Filter" field). Make its default value 0.5, and make sure that its latest setting is remembered when the webpage is visited lateron.
+
 
 
