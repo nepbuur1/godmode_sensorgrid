@@ -240,6 +240,37 @@ namespace crt
       padding: 0.15rem 0.4rem;
       cursor: pointer;
     }
+    .sensor-widget.selected {
+      border-color: #2a2;
+      border-width: 2px;
+    }
+    .selected-info-panel {
+      display: none;
+      border: 2px solid #2a2;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      background: #f0faf0;
+      font-size: 0.75rem;
+    }
+    .selected-info-panel.visible {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: center;
+    }
+    .selected-info-panel label {
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+    }
+    .selected-info-panel input {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.3rem;
+      border: 1px solid #999;
+      border-radius: 3px;
+      width: 70px;
+    }
     #status {
       margin-top: 1rem;
       text-align: center;
@@ -259,20 +290,22 @@ namespace crt
         <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
         <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
         <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
-        <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
         <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()">Norm SumCap</button>
       </div>
       <div class="ctrl-fields">
-        <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
-        <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
-        <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="setCookie('gvCalGrams',this.value,365)"/></label>
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
         <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365)"/></label>
       </div>
     </div>
+    <div class="selected-info-panel" id="selectedInfoPanel">
+      <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
+      <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
+      <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
+      <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
+    </div>
     <div class="sensor-layout">
-      <div class="sensor-widget" id="sw1">
+      <div class="sensor-widget" id="sw1" onclick="selectSensor(1)">
         <h3>Sensor 1</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" onclick="removeOffset(1)">Remove offset</button>
@@ -297,7 +330,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw2">
+      <div class="sensor-widget" id="sw2" onclick="selectSensor(2)">
         <h3>Sensor 2</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" onclick="removeOffset(2)">Remove offset</button>
@@ -322,7 +355,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw3">
+      <div class="sensor-widget" id="sw3" onclick="selectSensor(3)">
         <h3>Sensor 3</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" onclick="removeOffset(3)">Remove offset</button>
@@ -347,7 +380,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw4">
+      <div class="sensor-widget" id="sw4" onclick="selectSensor(4)">
         <h3>Sensor 4</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" onclick="removeOffset(4)">Remove offset</button>
@@ -386,8 +419,7 @@ namespace crt
     let maxFixed = false;
     let colorized = false;
     let normSumCap = false;
-    let maxSumCaptured = null;
-    let avResidualNoiseSum = 0;
+    let selectedSensorId = null;
     // Residual noise measurement state
     let residualCollecting = false;
     let residualSensorId = null;
@@ -429,7 +461,10 @@ namespace crt
         lcVisible: false,
         lcLastRaw: 0,
         filteredWeight: null,
-        filteredValues: null
+        filteredValues: null,
+        maxSumCaptured: null,
+        avResidualNoiseSum: 0,
+        calGrams: 1000
       };
     });
     const statusEl = document.getElementById("status");
@@ -465,33 +500,49 @@ namespace crt
       setCookie("gvColorized", colorized ? "1" : "0", 365);
       recolorAll();
     }
-    function getCalGrams() {
-      return parseFloat(document.getElementById("fldCalGrams").value) || 1000;
+    function getCalGrams(id) {
+      return sensors[id].calGrams || 1000;
     }
     function getFixedMax() {
       return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
     }
+
+    function selectSensor(id) {
+      if (selectedSensorId === id) return;
+      // Deselect previous
+      if (selectedSensorId !== null) {
+        document.getElementById("sw" + selectedSensorId).classList.remove("selected");
+      }
+      selectedSensorId = id;
+      document.getElementById("sw" + id).classList.add("selected");
+      // Show the selected sensor info panel
+      document.getElementById("selectedInfoPanel").classList.add("visible");
+      // Populate fields from the selected sensor's state
+      const s = sensors[id];
+      document.getElementById("fldSumCap").value = s.maxSumCaptured != null ? s.maxSumCaptured : "-";
+      document.getElementById("fldResNoise").value = s.avResidualNoiseSum ? s.avResidualNoiseSum.toFixed(1) : "-";
+      document.getElementById("fldCalGrams").value = s.calGrams;
+    }
+
+    function onCalGramsChange() {
+      if (selectedSensorId === null) return;
+      const val = parseFloat(document.getElementById("fldCalGrams").value) || 1000;
+      sensors[selectedSensorId].calGrams = val;
+      setCookie("gvCalGrams" + selectedSensorId, val, 365);
+      recolorAll();
+    }
+
     function doCapture() {
-      // Find the sensor grid with the highest sum
-      // Only consider non-stub sensors (those where "Remove offset" was pressed)
-      let bestId = null;
-      let bestSum = -Infinity;
-      SENSOR_IDS.forEach(id => {
-        const s = sensors[id];
-        if (!s.offsets) return;
-        if (s.lastValues.length === 0) return;
-        const vals = s.lastValues.map((v, i) => v - (s.offsets[i] || 0));
-        let sum = 0;
-        for (const v of vals) sum += v;
-        if (sum > bestSum) {
-          bestSum = sum;
-          bestId = id;
-        }
-      });
-      if (bestId === null) return;
-      maxSumCaptured = bestSum;
-      document.getElementById("fldSumCap").value = maxSumCaptured;
-      setCookie("gvMaxSumCaptured", maxSumCaptured, 365);
+      if (selectedSensorId === null) return;
+      const s = sensors[selectedSensorId];
+      if (s.lastValues.length === 0) return;
+      // Compute sum of displayed (filtered) circle values
+      const displayValues = getDisplayValues(s, selectedSensorId);
+      let sum = 0;
+      for (const v of displayValues) sum += v;
+      s.maxSumCaptured = sum;
+      document.getElementById("fldSumCap").value = sum.toFixed(1);
+      setCookie("gvMaxSumCaptured" + selectedSensorId, sum, 365);
       recolorAll();
     }
     function toggleNormSumCap() {
@@ -840,7 +891,7 @@ namespace crt
       s.surfaceCanvas.style.display = s.is3D ? "block" : "none";
       document.getElementById("btn3d" + id).classList.toggle("active", s.is3D);
       if (s.is3D && !s.gl) initGL(s);
-      if (s.is3D) colorCells(s);
+      if (s.is3D) colorCells(s, id);
     }
 
     function colorForValue(v, minV, maxV) {
@@ -885,24 +936,24 @@ namespace crt
       return [mn, mx];
     }
 
-    function getDisplayValues(s) {
+    function getDisplayValues(s, id) {
       if (s.lastValues.length === 0) return [];
       const offsetted = s.offsets
         ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
         : s.lastValues;
-      if (normSumCap && maxSumCaptured != null) {
-        const denom = maxSumCaptured - avResidualNoiseSum;
+      if (normSumCap && s.maxSumCaptured != null) {
+        const denom = s.maxSumCaptured - s.avResidualNoiseSum;
         if (denom > 0) {
-          const cg = getCalGrams();
+          const cg = getCalGrams(id);
           return offsetted.map(v => cg * v / denom);
         }
       }
       return offsetted;
     }
 
-    function colorCells(s) {
+    function colorCells(s, id) {
       if (s.lastValues.length === 0) return;
-      const displayValues = getDisplayValues(s);
+      const displayValues = getDisplayValues(s, id);
       if (displayValues.length === 0) return;
       const [mn, mx] = minMax(displayValues);
       if (s.is3D && s.gl) {
@@ -920,7 +971,7 @@ namespace crt
     }
 
     function recolorAll() {
-      SENSOR_IDS.forEach(id => colorCells(sensors[id]));
+      SENSOR_IDS.forEach(id => colorCells(sensors[id], id));
     }
 
     // --- Loadcell support ---
@@ -953,19 +1004,24 @@ namespace crt
 
     // Restore grid view settings from cookies
     (function restoreSettings() {
-      const sv = (key, elId, dflt) => {
+      const sv = (key, elId) => {
         const v = getCookie(key);
         if (v !== null) document.getElementById(elId).value = v;
       };
-      sv("gvCalGrams", "fldCalGrams");
       sv("gvFixedMax", "fldFixedMax");
       sv("gvStatsFilter", "fldStatsFilter");
       sv("gvValueFilter", "fldValueFilter");
 
-      const ms = getCookie("gvMaxSumCaptured");
-      if (ms !== null) { maxSumCaptured = parseFloat(ms); document.getElementById("fldSumCap").value = ms; }
-      const rn = getCookie("gvResNoise");
-      if (rn !== null) { avResidualNoiseSum = parseFloat(rn); document.getElementById("fldResNoise").value = parseFloat(rn).toFixed(1); }
+      // Restore per-sensor capture state
+      SENSOR_IDS.forEach(id => {
+        const s = sensors[id];
+        const ms = getCookie("gvMaxSumCaptured" + id);
+        if (ms !== null) s.maxSumCaptured = parseFloat(ms);
+        const rn = getCookie("gvResNoise" + id);
+        if (rn !== null) s.avResidualNoiseSum = parseFloat(rn);
+        const cg = getCookie("gvCalGrams" + id);
+        if (cg !== null) s.calGrams = parseFloat(cg) || 1000;
+      });
 
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
       if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
@@ -1031,7 +1087,7 @@ namespace crt
         createGrid(s, data.count);
       }
       s.lastValues = data.values;
-      const displayValues = getDisplayValues(s);
+      const displayValues = getDisplayValues(s, id);
       if (displayValues.length === 0) return;
       // Apply per-circle EMA filtering
       const vf = getValueFilter();
@@ -1082,15 +1138,18 @@ namespace crt
           }
           if (Date.now() - residualStartTime >= 1000) {
             residualCollecting = false;
+            const rs = sensors[residualSensorId];
             if (residualSamples.length > 0) {
               let total = 0;
               for (const v of residualSamples) total += v;
-              avResidualNoiseSum = total / residualSamples.length;
+              rs.avResidualNoiseSum = total / residualSamples.length;
             } else {
-              avResidualNoiseSum = 0;
+              rs.avResidualNoiseSum = 0;
             }
-            document.getElementById("fldResNoise").value = avResidualNoiseSum.toFixed(1);
-            setCookie("gvResNoise", avResidualNoiseSum, 365);
+            setCookie("gvResNoise" + residualSensorId, rs.avResidualNoiseSum, 365);
+            if (selectedSensorId === residualSensorId) {
+              document.getElementById("fldResNoise").value = rs.avResidualNoiseSum.toFixed(1);
+            }
           }
         }
       } catch (e) {

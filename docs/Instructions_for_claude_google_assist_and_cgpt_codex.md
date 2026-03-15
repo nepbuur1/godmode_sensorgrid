@@ -307,4 +307,29 @@ Please, implement that, and allow thee new filter constant to be edited on a new
 ### Phase 5m
 It is no longer needed to caputure max. The Norm MaxCap button can be removed from grid view. and the maxCaptured field can be removed from Grid View. The Capture button can be renamed to "Capture Sum"
 
+### Phase 5n
+I want next restructured: Instead of current functionality of Capture Sum button, maxSumCaptured Field and avResidualNoiseSum field, I'd like it updated as follows:
+maxSumCaptured, avResidualNoiseSum and Calibrate Grams fields should be grouped together in a panel, at its current location. I call it "selected sensor info panel". as long as no sensor panel is selected (by clicking within a sensor panel), the "Selected sensor info panel" is hidden.
+As soon as in any sensor panel is clicked, it is "selected". That is shown by changing the border color of the panel to green.
+If another sensor panel is selected, the currently selected sensor panel is deselected (no longer border color green), and the contents of the "selected sensor info panel" shows the fields. The border of the "selected sensor info panel" is green, like the border of the selected sensor panel.
+
+The "Capture Sum" button should also be hidden until a sensor panel is selected.
+
+Calibrate grams can be entered by the user for the selected sensor panel
+The "Capture Sum" button should capture maxSumCaptured (the sum of all shown circle values) and avResidualNoiseSum for the selected sensor only.
+
+If "Norm SumCap" is not selected, the circles should represent the raw input values (as usual, using Value Filter). 
+If "Norm SumCap" is selected, then the values that are displayed in the circles are calculated from the raw input values:
+calibrateGrams/maxSumCaptured*(measured value for that circle - offset_of_that_circle).
+
+calibrateGrams is the value in the "Calibrate Grams" input field (default 500).
+maxSumCaptured is the value the maxSumCaptured text field, which is calculated by summing all offset-compensated circle values 
+for the selected sensor panel at the time of clicking the "Capture Sum" button.
+
+### Phase 5o
+avResidualNoise should be updated only when the remove offset button is pressed, for the corresponding sensor panel.
+not when the Capture Sum button is pressed
+
+
+
 
