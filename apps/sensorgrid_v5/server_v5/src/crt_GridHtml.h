@@ -271,6 +271,43 @@ namespace crt
       border-radius: 3px;
       width: 70px;
     }
+    .cell.cell-selected {
+      border: 2px solid #22f;
+    }
+    .cell.cell-captured {
+      border: 2px solid #000;
+    }
+    .circle-info-panel {
+      display: none;
+      border: 2px solid #c22;
+      border-radius: 6px;
+      padding: 0.5rem;
+      margin-bottom: 1rem;
+      background: #faf0f0;
+      font-size: 0.75rem;
+    }
+    .circle-info-panel.visible {
+      display: block;
+    }
+    .circle-info-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+      margin: 0.2rem 0;
+    }
+    .circle-info-row label {
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+    }
+    .circle-info-row input {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.3rem;
+      border: 1px solid #999;
+      border-radius: 3px;
+      width: 60px;
+    }
     #status {
       margin-top: 1rem;
       text-align: center;
@@ -291,6 +328,7 @@ namespace crt
         <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
         <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
         <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()">Norm SumCap</button>
+        <button class="toggle-btn" id="btnNormIndivCap" onclick="toggleNormIndivCap()">Norm IndivCap</button>
       </div>
       <div class="ctrl-fields">
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
@@ -302,7 +340,28 @@ namespace crt
       <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
       <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
       <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
-      <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
+      <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
+      <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
+    </div>
+    <div class="circle-info-panel" id="circleInfoPanel">
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
+        <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams0" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams0" value="0" size="6"/></label>
+      </div>
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(1)">Capture Indiv 2</button>
+        <label>cap <input type="text" id="ciCap1" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams1" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams1" value="0" size="6"/></label>
+      </div>
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(2)">Capture Indiv 3</button>
+        <label>cap <input type="text" id="ciCap2" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams2" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
+      </div>
     </div>
     <div class="sensor-layout">
       <div class="sensor-widget" id="sw1" onclick="selectSensor(1)">
@@ -419,7 +478,9 @@ namespace crt
     let maxFixed = false;
     let colorized = false;
     let normSumCap = false;
+    let normIndivCap = false;
     let selectedSensorId = null;
+    let selectedCircleIdx = null;
     // Residual noise measurement state
     let residualCollecting = false;
     let residualSensorId = null;
@@ -464,7 +525,9 @@ namespace crt
         filteredValues: null,
         maxSumCaptured: null,
         avResidualNoiseSum: 0,
-        calGrams: 1000
+        calGrams: 1000,
+        // Per-circle indiv captures: array of [{cap,grams},{cap,grams},{cap,grams}] per circle
+        indivCaps: []
       };
     });
     const statusEl = document.getElementById("status");
@@ -473,6 +536,7 @@ namespace crt
       setCookie("gvNormalized", normalized ? "1" : "0", 365);
       setCookie("gvMaxFixed", maxFixed ? "1" : "0", 365);
       setCookie("gvNormSumCap", normSumCap ? "1" : "0", 365);
+      setCookie("gvNormIndivCap", normIndivCap ? "1" : "0", 365);
     }
     function toggleNormalize() {
       normalized = !normalized;
@@ -547,7 +611,21 @@ namespace crt
     }
     function toggleNormSumCap() {
       normSumCap = !normSumCap;
+      if (normSumCap) {
+        normIndivCap = false;
+        document.getElementById("btnNormIndivCap").classList.remove("active");
+      }
       document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
+      saveToggleStates();
+      recolorAll();
+    }
+    function toggleNormIndivCap() {
+      normIndivCap = !normIndivCap;
+      if (normIndivCap) {
+        normSumCap = false;
+        document.getElementById("btnNormSumCap").classList.remove("active");
+      }
+      document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
       saveToggleStates();
       recolorAll();
     }
@@ -564,6 +642,81 @@ namespace crt
       }
     }
 
+    function ensureIndivCaps(s, count) {
+      if (s.indivCaps.length !== count) {
+        s.indivCaps = [];
+        for (let i = 0; i < count; i++) {
+          s.indivCaps.push([{cap:0,grams:0},{cap:0,grams:0},{cap:0,grams:0}]);
+        }
+      }
+    }
+
+    function isCircleFullyCaptured(tuples) {
+      return tuples.every(t => t.cap !== 0 || t.grams !== 0);
+    }
+
+    function updateCircleBorders(s) {
+      ensureIndivCaps(s, s.cells.length);
+      s.cells.forEach((cell, i) => {
+        cell.classList.remove("cell-selected", "cell-captured");
+        if (selectedSensorId !== null && sensors[selectedSensorId] === s && selectedCircleIdx === i) {
+          cell.classList.add("cell-selected");
+        } else if (isCircleFullyCaptured(s.indivCaps[i])) {
+          cell.classList.add("cell-captured");
+        }
+      });
+    }
+
+    function selectCircle(sensorId, circleIdx, ev) {
+      ev.stopPropagation();
+      selectSensor(sensorId);
+      selectedCircleIdx = circleIdx;
+      // Update circle borders for all sensors
+      SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
+      // Show circle info panel
+      const panel = document.getElementById("circleInfoPanel");
+      panel.classList.add("visible");
+      // Populate fields
+      const s = sensors[sensorId];
+      ensureIndivCaps(s, s.cells.length);
+      const tuples = s.indivCaps[circleIdx];
+      for (let t = 0; t < 3; t++) {
+        document.getElementById("ciCap" + t).value = tuples[t].cap || "-";
+        document.getElementById("ciGrams" + t).value = tuples[t].grams || "-";
+      }
+    }
+
+    function captureIndiv(tupleIdx) {
+      if (selectedSensorId === null || selectedCircleIdx === null) return;
+      const s = sensors[selectedSensorId];
+      if (s.filteredValues === null || selectedCircleIdx >= s.filteredValues.length) return;
+      ensureIndivCaps(s, s.cells.length);
+      const circleValue = s.filteredValues[selectedCircleIdx];
+      const calGrams = parseFloat(document.getElementById("ciCalGrams" + tupleIdx).value) || 0;
+      s.indivCaps[selectedCircleIdx][tupleIdx] = {cap: circleValue, grams: calGrams};
+      document.getElementById("ciCap" + tupleIdx).value = circleValue.toFixed(1);
+      document.getElementById("ciGrams" + tupleIdx).value = calGrams;
+      // Save to cookie
+      setCookie("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps), 365);
+      updateCircleBorders(s);
+    }
+
+    function resetIndivCaps() {
+      if (selectedSensorId === null) return;
+      const s = sensors[selectedSensorId];
+      s.indivCaps = [];
+      ensureIndivCaps(s, s.cells.length);
+      setCookie("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps), 365);
+      // Update display if circle is selected
+      if (selectedCircleIdx !== null) {
+        for (let t = 0; t < 3; t++) {
+          document.getElementById("ciCap" + t).value = "-";
+          document.getElementById("ciGrams" + t).value = "-";
+        }
+      }
+      updateCircleBorders(s);
+    }
+
     const COLS = 8;
 
     function computeRowSizes(n) {
@@ -578,11 +731,13 @@ namespace crt
       return rows;
     }
 
-    function createGrid(s, count) {
+    function createGrid(s, count, sensorId) {
       s.gridEl.innerHTML = "";
       s.cells = [];
       s.currentCount = count;
+      ensureIndivCaps(s, count);
       const rowSizes = computeRowSizes(count);
+      let cellIdx = 0;
       rowSizes.forEach((size, rowIdx) => {
         const rowEl = document.createElement("div");
         rowEl.className = "row";
@@ -593,11 +748,15 @@ namespace crt
           const cell = document.createElement("div");
           cell.className = "cell";
           cell.textContent = "?";
+          const ci = cellIdx;
+          cell.addEventListener("click", function(ev) { selectCircle(sensorId, ci, ev); });
           rowEl.appendChild(cell);
           s.cells.push(cell);
+          cellIdx++;
         }
         s.gridEl.appendChild(rowEl);
       });
+      updateCircleBorders(s);
     }
 
     function createHistogram(s) {
@@ -1021,12 +1180,15 @@ namespace crt
         if (rn !== null) s.avResidualNoiseSum = parseFloat(rn);
         const cg = getCookie("gvCalGrams" + id);
         if (cg !== null) s.calGrams = parseFloat(cg) || 1000;
+        const ic = getCookie("gvIndivCaps" + id);
+        if (ic !== null) { try { s.indivCaps = JSON.parse(ic); } catch(e) {} }
       });
 
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
       if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
       if (getCookie("gvMaxFixed") === "1") { maxFixed = true; document.getElementById("btnMaxFixed").classList.add("active"); }
       if (getCookie("gvNormSumCap") === "1") { normSumCap = true; document.getElementById("btnNormSumCap").classList.add("active"); }
+      if (getCookie("gvNormIndivCap") === "1") { normIndivCap = true; document.getElementById("btnNormIndivCap").classList.add("active"); }
     })();
 
     function lcTare(id) {
@@ -1084,7 +1246,7 @@ namespace crt
         return;
       }
       if (s.currentCount !== data.count) {
-        createGrid(s, data.count);
+        createGrid(s, data.count, id);
       }
       s.lastValues = data.values;
       const displayValues = getDisplayValues(s, id);
@@ -1115,6 +1277,7 @@ namespace crt
       updateHistogram(s, filteredDisplay);
       updateStats(s, filteredDisplay);
       updatePlot(s, filteredDisplay);
+      updateCircleBorders(s);
     }
 
     async function fetchAll() {
@@ -1160,7 +1323,7 @@ namespace crt
 
     // Initialize
     SENSOR_IDS.forEach(id => {
-      createGrid(sensors[id], 0);
+      createGrid(sensors[id], 0, id);
       createHistogram(sensors[id]);
     });
     async function pollLoop() {

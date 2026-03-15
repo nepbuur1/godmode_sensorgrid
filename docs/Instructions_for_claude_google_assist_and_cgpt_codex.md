@@ -330,6 +330,27 @@ for the selected sensor panel at the time of clicking the "Capture Sum" button.
 avResidualNoise should be updated only when the remove offset button is pressed, for the corresponding sensor panel.
 not when the Capture Sum button is pressed
 
+### Phase 5p
+I'd like to rename the text "Calibrate Grams" in the "sensor info panel" to "Calibrate Sum Grams".
+So far, so good, we then have a row with the "Capture Sum" button, the maxSumCaptured field, the avResidualNoiseSum field and the Calibrate Grams field, nicely with a green border. Which allows to provide the data for the "Norm SumCap" mode.
+
+I'd like to prepare an alternative mode to calculate the circle values from the raw input values.
+I'd like to toggle to that mode using the "Norm IndivCap", which can be selected by toggling a button with that name.
+When "Norm IndivCap" is selected, "Norm SumCap" should be deselected. When "Norm SumCap" is selected, "Norm IndivCap" should be deselected.
+
+Let me explain how the "Norm IndivCap" mode works:
+For every panel, for every circle, 3 tuples ("capture value" , corresponding "calibrated indiv grams" value) can be stored.
+How can we initialize these values:
+If the user clicks on a circle, it gets a blue border (such that it is clear that it is selected).
+Furthermore, below the "selected sensor info panel", a red-bordered "selected circle info panel" is then appearing.
+It shows 3 rows, each with a "Capture Indiv" Button, and field-tuple, showing the current tuple values (capture value field above corresponding "calibrated indiv grams" value) and next to it is a "Calibrate Grams Indiv" field, where the user can fill in a value.
+As soon as a "Capture Indiv" Button is pressed, the circle value of the currently selected circle is copied to the first member of the tuple behind it, and the value filled in in the corresponding "Calibrate Grams Indiv" field is copied to the second member of that tuple.
+
+Lateron, I will explain how the "Norm IndivCap" mode will use these values to normalise the circle values from raw data in an alternative way, but for now, let's just implement the functionality described above, such that we can gather and store all data needed for it.
+
+Wait.. I forgot a few additional updates: every circle for which all 3 "indiv captures" have been done, should have get a black border
+(unless selected, then it temporarily becomes blue again).
+Furthermore, the "sensor info panel" should get an additional button called "Reset Indiv Caps", which should reset the stored values of all (capturedValue,calibratedIndivGrams) tuples for all circles of the selected sensor panel to (0,0).
 
 
 
