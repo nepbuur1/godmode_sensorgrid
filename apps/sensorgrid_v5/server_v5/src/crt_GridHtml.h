@@ -259,12 +259,10 @@ namespace crt
         <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
         <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
         <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
-        <button class="toggle-btn" onclick="doCapture()">Capture</button>
-        <button class="toggle-btn" id="btnNormMaxCap" onclick="toggleNormMaxCap()">Norm MaxCap</button>
+        <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
         <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()">Norm SumCap</button>
       </div>
       <div class="ctrl-fields">
-        <label>maxCaptured <input type="text" id="fldMaxCap" readonly value="-" size="8"/></label>
         <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
         <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
         <label>Calibrate Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="setCookie('gvCalGrams',this.value,365)"/></label>
@@ -387,9 +385,7 @@ namespace crt
     let normalized = false;
     let maxFixed = false;
     let colorized = false;
-    let normMaxCap = false;
     let normSumCap = false;
-    let maxCaptured = null;
     let maxSumCaptured = null;
     let avResidualNoiseSum = 0;
     // Residual noise measurement state
@@ -441,7 +437,6 @@ namespace crt
     function saveToggleStates() {
       setCookie("gvNormalized", normalized ? "1" : "0", 365);
       setCookie("gvMaxFixed", maxFixed ? "1" : "0", 365);
-      setCookie("gvNormMaxCap", normMaxCap ? "1" : "0", 365);
       setCookie("gvNormSumCap", normSumCap ? "1" : "0", 365);
     }
     function toggleNormalize() {
@@ -477,51 +472,30 @@ namespace crt
       return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
     }
     function doCapture() {
-      // Find the sensor grid with the maximum individual measurement value
+      // Find the sensor grid with the highest sum
       // Only consider non-stub sensors (those where "Remove offset" was pressed)
       let bestId = null;
-      let bestMax = -1;
+      let bestSum = -Infinity;
       SENSOR_IDS.forEach(id => {
         const s = sensors[id];
         if (!s.offsets) return;
         if (s.lastValues.length === 0) return;
         const vals = s.lastValues.map((v, i) => v - (s.offsets[i] || 0));
-        for (const v of vals) {
-          if (v > bestMax) {
-            bestMax = v;
-            bestId = id;
-          }
+        let sum = 0;
+        for (const v of vals) sum += v;
+        if (sum > bestSum) {
+          bestSum = sum;
+          bestId = id;
         }
       });
       if (bestId === null) return;
-      const s = sensors[bestId];
-      const vals = s.lastValues.map((v, i) => v - (s.offsets[i] || 0));
-      maxCaptured = bestMax;
-      let sum = 0;
-      for (const v of vals) sum += v;
-      maxSumCaptured = sum;
-      document.getElementById("fldMaxCap").value = maxCaptured;
+      maxSumCaptured = bestSum;
       document.getElementById("fldSumCap").value = maxSumCaptured;
-      setCookie("gvMaxCaptured", maxCaptured, 365);
       setCookie("gvMaxSumCaptured", maxSumCaptured, 365);
-      recolorAll();
-    }
-    function toggleNormMaxCap() {
-      normMaxCap = !normMaxCap;
-      if (normMaxCap) {
-        normSumCap = false;
-        document.getElementById("btnNormSumCap").classList.remove("active");
-      }
-      document.getElementById("btnNormMaxCap").classList.toggle("active", normMaxCap);
-      saveToggleStates();
       recolorAll();
     }
     function toggleNormSumCap() {
       normSumCap = !normSumCap;
-      if (normSumCap) {
-        normMaxCap = false;
-        document.getElementById("btnNormMaxCap").classList.remove("active");
-      }
       document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
       saveToggleStates();
       recolorAll();
@@ -916,10 +890,6 @@ namespace crt
       const offsetted = s.offsets
         ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
         : s.lastValues;
-      if (normMaxCap && maxCaptured != null && maxCaptured > 0) {
-        const cg = getCalGrams();
-        return offsetted.map(v => cg * v / maxCaptured);
-      }
       if (normSumCap && maxSumCaptured != null) {
         const denom = maxSumCaptured - avResidualNoiseSum;
         if (denom > 0) {
@@ -992,8 +962,6 @@ namespace crt
       sv("gvStatsFilter", "fldStatsFilter");
       sv("gvValueFilter", "fldValueFilter");
 
-      const mc = getCookie("gvMaxCaptured");
-      if (mc !== null) { maxCaptured = parseFloat(mc); document.getElementById("fldMaxCap").value = mc; }
       const ms = getCookie("gvMaxSumCaptured");
       if (ms !== null) { maxSumCaptured = parseFloat(ms); document.getElementById("fldSumCap").value = ms; }
       const rn = getCookie("gvResNoise");
@@ -1002,7 +970,6 @@ namespace crt
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
       if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
       if (getCookie("gvMaxFixed") === "1") { maxFixed = true; document.getElementById("btnMaxFixed").classList.add("active"); }
-      if (getCookie("gvNormMaxCap") === "1") { normMaxCap = true; document.getElementById("btnNormMaxCap").classList.add("active"); }
       if (getCookie("gvNormSumCap") === "1") { normSumCap = true; document.getElementById("btnNormSumCap").classList.add("active"); }
     })();
 

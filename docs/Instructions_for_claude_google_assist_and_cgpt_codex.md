@@ -304,5 +304,7 @@ Only: the weight in the "known weight" field of the loadcell at the time the cal
 In a similar way that the stats are filtered, I'd like to filter each of the circle values, but with a separate filter constant.
 Please, implement that, and allow thee new filter constant to be edited on a new textfield, called "Value Filter" (below the current "Stats Filter" field). Make its default value 0.5, and make sure that its latest setting is remembered when the webpage is visited lateron.
 
+### Phase 5m
+It is no longer needed to caputure max. The Norm MaxCap button can be removed from grid view. and the maxCaptured field can be removed from Grid View. The Capture button can be renamed to "Capture Sum"
 
 
