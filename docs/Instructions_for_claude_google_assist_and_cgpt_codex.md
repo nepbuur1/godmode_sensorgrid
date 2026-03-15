@@ -352,5 +352,10 @@ Wait.. I forgot a few additional updates: every circle for which all 3 "indiv ca
 (unless selected, then it temporarily becomes blue again).
 Furthermore, the "sensor info panel" should get an additional button called "Reset Indiv Caps", which should reset the stored values of all (capturedValue,calibratedIndivGrams) tuples for all circles of the selected sensor panel to (0,0).
 
+### Phase 5q
+The data in both the "info selection panel" as wel as the tuples mentioned in phase 5p for each circle, should still be there if the webpage is opened a next time.
+
+### Phase 5r
+Right now, each Sensor panel has its own "remove offset" button. please, remove that button. Instead, the same should happen when a panel is selected, and from the "info selection paneel", a new to be added "Remove Offset" button is clicked.
 
 

@@ -643,11 +643,12 @@ namespace crt
     }
 
     function ensureIndivCaps(s, count) {
-      if (s.indivCaps.length !== count) {
-        s.indivCaps = [];
-        for (let i = 0; i < count; i++) {
-          s.indivCaps.push([{cap:0,grams:0},{cap:0,grams:0},{cap:0,grams:0}]);
-        }
+      if (count <= 0) return;
+      if (s.indivCaps.length === count) return;
+      const old = s.indivCaps;
+      s.indivCaps = [];
+      for (let i = 0; i < count; i++) {
+        s.indivCaps.push(i < old.length ? old[i] : [{cap:0,grams:0},{cap:0,grams:0},{cap:0,grams:0}]);
       }
     }
 
@@ -681,7 +682,7 @@ namespace crt
       ensureIndivCaps(s, s.cells.length);
       const tuples = s.indivCaps[circleIdx];
       for (let t = 0; t < 3; t++) {
-        document.getElementById("ciCap" + t).value = tuples[t].cap || "-";
+        document.getElementById("ciCap" + t).value = tuples[t].cap ? Math.round(tuples[t].cap) : "-";
         document.getElementById("ciGrams" + t).value = tuples[t].grams || "-";
       }
     }
@@ -694,10 +695,10 @@ namespace crt
       const circleValue = s.filteredValues[selectedCircleIdx];
       const calGrams = parseFloat(document.getElementById("ciCalGrams" + tupleIdx).value) || 0;
       s.indivCaps[selectedCircleIdx][tupleIdx] = {cap: circleValue, grams: calGrams};
-      document.getElementById("ciCap" + tupleIdx).value = circleValue.toFixed(1);
+      document.getElementById("ciCap" + tupleIdx).value = Math.round(circleValue);
       document.getElementById("ciGrams" + tupleIdx).value = calGrams;
       // Save to cookie
-      setCookie("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps), 365);
+      try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
       updateCircleBorders(s);
     }
 
@@ -706,7 +707,7 @@ namespace crt
       const s = sensors[selectedSensorId];
       s.indivCaps = [];
       ensureIndivCaps(s, s.cells.length);
-      setCookie("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps), 365);
+      try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
       // Update display if circle is selected
       if (selectedCircleIdx !== null) {
         for (let t = 0; t < 3; t++) {
@@ -1180,8 +1181,7 @@ namespace crt
         if (rn !== null) s.avResidualNoiseSum = parseFloat(rn);
         const cg = getCookie("gvCalGrams" + id);
         if (cg !== null) s.calGrams = parseFloat(cg) || 1000;
-        const ic = getCookie("gvIndivCaps" + id);
-        if (ic !== null) { try { s.indivCaps = JSON.parse(ic); } catch(e) {} }
+        try { const ic = localStorage.getItem("gvIndivCaps" + id); if (ic) s.indivCaps = JSON.parse(ic); } catch(e) {}
       });
 
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
