@@ -359,5 +359,12 @@ The data in both the "info selection panel" as wel as the tuples mentioned in ph
 Right now, each Sensor panel has its own "remove offset" button. please, remove that button. Instead, the same should happen when a panel is selected, and from the "info selection paneel", a new to be added "Remove Offset" button is clicked.
 
 ### Phase 5s
+Okay, now, what will happen in "Norm IndivCap" mode: The 3 tuples of each circle can be used to calculate the circle value
+from the raw input value. If the 3 tuples are all uinitialized/zero, the circle value is the raw input value.
+If one or more are not zero, they constitute a piece-wise linear lookup-figure, which runs from (0,0) (the origin) to subsequentially 
+each of the tuples. After the last tuple should be linear extrapolation. In this figure, along the x-axis, the (offset compensated) raw input value (the value that is shown in the circle without Norm SumCap or Norm IndviCap selected) is filled in at the x-axis of the lookup-figure. The calculated value displayed in the circle thus becomes the corresponding (interpolated) value at the y-axis.
+Note that this works if one or more tuples have been specified.
+
+### Phase 5t
 
 

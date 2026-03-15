@@ -1098,11 +1098,44 @@ namespace crt
       return [mn, mx];
     }
 
+    function indivLookup(rawVal, tuples) {
+      // Build sorted points from (0,0) + non-zero tuples
+      const pts = [{x:0, y:0}];
+      for (const t of tuples) {
+        if (t.cap !== 0 || t.grams !== 0) {
+          pts.push({x: t.cap, y: t.grams});
+        }
+      }
+      if (pts.length === 1) return rawVal; // no tuples set
+      pts.sort((a, b) => a.x - b.x);
+      // Piecewise linear interpolation / extrapolation
+      if (rawVal <= pts[0].x) {
+        // Extrapolate using first segment
+        const p0 = pts[0], p1 = pts[1];
+        const slope = (p1.x !== p0.x) ? (p1.y - p0.y) / (p1.x - p0.x) : 0;
+        return p0.y + slope * (rawVal - p0.x);
+      }
+      for (let i = 1; i < pts.length; i++) {
+        if (rawVal <= pts[i].x) {
+          const p0 = pts[i-1], p1 = pts[i];
+          const t = (p1.x !== p0.x) ? (rawVal - p0.x) / (p1.x - p0.x) : 0;
+          return p0.y + t * (p1.y - p0.y);
+        }
+      }
+      // Extrapolate beyond last point
+      const pA = pts[pts.length - 2], pB = pts[pts.length - 1];
+      const slope = (pB.x !== pA.x) ? (pB.y - pA.y) / (pB.x - pA.x) : 0;
+      return pB.y + slope * (rawVal - pB.x);
+    }
+
     function getDisplayValues(s, id) {
       if (s.lastValues.length === 0) return [];
       const offsetted = s.offsets
         ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
         : s.lastValues;
+      if (normIndivCap && s.indivCaps.length === offsetted.length) {
+        return offsetted.map((v, i) => indivLookup(v, s.indivCaps[i]));
+      }
       if (normSumCap && s.maxSumCaptured != null) {
         const denom = s.maxSumCaptured - s.avResidualNoiseSum;
         if (denom > 0) {
