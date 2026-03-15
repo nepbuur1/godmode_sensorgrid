@@ -337,6 +337,7 @@ namespace crt
       </div>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel">
+      <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
       <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
       <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
       <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
@@ -367,7 +368,6 @@ namespace crt
       <div class="sensor-widget" id="sw1" onclick="selectSensor(1)">
         <h3>Sensor 1</h3>
         <div class="panel-buttons">
-          <button class="toggle-btn offset-btn" onclick="removeOffset(1)">Remove offset</button>
           <button class="toggle-btn offset-btn" id="btn3d1" onclick="toggle3D(1)">3D Surface</button>
         </div>
         <div class="grid-container" id="grid1"></div>
@@ -392,7 +392,6 @@ namespace crt
       <div class="sensor-widget" id="sw2" onclick="selectSensor(2)">
         <h3>Sensor 2</h3>
         <div class="panel-buttons">
-          <button class="toggle-btn offset-btn" onclick="removeOffset(2)">Remove offset</button>
           <button class="toggle-btn offset-btn" id="btn3d2" onclick="toggle3D(2)">3D Surface</button>
         </div>
         <div class="grid-container" id="grid2"></div>
@@ -417,7 +416,6 @@ namespace crt
       <div class="sensor-widget" id="sw3" onclick="selectSensor(3)">
         <h3>Sensor 3</h3>
         <div class="panel-buttons">
-          <button class="toggle-btn offset-btn" onclick="removeOffset(3)">Remove offset</button>
           <button class="toggle-btn offset-btn" id="btn3d3" onclick="toggle3D(3)">3D Surface</button>
         </div>
         <div class="grid-container" id="grid3"></div>
@@ -442,7 +440,6 @@ namespace crt
       <div class="sensor-widget" id="sw4" onclick="selectSensor(4)">
         <h3>Sensor 4</h3>
         <div class="panel-buttons">
-          <button class="toggle-btn offset-btn" onclick="removeOffset(4)">Remove offset</button>
           <button class="toggle-btn offset-btn" id="btn3d4" onclick="toggle3D(4)">3D Surface</button>
         </div>
         <div class="grid-container" id="grid4"></div>
@@ -628,6 +625,11 @@ namespace crt
       document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
       saveToggleStates();
       recolorAll();
+    }
+
+    function doRemoveOffset() {
+      if (selectedSensorId === null) return;
+      removeOffset(selectedSensorId);
     }
 
     function removeOffset(id) {

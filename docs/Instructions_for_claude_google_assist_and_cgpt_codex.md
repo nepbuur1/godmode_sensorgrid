@@ -358,4 +358,6 @@ The data in both the "info selection panel" as wel as the tuples mentioned in ph
 ### Phase 5r
 Right now, each Sensor panel has its own "remove offset" button. please, remove that button. Instead, the same should happen when a panel is selected, and from the "info selection paneel", a new to be added "Remove Offset" button is clicked.
 
+### Phase 5s
+
 
