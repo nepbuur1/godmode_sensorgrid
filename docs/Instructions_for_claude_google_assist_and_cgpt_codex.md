@@ -366,5 +366,6 @@ each of the tuples. After the last tuple should be linear extrapolation. In this
 Note that this works if one or more tuples have been specified.
 
 ### Phase 5t
+Great, now, if all tuples of a circle are zero, don't make its value the raw input value, but just make its value zero.
 
 

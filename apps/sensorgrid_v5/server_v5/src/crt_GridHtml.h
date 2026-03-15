@@ -1106,7 +1106,7 @@ namespace crt
           pts.push({x: t.cap, y: t.grams});
         }
       }
-      if (pts.length === 1) return rawVal; // no tuples set
+      if (pts.length === 1) return 0; // no tuples set
       pts.sort((a, b) => a.x - b.x);
       // Piecewise linear interpolation / extrapolation
       if (rawVal <= pts[0].x) {
