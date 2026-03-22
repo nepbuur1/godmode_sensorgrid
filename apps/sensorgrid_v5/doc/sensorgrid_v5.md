@@ -264,6 +264,7 @@ Clicking a sensor widget selects it (green border). A green-bordered info panel 
 - **Capture Sum** — captures the sum of displayed circle values and triggers residual noise measurement
 - **maxSumCaptured**, **avResidualNoiseSum** (read-only), **Calibrate Sum Grams** (editable) — per-sensor calibration fields
 - **Reset Indiv Caps** — resets all per-circle capture tuples for the selected sensor
+- **Enable Sensor** (checkbox) — enabled by default. When unchecked, the sensor is treated as offline: its grid shows "Disabled", display updates and loadcell readings are skipped, and recorded frames store empty data for that sensor. State is persisted in a cookie.
 
 #### Selected circle info panel
 Clicking a circle within a selected sensor shows it with a blue border and reveals a red-bordered panel with 3 rows. Each row has a **Capture Indiv** button, captured value/grams fields, and a **Calibrate Grams Indiv** input. Circles with all 3 captures done display a black border.

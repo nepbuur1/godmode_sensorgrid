@@ -387,3 +387,10 @@ On the right side of the record panel discussed att phase 5u, I'd like to add a 
 It can be used to download the latest stopped or paused recording thus far, for now, lets's just download the json that you're currently storing the recorded data in.
 As long as no recording has been made, or recording is in progress (not paused), that download button is grayed, and cannot be pressed.
 
+### Phase 5w
+Currently, when a sensor panel is selected, the "sensor info panel" with green border appears.
+Next to the button "Reset Indiv Caps", I'd like to add a checkbox called "Enable Sensor".
+By default, it is enabled. But if it is checked as disabled, with regard to data-polling, displaying in gridview
+and recording, it will be treated as a sensor that is not powered/online.
+
+### Phase 5x

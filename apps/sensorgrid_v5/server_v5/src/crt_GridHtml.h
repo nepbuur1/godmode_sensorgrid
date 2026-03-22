@@ -396,6 +396,7 @@ namespace crt
       <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
       <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
       <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
+      <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
     </div>
     <div class="circle-info-panel" id="circleInfoPanel">
       <div class="circle-info-row">
@@ -660,7 +661,8 @@ namespace crt
         avResidualNoiseSum: 0,
         calGrams: 1000,
         // Per-circle indiv captures: array of [{cap,grams},{cap,grams},{cap,grams}] per circle
-        indivCaps: []
+        indivCaps: [],
+        enabled: true
       };
     });
     const statusEl = document.getElementById("status");
@@ -719,6 +721,42 @@ namespace crt
       document.getElementById("fldSumCap").value = s.maxSumCaptured != null ? s.maxSumCaptured : "-";
       document.getElementById("fldResNoise").value = s.avResidualNoiseSum ? s.avResidualNoiseSum.toFixed(1) : "-";
       document.getElementById("fldCalGrams").value = s.calGrams;
+      document.getElementById("chkEnableSensor").checked = s.enabled;
+    }
+
+    function toggleEnableSensor() {
+      if (selectedSensorId === null) return;
+      const s = sensors[selectedSensorId];
+      s.enabled = document.getElementById("chkEnableSensor").checked;
+      setCookie("gvEnabled" + selectedSensorId, s.enabled ? "1" : "0", 365);
+      if (!s.enabled) {
+        // Clear display to show as offline
+        s.gridEl.innerHTML = '<div class="no-data">Disabled</div>';
+        s.cells = [];
+        s.currentCount = 0;
+        s.lastValues = [];
+        s.filteredValues = null;
+        s.filteredSum = null;
+        s.filteredMax = null;
+        s.filteredAvg = null;
+        s.filteredStd = null;
+        s.plotHistory = [];
+        s.sumEl.textContent = "-";
+        s.maxEl.textContent = "-";
+        s.avgEl.textContent = "-";
+        s.stdEl.textContent = "-";
+        if (s.lcVisible) { s.lcEl.style.display = "none"; s.lcVisible = false; }
+        // Clear histogram
+        s.histBars.forEach(b => b.style.height = "1px");
+        // Clear plot
+        const ctx = s.plotCanvas.getContext("2d");
+        ctx.clearRect(0, 0, s.plotCanvas.width, s.plotCanvas.height);
+        // Clear 3D surface
+        if (s.is3D && s.gl) {
+          s.gl.clearColor(0.067, 0.067, 0.067, 1);
+          s.gl.clear(s.gl.COLOR_BUFFER_BIT | s.gl.DEPTH_BUFFER_BIT);
+        }
+      }
     }
 
     function onCalGramsChange() {
@@ -1353,6 +1391,8 @@ namespace crt
         const cg = getCookie("gvCalGrams" + id);
         if (cg !== null) s.calGrams = parseFloat(cg) || 1000;
         try { const ic = localStorage.getItem("gvIndivCaps" + id); if (ic) s.indivCaps = JSON.parse(ic); } catch(e) {}
+        const en = getCookie("gvEnabled" + id);
+        if (en === "0") s.enabled = false;
       });
 
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
@@ -1383,6 +1423,7 @@ namespace crt
 
     function updateLoadcell(id, hasLoadcell, rawValue) {
       const s = sensors[id];
+      if (!s.enabled) return;
       if (hasLoadcell) {
         if (!s.lcVisible) {
           s.lcEl.style.display = "block";
@@ -1409,6 +1450,7 @@ namespace crt
 
     function updateSensor(id, data) {
       const s = sensors[id];
+      if (!s.enabled) return;
       if (data.count === 0) {
         s.gridEl.innerHTML = '<div class="no-data">No data</div>';
         s.cells = [];
@@ -1463,9 +1505,14 @@ namespace crt
         const res = await fetch("/api/allmeasurements");
         if (!res.ok) return;
         const all = await res.json();
-        // Record frame if recording
+        // Record frame if recording (filter out disabled sensors)
         if (recState === 'recording') {
-          recFrames.push(all);
+          const filtered = {sensors: all.sensors.map(d => {
+            const s = sensors[d.id];
+            if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0};
+            return d;
+          })};
+          recFrames.push(filtered);
           recUpdateInfo();
         }
         applyFrame(all);
