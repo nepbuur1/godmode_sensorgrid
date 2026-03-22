@@ -40,6 +40,7 @@ namespace crt
 			unsigned long lastSeenMs;
 			bool hasLoadcell;
 			int32_t loadcellRaw;
+			bool snapshotRequested;
 		};
 
 		const char* apSsid;
@@ -342,9 +343,23 @@ namespace crt
 						sensors[expectedId].loadcellRaw = 0;
 					}
 
-					ESP_LOGI("ServerNode", "Sensor %u -> %u measurements, first=%u lc=%d raw=%ld",
+					// Extract snapshot appendix if present
+					const uint16_t expectedWithSnapshot = expectedTotal + sizeof(SnapshotAppendix);
+					if (reassemblyBytesReceived >= expectedWithSnapshot)
+					{
+						SnapshotAppendix snap;
+						memcpy(&snap, reassemblyBuffer + expectedTotal, sizeof(SnapshotAppendix));
+						sensors[expectedId].snapshotRequested = (snap.snapshotRequested != 0);
+					}
+					else
+					{
+						sensors[expectedId].snapshotRequested = false;
+					}
+
+					ESP_LOGI("ServerNode", "Sensor %u -> %u measurements, first=%u lc=%d raw=%ld snap=%d",
 							 expectedId, count, sensors[expectedId].measurements[0],
-							 sensors[expectedId].hasLoadcell, (long)sensors[expectedId].loadcellRaw);
+							 sensors[expectedId].hasLoadcell, (long)sensors[expectedId].loadcellRaw,
+							 sensors[expectedId].snapshotRequested);
 
 					currentPollIndex++;
 					currentState = State::POLLING;
@@ -450,6 +465,7 @@ namespace crt
 				json += "\"count\":" + String(s.seen ? (int)s.measurementCount : 0) + ",";
 				json += "\"hasLoadcell\":" + String(s.hasLoadcell ? "true" : "false") + ",";
 				json += "\"loadcellRaw\":" + String(s.loadcellRaw) + ",";
+				json += "\"snapshotRequested\":" + String(s.snapshotRequested ? "true" : "false") + ",";
 				json += "\"values\":[";
 				if (s.seen)
 				{
@@ -463,6 +479,9 @@ namespace crt
 			}
 			json += "]}";
 			server.send(200, "application/json", json);
+			// Clear snapshot flags after serving (one-shot)
+			for (int id = 1; id <= 4; id++)
+				sensors[id].snapshotRequested = false;
 		}
 
 	public:

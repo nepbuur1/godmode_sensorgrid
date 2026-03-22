@@ -11,7 +11,7 @@ A polling-based sensor grid system consisting of five ESP32-S3 devices communica
 
 | App | Device(s) | Responsibility |
 |-----|-----------|---------------|
-| **sensor_v5** | ACM1 (ID=1), ACM0 (ID=2), USB0 (ID=3) | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 128 cached uint16_t measurements (8×16 grid). At startup, probes I2C for MCP23017: if found, reads real pressure sensor grid via 8× ADS1220 ADCs and ADG706 mux; if not, falls back to stub mode with simulated data. Uses double-buffered arrays. Each instance has a unique sensor ID. |
+| **sensor_v5** | ACM1 (ID=1), ACM0 (ID=2), USB0 (ID=3) | Reactive: responds to DISCOVER with REGISTER, responds to POLL with DATA containing 128 cached uint16_t measurements (8×16 grid). At startup, probes I2C for MCP23017: if found, reads real pressure sensor grid via 8× ADS1220 ADCs and ADG706 mux; if not, falls back to stub mode with simulated data. Uses double-buffered arrays. Each instance has a unique sensor ID. GPIO35 configured as snapshot button (active low, internal pullup, falling edge interrupt): when pressed, the next DATA response includes `snapshotRequested=true`, triggering a remote snapshot on the server's grid view. |
 | **server_v5** | ACM3 | Runs a WiFi access point, discovers and registers 3 sensors via broadcast, polls them in round-robin order via unicast, reassembles multi-packet responses (2 packets per sensor for 128 measurements), caches all measurements per sensor, and serves a multi-page web interface: a dashboard (showing first measurement per sensor, 0-65535 range), a grid visualization page (showing all 128 measurements of sensors 1-4 in a single-row layout with hex-packed grids, histograms, and statistics), and JSON APIs. Navigation bar links between pages. Flashes LED when sensors are missing. |
 | **client_v5** | ACM2 | Connects to the server's WiFi AP and runs automated HTTP tests against all web endpoints, reporting PASS/FAIL results via serial log. |
 
@@ -64,8 +64,8 @@ With 128 measurements (256 bytes), the DataPacket is split across 2 ESP-NOW fram
 | 1 | sensorId | `1` |
 | 2 | packetIndex | `1` |
 | 3 | totalPackets | `2` |
-| 4 | payloadSize | `11` |
-| 5–15 | payload | remaining 11 bytes |
+| 4 | payloadSize | `17` |
+| 5–21 | payload | remaining 17 bytes |
 
 The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minus the 5-byte header).
 
@@ -100,10 +100,10 @@ The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minu
 ```json
 {
   "sensors": [
-    {"id": 1, "count": 128, "values": [258, 259, ...], "hasLoadcell": true, "loadcellRaw": 97654},
-    {"id": 2, "count": 128, "values": [480, 481, ...], "hasLoadcell": false, "loadcellRaw": 0},
-    {"id": 3, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0},
-    {"id": 4, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0}
+    {"id": 1, "count": 128, "values": [258, 259, ...], "hasLoadcell": true, "loadcellRaw": 97654, "snapshotRequested": false},
+    {"id": 2, "count": 128, "values": [480, 481, ...], "hasLoadcell": false, "loadcellRaw": 0, "snapshotRequested": false},
+    {"id": 3, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0, "snapshotRequested": false},
+    {"id": 4, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0, "snapshotRequested": false}
   ]
 }
 ```

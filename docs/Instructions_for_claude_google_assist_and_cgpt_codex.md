@@ -429,3 +429,10 @@ raw input values from recording or input polling, 10 times per second.
   playing recording is still selected (uses recorded values) or not (uses polled input values).
 - As long as there are no Snapshots, the "Snapshot Replay" button should be grayed / non-responsive.
 
+### Phase 5z
+Now, as for the sensor application, I'd like it to configure IO35 as input-interrupt with internal pullup resistor, which responds to 
+a negative flank (caused by a button). Upon receiving the interrupt, the interrupt should be disabled until the next frame.
+Moreover, the current frame, when sent to the server, should include the information "snapshotFrameRequest" equal to "true".
+The server, as it polls its sensors, thus is notified via that information that a Snapshot is requested for the corresponding sensor.
+The effect is that after having polled and processed the sensor values, prior to polling the next frame, it responds as if the Snapshot button was pressed for the sensor panel of the corresponding sensor (with the snapshotFrameRequest true). This thus offers a possibility "to press the Snapshot button" from a remote sensor.
+

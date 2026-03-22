@@ -685,7 +685,7 @@ namespace crt
         return {
           id: id,
           count: (s.enabled && s.emaRawValues) ? s.emaRawValues.length : 0,
-          values: (s.enabled && s.emaRawValues) ? [...s.emaRawValues] : [],
+          values: (s.enabled && s.emaRawValues) ? s.emaRawValues.map(v => Math.round(v)) : [],
           hasLoadcell: s.enabled ? s.lcVisible : false,
           loadcellRaw: s.enabled ? s.lcLastRaw : 0,
           loadcellGram: (s.enabled && s.filteredWeight !== null) ? parseFloat(s.filteredWeight.toFixed(1)) : 0
@@ -1646,10 +1646,13 @@ namespace crt
     }
 
     function applyFrame(all) {
+      let snapshotTriggered = false;
       for (const data of all.sensors) {
         updateSensor(data.id, data);
         updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw);
+        if (data.snapshotRequested) snapshotTriggered = true;
       }
+      if (snapshotTriggered) snapTake();
     }
 
     async function fetchAll() {

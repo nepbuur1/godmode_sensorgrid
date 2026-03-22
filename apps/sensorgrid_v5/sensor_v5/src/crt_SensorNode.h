@@ -15,6 +15,19 @@
 
 namespace crt
 {
+	// Global volatile flags for snapshot ISR (must be outside class for IRAM_ATTR linkage)
+	static volatile bool g_snapshotButtonPressed = false;
+	static volatile bool g_snapshotInterruptArmed = true;
+
+	static void IRAM_ATTR snapshotISR()
+	{
+		if (g_snapshotInterruptArmed)
+		{
+			g_snapshotButtonPressed = true;
+			g_snapshotInterruptArmed = false;  // ignore further edges until next frame
+		}
+	}
+
 	class SensorNode
 	{
 	private:
@@ -35,6 +48,9 @@ namespace crt
 
 		// Optional HX711 loadcell
 		HX711Measurement hx711;
+
+		// Snapshot button on GPIO35 (active low with internal pullup)
+		static const int SNAPSHOT_PIN = 35;
 
 		static SensorNode* instance;
 		static bool serverPeerAdded;
@@ -108,18 +124,23 @@ namespace crt
 		{
 			ensureServerPeer(mac);
 
-			// Build combined payload: measurements + loadcell appendix
+			// Build combined payload: measurements + loadcell appendix + snapshot appendix
 			const uint16_t measBytes = MEASUREMENT_COUNT * sizeof(uint16_t);
 			LoadcellAppendix lcAppendix = {};
 			lcAppendix.hasLoadcell = hx711.isDetected() ? 1 : 0;
 			lcAppendix.rawValue = hx711.getRawValue();
 
-			const uint16_t totalBytes = measBytes + sizeof(LoadcellAppendix);
+			SnapshotAppendix snapAppendix = {};
+			snapAppendix.snapshotRequested = g_snapshotButtonPressed ? 1 : 0;
+			g_snapshotButtonPressed = false;
 
-			// Copy measurement data + appendix into a contiguous send buffer
-			uint8_t sendBuffer[measBytes + sizeof(LoadcellAppendix)];
+			const uint16_t totalBytes = measBytes + sizeof(LoadcellAppendix) + sizeof(SnapshotAppendix);
+
+			// Copy measurement data + appendices into a contiguous send buffer
+			uint8_t sendBuffer[measBytes + sizeof(LoadcellAppendix) + sizeof(SnapshotAppendix)];
 			memcpy(sendBuffer, measurements[readyIndex], measBytes);
 			memcpy(sendBuffer + measBytes, &lcAppendix, sizeof(LoadcellAppendix));
+			memcpy(sendBuffer + measBytes + sizeof(LoadcellAppendix), &snapAppendix, sizeof(SnapshotAppendix));
 
 			const uint8_t maxPerPacket = DATA_PAYLOAD_MAX_SIZE;
 			const uint8_t totalPackets = (totalBytes + maxPerPacket - 1) / maxPerPacket;
@@ -191,6 +212,11 @@ namespace crt
 			// Detect and initialize optional HX711 loadcell
 			hx711.init();
 
+			// Configure snapshot button on GPIO35 (active low, internal pullup)
+			::pinMode(SNAPSHOT_PIN, INPUT_PULLUP);
+			attachInterrupt(digitalPinToInterrupt(SNAPSHOT_PIN), crt::snapshotISR, FALLING);
+			ESP_LOGI("SensorNode", "Snapshot button configured on GPIO%d", SNAPSHOT_PIN);
+
 			// WiFi + ESP-NOW init
 			WiFi.mode(WIFI_STA);
 
@@ -216,6 +242,9 @@ namespace crt
 			if (now - lastSampleMs >= sampleIntervalMs)
 			{
 				lastSampleMs = now;
+
+				// Re-arm snapshot button for this frame
+				g_snapshotInterruptArmed = true;
 
 				// Write to the non-ready buffer (safe from handlePoll reads)
 				uint8_t writeIdx = 1 - readyIndex;

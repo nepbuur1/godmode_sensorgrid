@@ -58,4 +58,10 @@ namespace crt
 		int32_t rawValue;      // raw HX711 reading (signed 24-bit extended to 32-bit)
 	} __attribute__((packed));
 
+	// Appended after LoadcellAppendix in the DATA payload.
+	struct SnapshotAppendix
+	{
+		uint8_t snapshotRequested;  // 0 = no, 1 = snapshot requested via button press
+	} __attribute__((packed));
+
 } // end namespace crt
