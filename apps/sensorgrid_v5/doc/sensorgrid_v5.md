@@ -100,10 +100,10 @@ The maximum payload per packet is 245 bytes (ESP-NOW's 250-byte frame limit minu
 ```json
 {
   "sensors": [
-    {"id": 1, "count": 128, "values": [258, 259, ...]},
-    {"id": 2, "count": 128, "values": [480, 481, ...]},
-    {"id": 3, "count": 0, "values": []},
-    {"id": 4, "count": 0, "values": []}
+    {"id": 1, "count": 128, "values": [258, 259, ...], "hasLoadcell": true, "loadcellRaw": 97654},
+    {"id": 2, "count": 128, "values": [480, 481, ...], "hasLoadcell": false, "loadcellRaw": 0},
+    {"id": 3, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0},
+    {"id": 4, "count": 0, "values": [], "hasLoadcell": false, "loadcellRaw": 0}
   ]
 }
 ```
@@ -249,10 +249,38 @@ Below each diamond, a **histogram** shows the distribution of the current measur
 
 Below each histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
 
-Above the diamonds, two toggle buttons control circle coloring (applied to all four sensors simultaneously):
-- **Normalize** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-65535 range.
-- **Colorize** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
-- When both are active, the full color gradient is mapped to the current measurement range.
+Above the sensor widgets, toggle buttons control display modes (applied to all four sensors simultaneously):
+- **Norm Display** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-65535 range.
+- **MaxFixed Display** — normalizes color scale to a configurable "Fixed Max Display" value (default 2500). Mutually exclusive with Norm Display.
+- **Color Display** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
+- **Norm SumCap** — transforms displayed values using per-sensor captured sum: `calibrateSumGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Requires a sensor to be selected and captured.
+- **Norm IndivCap** — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle). Mutually exclusive with Norm SumCap.
+
+Additional control fields: **Fixed Max Display**, **Stats Filter** (EMA factor for statistics, default 0.9), **Value Filter** (EMA factor for circle values, default 0.5).
+
+#### Selected sensor info panel
+Clicking a sensor widget selects it (green border). A green-bordered info panel appears with:
+- **Remove Offset** — captures current values as baseline; subsequent readings show the difference
+- **Capture Sum** — captures the sum of displayed circle values and triggers residual noise measurement
+- **maxSumCaptured**, **avResidualNoiseSum** (read-only), **Calibrate Sum Grams** (editable) — per-sensor calibration fields
+- **Reset Indiv Caps** — resets all per-circle capture tuples for the selected sensor
+
+#### Selected circle info panel
+Clicking a circle within a selected sensor shows it with a blue border and reveals a red-bordered panel with 3 rows. Each row has a **Capture Indiv** button, captured value/grams fields, and a **Calibrate Grams Indiv** input. Circles with all 3 captures done display a black border.
+
+#### Record & Play panel
+Below the display control buttons, a grey-bordered panel provides record and playback controls for sensor data:
+
+- **Record** — turns red when active. Each frame received from `/api/allmeasurements` (containing all sensors' raw measurement arrays and loadcell data) is stored in a JavaScript array. Starting a new recording discards any previous recording.
+- **Pause** — toggles orange to pause/resume recording without discarding stored frames.
+- **Stop** — stops recording and un-presses the Record button. Enables the Play button.
+- **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data.
+- **Info label** — shows current state and frame count (e.g. "Recording: 47 frames", "Playing: 12/47").
+
+**Recording capacity estimate:** Each frame stores the parsed JSON response as a JavaScript object. With 4 sensors × 128 values (JS floats at 8 bytes each), plus object/array overhead in the V8 engine, each frame occupies roughly 10-15 KB of browser heap memory. At 10 fps (POLL_MS=100), this amounts to ~100-150 KB/sec or ~6-9 MB/min. With modern browsers allowing 1-4 GB of JS heap, recordings of **55-80+ minutes** are comfortably achievable. If longer recordings are needed in the future, the storage could be switched to typed arrays for ~5x reduction in memory usage.
+
+#### Per-sensor features
+Each sensor widget includes: hex-packed circle grid (or 3D WebGL surface view via "3D Surface" toggle), histogram, statistics table (sum, max, average, sqrt(var) with EMA filtering), running plot (top 3 circle values over 20 time slots), and loadcell section (if HX711 detected).
 
 ### Monitoring serial output
 

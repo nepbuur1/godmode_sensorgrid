@@ -368,4 +368,19 @@ Note that this works if one or more tuples have been specified.
 ### Phase 5t
 Great, now, if all tuples of a circle are zero, don't make its value the raw input value, but just make its value zero.
 
+### Phase 5u
+Below the current row of buttons (Norm display, MaxFixed Display, Color Display, Norm SumCap and NormIndivCap), I'd like another row of buttons and potentially other widgets (grouped with a grey border), which are dedicated to "record and play" functionality:
+- A Record button. When pressed-in, it becomes red, stays in, and recording starts:
+  All raw input data that is received from the sensors (both the gridsensor-info and the hx711 sensor-info) is efficiently
+  stored in a large bytestream, frame after frame (I believe there's about 10 fps coming in).
+- Next to the Record button, there is a Pause button. it can be toggled to pause recording.
+- Next to the Pause button, there is a Stop button. it can be pressed to stop recording, and to "release/un-press-in" the Record button.
+  (it is the only way to unpress the record button). The record button is no longer red, then.
+- Next to the Stop button, there is a Play button. It can only be pressed after a recording was stopped. Up till then, it is grayed.
+  If pressed, it becomes green. From then on, the view of the grid and loadcell of the sensor panels are being fed with the 
+  stored raw input data from the past, rather than with the incoming sensor data via espnow. 
+  So while playing, there is no need to poll for incoming sensor data.
+- If new recording is started using the Record button, any previously recorded data is overwritten.
+
+
 

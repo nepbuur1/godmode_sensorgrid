@@ -451,3 +451,115 @@ Calibration is done entirely in JavaScript using raw values from the sensor. For
 - Server logs confirm: `lc=1 raw=0` parsed correctly for both sensors (stub sensors, no physical HX711 attached)
 - Client_v5 9/9 HTTP tests passed, including new loadcell field verification
 
+### Phase 5f: Sum statistic and filtered stats (EMA)
+
+#### Summary
+Added "sum" column to the statistics table (sum of all circle values). All stats (sum, max, average, sqrt(var)) are now updated using an Exponential Moving Average (EMA) filter: `displayed = displayed * filterFactor + (1 - filterFactor) * new`. Default filter factor is 0.9. Added editable "Stats Filter" text field below the other control fields.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `filteredSum/filteredMax/filteredAvg/filteredStd` per-sensor state, `getStatsFilter()` function, EMA update in `updateStats()`, "Stats Filter" input field
+
+### Phase 5g: Running plot
+
+#### Summary
+Added a per-sensor running plot below the stats table. Plots the 3 largest circle values over the 20 most recent time slots (red = largest, green = 2nd, blue = 3rd). Vertical axis corresponds to the current display range (e.g. Fixed Max Display value when MaxFixed is active).
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `<canvas>` running-plot elements, `plotHistory[]` per-sensor state, `updatePlot()` function, `getPlotMax()` helper
+
+### Phase 5h: 3D surface view (WebGL)
+
+#### Summary
+Added a per-panel "3D Surface" toggle button that switches between the 2D circle grid and a 3D height-mapped mesh using custom WebGL (no external libraries). Vertex heights correspond to circle values, vertex colors use the same color/gray mapping as 2D view. Lighting with diffuse + specular shading. Histogram, stats, and running plot remain visible in both modes.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added WebGL shaders (GL_VS, GL_FS), matrix math functions (m4Mul, m4Pers, m4LookAt), `initGL()`, `renderSurface()`, `toggle3D()`, per-sensor GL state, surface canvas elements
+
+### Phase 5j: avResidualNoiseSum and negative circle values
+
+#### Summary
+Added "avResidualNoiseSum" calculation — captures average grid-sum noise over 1 second after removing offset. Updated Norm SumCap formula to use avResidualNoiseSum: `calibrateGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Circle values now support negative numbers (after offset subtraction).
+
+#### Modified files
+- **`crt_GridHtml.h`** — added residual noise collection state, 1-second sampling after `removeOffset()`, avResidualNoiseSum field, updated `getDisplayValues()` formula
+
+### Phase 5k: Cookie persistence for grid view settings
+
+#### Summary
+Added browser cookie persistence for all grid view settings. On page load, all toggle button states, field values, and calibration parameters are restored from cookies.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `setCookie()`/`getCookie()` functions, `restoreSettings()` on page load, `onchange` handlers saving to cookies for all input fields, `saveToggleStates()` for button states
+
+### Phase 5l: Per-circle value filter
+
+#### Summary
+Added per-circle EMA filtering with a separate filter constant. Added "Value Filter" text field (default 0.5) below "Stats Filter". Each circle value is smoothed independently: `filteredValues[i] = filteredValues[i] * vf + displayValues[i] * (1 - vf)`. Setting persisted in cookies.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `filteredValues` per-sensor state, `getValueFilter()` function, per-circle EMA in `updateSensor()`, "Value Filter" input field with cookie persistence
+
+### Phase 5m: Removed Norm MaxCap, renamed Capture to Capture Sum
+
+#### Summary
+Removed the "Norm MaxCap" button and "maxCaptured" field from the grid view (no longer needed). Renamed "Capture" button to "Capture Sum". Cleaned up all related JS state and cookie handling.
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed `normMaxCap` state, `toggleNormMaxCap()`, `maxCaptured` variable, associated cookie logic, simplified `doCapture()` to only track sum
+
+### Phase 5n: Selected sensor info panel
+
+#### Summary
+Restructured the grid view: maxSumCaptured, avResidualNoiseSum, and Calibrate Grams fields moved from the main control panel into a "selected sensor info panel" (green border, hidden until a sensor panel is clicked). Clicking a sensor widget selects it (green border). These values are now per-sensor with per-sensor cookie persistence. Capture Sum operates on the selected sensor only.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `.selected-info-panel` CSS, `selectedSensorId` state, `selectSensor()`, `onCalGramsChange()`, per-sensor `maxSumCaptured`/`avResidualNoiseSum`/`calGrams`, updated `doCapture()` and `getDisplayValues()` for per-sensor state
+
+### Phase 5o: avResidualNoise only on Remove Offset
+
+#### Summary
+Changed avResidualNoiseSum to only be updated when "Remove offset" is pressed, not when "Capture Sum" is pressed.
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed residual noise collection from `doCapture()`
+
+### Phase 5p: Norm IndivCap and per-circle capture tuples
+
+#### Summary
+Added "Norm IndivCap" toggle button (mutually exclusive with "Norm SumCap"). Renamed "Calibrate Grams" to "Calibrate Sum Grams". Each circle can store 3 capture tuples (captureValue, calibratedIndivGrams). Clicking a circle selects it (blue border), revealing a red-bordered "selected circle info panel" with 3 rows for capturing individual calibration points. Circles with all 3 tuples captured get a black border. Added "Reset Indiv Caps" button to reset all tuples for the selected sensor.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `.cell-selected`/`.cell-captured` CSS, `.circle-info-panel` UI, `indivCaps[]` per-sensor state, `selectCircle()`, `captureIndiv()`, `resetIndivCaps()`, `ensureIndivCaps()`, `updateCircleBorders()`, circle click handlers in `createGrid()`
+
+### Phase 5q: localStorage persistence for indivCaps
+
+#### Summary
+Switched indivCaps storage from cookies to localStorage. With 128 circles × 3 tuples, the JSON data (~12KB) exceeded the 4KB cookie size limit. localStorage supports 5MB+.
+
+#### Modified files
+- **`crt_GridHtml.h`** — changed `setCookie`/`getCookie` calls for indivCaps to `localStorage.setItem`/`getItem`, fixed `ensureIndivCaps()` to preserve existing data when resizing and skip count=0
+
+### Phase 5r: Remove Offset moved to info panel
+
+#### Summary
+Removed per-sensor "Remove offset" buttons from each sensor widget. Added a single "Remove Offset" button in the selected sensor info panel that operates on the currently selected sensor.
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed 4 per-sensor offset buttons, added `doRemoveOffset()` function and "Remove Offset" button in selected info panel
+
+### Phase 5s: Piecewise linear interpolation for Norm IndivCap
+
+#### Summary
+Implemented the Norm IndivCap display mode. Each circle's 3 capture tuples define a piecewise linear lookup curve from (0,0) through the captured points. Raw offset-compensated values are mapped through this curve to produce calibrated display values. Linear extrapolation is used beyond the last captured point.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `indivLookup()` function (piecewise linear interpolation/extrapolation), updated `getDisplayValues()` to use it when `normIndivCap` is active
+
+### Phase 5t: Zero value for uncaptured circles in Norm IndivCap
+
+#### Summary
+In Norm IndivCap mode, circles with all tuples at zero now display 0 instead of the raw input value.
+
+#### Modified files
+- **`crt_GridHtml.h`** — changed `indivLookup()` to return 0 when no tuples are set
+

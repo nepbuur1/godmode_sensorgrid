@@ -313,6 +313,51 @@ namespace crt
       text-align: center;
       color: #666;
     }
+    .rec-play-panel {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      border: 2px solid #aaa;
+      border-radius: 6px;
+      background: #f5f5f5;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+    .rec-play-panel button {
+      padding: 0.4rem 1rem;
+      border: 2px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .rec-play-panel button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .rec-play-panel button.rec-active {
+      background: #d32f2f;
+      color: #fff;
+      border-color: #b71c1c;
+    }
+    .rec-play-panel button.pause-active {
+      background: #f57c00;
+      color: #fff;
+      border-color: #e65100;
+    }
+    .rec-play-panel button.play-active {
+      background: #2e7d32;
+      color: #fff;
+      border-color: #1b5e20;
+    }
+    .rec-play-panel .rec-info {
+      font-size: 0.75rem;
+      color: #666;
+      min-width: 120px;
+    }
   </style>
 </head>
 <body>
@@ -335,6 +380,13 @@ namespace crt
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
         <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365)"/></label>
       </div>
+    </div>
+    <div class="rec-play-panel">
+      <button id="btnRecord" onclick="recRecord()">Record</button>
+      <button id="btnPause" onclick="recPause()" disabled>Pause</button>
+      <button id="btnStop" onclick="recStop()" disabled>Stop</button>
+      <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
+      <span class="rec-info" id="recInfo">Ready</span>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel">
       <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
@@ -478,6 +530,72 @@ namespace crt
     let normIndivCap = false;
     let selectedSensorId = null;
     let selectedCircleIdx = null;
+    // Record & Play state
+    // recState: 'idle' | 'recording' | 'paused' | 'stopped' | 'playing'
+    let recState = 'idle';
+    let recFrames = [];    // array of raw API response objects
+    let playIdx = 0;
+
+    function recRecord() {
+      recFrames = [];
+      playIdx = 0;
+      recState = 'recording';
+      document.getElementById('btnRecord').classList.add('rec-active');
+      document.getElementById('btnPause').disabled = false;
+      document.getElementById('btnPause').classList.remove('pause-active');
+      document.getElementById('btnStop').disabled = false;
+      document.getElementById('btnPlay').disabled = true;
+      document.getElementById('btnPlay').classList.remove('play-active');
+      recUpdateInfo();
+    }
+
+    function recPause() {
+      if (recState === 'recording') {
+        recState = 'paused';
+        document.getElementById('btnPause').classList.add('pause-active');
+      } else if (recState === 'paused') {
+        recState = 'recording';
+        document.getElementById('btnPause').classList.remove('pause-active');
+      }
+      recUpdateInfo();
+    }
+
+    function recStop() {
+      if (recState !== 'recording' && recState !== 'paused') return;
+      recState = 'stopped';
+      document.getElementById('btnRecord').classList.remove('rec-active');
+      document.getElementById('btnPause').disabled = true;
+      document.getElementById('btnPause').classList.remove('pause-active');
+      document.getElementById('btnStop').disabled = true;
+      document.getElementById('btnPlay').disabled = (recFrames.length === 0);
+      recUpdateInfo();
+    }
+
+    function recPlay() {
+      if (recFrames.length === 0) return;
+      if (recState === 'playing') {
+        // Stop playback, return to stopped state
+        recState = 'stopped';
+        document.getElementById('btnPlay').classList.remove('play-active');
+        recUpdateInfo();
+        return;
+      }
+      recState = 'playing';
+      playIdx = 0;
+      document.getElementById('btnPlay').classList.add('play-active');
+      document.getElementById('btnRecord').classList.remove('rec-active');
+      recUpdateInfo();
+    }
+
+    function recUpdateInfo() {
+      const el = document.getElementById('recInfo');
+      if (recState === 'recording') el.textContent = 'Recording: ' + recFrames.length + ' frames';
+      else if (recState === 'paused') el.textContent = 'Paused: ' + recFrames.length + ' frames';
+      else if (recState === 'stopped') el.textContent = 'Stopped: ' + recFrames.length + ' frames';
+      else if (recState === 'playing') el.textContent = 'Playing: ' + (playIdx) + '/' + recFrames.length;
+      else el.textContent = 'Ready';
+    }
+
     // Residual noise measurement state
     let residualCollecting = false;
     let residualSensorId = null;
@@ -1315,15 +1433,24 @@ namespace crt
       updateCircleBorders(s);
     }
 
+    function applyFrame(all) {
+      for (const data of all.sensors) {
+        updateSensor(data.id, data);
+        updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw);
+      }
+    }
+
     async function fetchAll() {
       try {
         const res = await fetch("/api/allmeasurements");
         if (!res.ok) return;
         const all = await res.json();
-        for (const data of all.sensors) {
-          updateSensor(data.id, data);
-          updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw);
+        // Record frame if recording
+        if (recState === 'recording') {
+          recFrames.push(all);
+          recUpdateInfo();
         }
+        applyFrame(all);
         // Collect residual noise samples after offset removal
         if (residualCollecting && residualSensorId !== null) {
           const s = sensors[residualSensorId];
@@ -1363,7 +1490,18 @@ namespace crt
     });
     async function pollLoop() {
       const start = Date.now();
-      await fetchAll();
+      if (recState === 'playing') {
+        if (playIdx < recFrames.length) {
+          applyFrame(recFrames[playIdx]);
+          playIdx++;
+          recUpdateInfo();
+        }
+        if (playIdx >= recFrames.length) {
+          playIdx = 0; // loop back to start
+        }
+      } else {
+        await fetchAll();
+      }
       const remaining = Math.max(0, POLL_MS - (Date.now() - start));
       setTimeout(pollLoop, remaining);
     }

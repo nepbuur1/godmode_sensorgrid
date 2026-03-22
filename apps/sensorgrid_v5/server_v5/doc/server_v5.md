@@ -1,7 +1,7 @@
 # server_v5
 
 ## Summary
-Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all 3 expected sensors, then polls them in round-robin order. Each sensor responds with an array of 64 uint16_t measurements (multi-packet reassembly supported for larger payloads). The server caches all measurements per sensor and serves a multi-page web interface: a dashboard showing the first measurement per sensor, a grid visualization page showing all measurements of sensors 1-4 in a single-row layout with diamond grids, histograms, and statistics, and JSON APIs for both summary and per-sensor measurement data. Flashes the onboard LED when any sensor is missing.
+Server node app for the sensorgrid. Runs a WiFi access point and actively polls sensor nodes for data using ESP-NOW. Operates a state machine: first discovers and registers all 3 expected sensors, then polls them in round-robin order. Each sensor responds with 128 uint16_t measurements plus an optional loadcell appendix (multi-packet reassembly, 2 packets per sensor). The server caches all measurements and loadcell data per sensor and serves a multi-page web interface: a dashboard showing the first measurement per sensor, a grid visualization page with hex-packed circle grids (or 3D WebGL surface), histograms, EMA-filtered statistics, running plots, loadcell weight display, per-sensor/per-circle calibration panels, and multiple normalization modes (Norm Display, MaxFixed Display, Norm SumCap, Norm IndivCap). JSON APIs serve both summary and per-sensor measurement data including loadcell fields. Flashes the onboard LED when any sensor is missing.
 
 ## Object Model
 
