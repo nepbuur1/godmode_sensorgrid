@@ -400,24 +400,24 @@ I'd like to add to that "loadcellGram", which is the value in grams of the calib
 ### Phase 5y
 Currently, every frame, circle values are calculated and EMA filtered using the "Value Filter" setting.
 That is great, I certainly want to keep it that way.
-But in addition, I'd like to calculate for every raw input value also it's ema-sibling, called ema-raw input, because I'd like to use it for "snapshots":
+But in addition, using the same filter setting, I'd like to calculate for every raw input value also it's ema-sibling, called ema-raw input, because I'd like to use it for "snapshots":
 I'd like to add a "Snapshot" recording panel, below the Recording panel, with lila border:
 - First button "Snapshot": like with record, but instead of storing the raw input values it stores the ema-raw values
   (which could either originate from inputs or prerecorded raw values that are being streamed, depending on whether
-  recording playmode is active), and unlike with record, it only adds them only exactly when the snapshot button got pressed (so not streaming).
+  recording playmode is active), and unlike with record, it adds them only exactly when the snapshot button got pressed (so not streaming).
 - Second button "Clear Snapshots".
 - Download button (allowing to download the snapshots, similar to downloading a recording).
-- A textfield showing the amount of snapshots.
-The row below it, is meant for replaying snapshots:
+- A textfield showing the amount of snapshots so far.
+The row below it is meant for replaying snapshots:
 - A button "Snapshot Replay"
-When that button is pressed, it disappears and next buttons and widges appear instead on its row:
+When that button is pressed, it disappears and next buttons and widgets appear instead on its row:
 - A button "Step Back"
 - A button "Step Forward"
 - A button "Goto First"
 - A button "Goto Last"
 - A button "Stop Snapshot Replay"
 - A textfield that shows the currently selected Snapshot index, starting with 0.
-In "Snapshot Replay mode", the (ema-raw) values of the snapshot are being used instead of the 
+In "Snapshot Replay mode", the (ema-raw) values (rounded to integers) of the snapshot are being used instead of the 
 raw input values from recording or input polling, 10 times per second.
 - The Back button lowers the index, unless it is already zero
 - The Forward button increases the index, unless there are no snapshots left.

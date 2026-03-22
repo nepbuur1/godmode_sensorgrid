@@ -281,6 +281,26 @@ Below the display control buttons, a grey-bordered panel provides record and pla
 
 **Recording capacity estimate:** Each frame stores the parsed JSON response as a JavaScript object. With 4 sensors × 128 values (JS floats at 8 bytes each), plus object/array overhead in the V8 engine, each frame occupies roughly 10-15 KB of browser heap memory. At 10 fps (POLL_MS=100), this amounts to ~100-150 KB/sec or ~6-9 MB/min. With modern browsers allowing 1-4 GB of JS heap, recordings of **55-80+ minutes** are comfortably achievable. If longer recordings are needed in the future, the storage could be switched to typed arrays for ~5x reduction in memory usage.
 
+#### Snapshot panel
+Below the recording panel, a lila-bordered panel provides snapshot capture and replay:
+
+**EMA-raw values:** In addition to the existing per-circle EMA-filtered display values, each sensor maintains `emaRawValues` — an EMA filter applied directly to the raw input values using the same Value Filter setting. These EMA-raw values are what snapshots capture.
+
+**Capture row:**
+- **Snapshot** — captures the current EMA-raw values of all enabled sensors as a single frame (works with both live and recording-playback data)
+- **Clear Snapshots** — discards all snapshots and exits snapshot replay if active
+- **Download** — downloads snapshots as JSON (enabled when snapshots exist)
+- **Info label** — shows snapshot count
+
+**Replay row:**
+- **Snapshot Replay** button (enabled when snapshots exist) — enters replay mode, revealing navigation controls:
+  - **Step Back** / **Step Forward** — navigate between snapshots
+  - **Goto First** / **Goto Last** — jump to first or last snapshot
+  - **Stop Snapshot Replay** — exits replay mode, returning to the previous data source (recording playback or live polling)
+  - **Index display** — shows current snapshot index
+
+In snapshot replay mode, the selected snapshot's values are fed to the display pipeline at 10 fps, replacing live or recorded data.
+
 #### Per-sensor features
 Each sensor widget includes: hex-packed circle grid (or 3D WebGL surface view via "3D Surface" toggle), histogram, statistics table (sum, max, average, sqrt(var) with EMA filtering), running plot (top 3 circle values over 20 time slots), and loadcell section (if HX711 detected).
 

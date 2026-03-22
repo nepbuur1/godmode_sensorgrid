@@ -358,6 +358,45 @@ namespace crt
       color: #666;
       min-width: 120px;
     }
+    .snapshot-panel {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      border: 2px solid #b39ddb;
+      border-radius: 6px;
+      background: #f3e5f5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .snapshot-row {
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+      justify-content: center;
+    }
+    .snapshot-panel button {
+      padding: 0.4rem 1rem;
+      border: 2px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .snapshot-panel button:disabled {
+      opacity: 0.4;
+      cursor: default;
+    }
+    .snapshot-panel button.snap-replay-active {
+      background: #7b1fa2;
+      color: #fff;
+      border-color: #4a148c;
+    }
+    .snapshot-panel .snap-info {
+      font-size: 0.75rem;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -388,6 +427,25 @@ namespace crt
       <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
       <button id="btnDownload" onclick="recDownload()" disabled>Download</button>
       <span class="rec-info" id="recInfo">Ready</span>
+    </div>
+    <div class="snapshot-panel">
+      <div class="snapshot-row">
+        <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
+        <button id="btnSnapClear" onclick="snapClear()">Clear Snapshots</button>
+        <button id="btnSnapDownload" onclick="snapDownload()" disabled>Download</button>
+        <span class="snap-info" id="snapInfo">Snapshots: 0</span>
+      </div>
+      <div class="snapshot-row" id="snapReplayRow">
+        <button id="btnSnapReplay" onclick="snapReplayStart()" disabled>Snapshot Replay</button>
+      </div>
+      <div class="snapshot-row" id="snapControlRow" style="display:none;">
+        <button onclick="snapStepBack()">Step Back</button>
+        <button onclick="snapStepForward()">Step Forward</button>
+        <button onclick="snapGotoFirst()">Goto First</button>
+        <button onclick="snapGotoLast()">Goto Last</button>
+        <button onclick="snapReplayStop()">Stop Snapshot Replay</button>
+        <span class="snap-info" id="snapIdxInfo">Index: 0</span>
+      </div>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel">
       <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
@@ -615,6 +673,91 @@ namespace crt
       else el.textContent = 'Ready';
     }
 
+    // Snapshot state
+    let snapFrames = [];  // array of snapshot frames (each = {sensors: [{id, emaRawValues, hasLoadcell, loadcellRaw, loadcellGram}, ...]})
+    let snapReplaying = false;
+    let snapIdx = 0;
+
+    function snapTake() {
+      // Build a snapshot from current emaRawValues of all sensors
+      const frame = {sensors: SENSOR_IDS.map(id => {
+        const s = sensors[id];
+        return {
+          id: id,
+          count: (s.enabled && s.emaRawValues) ? s.emaRawValues.length : 0,
+          values: (s.enabled && s.emaRawValues) ? [...s.emaRawValues] : [],
+          hasLoadcell: s.enabled ? s.lcVisible : false,
+          loadcellRaw: s.enabled ? s.lcLastRaw : 0,
+          loadcellGram: (s.enabled && s.filteredWeight !== null) ? parseFloat(s.filteredWeight.toFixed(1)) : 0
+        };
+      })};
+      snapFrames.push(frame);
+      snapUpdateUI();
+    }
+
+    function snapClear() {
+      snapFrames = [];
+      if (snapReplaying) snapReplayStop();
+      snapIdx = 0;
+      snapUpdateUI();
+    }
+
+    function snapDownload() {
+      if (snapFrames.length === 0) return;
+      const json = JSON.stringify(snapFrames);
+      const blob = new Blob([json], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = 'snapshots_' + ts + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function snapReplayStart() {
+      if (snapFrames.length === 0) return;
+      snapReplaying = true;
+      snapIdx = 0;
+      document.getElementById('snapReplayRow').style.display = 'none';
+      document.getElementById('snapControlRow').style.display = 'flex';
+      snapUpdateUI();
+    }
+
+    function snapReplayStop() {
+      snapReplaying = false;
+      document.getElementById('snapControlRow').style.display = 'none';
+      document.getElementById('snapReplayRow').style.display = 'flex';
+      snapUpdateUI();
+    }
+
+    function snapStepBack() {
+      if (snapIdx > 0) snapIdx--;
+      snapUpdateUI();
+    }
+
+    function snapStepForward() {
+      if (snapIdx < snapFrames.length - 1) snapIdx++;
+      snapUpdateUI();
+    }
+
+    function snapGotoFirst() {
+      snapIdx = 0;
+      snapUpdateUI();
+    }
+
+    function snapGotoLast() {
+      if (snapFrames.length > 0) snapIdx = snapFrames.length - 1;
+      snapUpdateUI();
+    }
+
+    function snapUpdateUI() {
+      document.getElementById('snapInfo').textContent = 'Snapshots: ' + snapFrames.length;
+      document.getElementById('snapIdxInfo').textContent = 'Index: ' + snapIdx;
+      document.getElementById('btnSnapDownload').disabled = (snapFrames.length === 0);
+      document.getElementById('btnSnapReplay').disabled = (snapFrames.length === 0);
+    }
+
     // Residual noise measurement state
     let residualCollecting = false;
     let residualSensorId = null;
@@ -662,7 +805,8 @@ namespace crt
         calGrams: 1000,
         // Per-circle indiv captures: array of [{cap,grams},{cap,grams},{cap,grams}] per circle
         indivCaps: [],
-        enabled: true
+        enabled: true,
+        emaRawValues: null
       };
     });
     const statusEl = document.getElementById("status");
@@ -1462,10 +1606,18 @@ namespace crt
         createGrid(s, data.count, id);
       }
       s.lastValues = data.values;
+      // Compute EMA of raw input values (used for snapshots)
+      const vf = getValueFilter();
+      if (s.emaRawValues === null || s.emaRawValues.length !== data.values.length) {
+        s.emaRawValues = [...data.values];
+      } else {
+        for (let i = 0; i < data.values.length; i++) {
+          s.emaRawValues[i] = s.emaRawValues[i] * vf + data.values[i] * (1 - vf);
+        }
+      }
       const displayValues = getDisplayValues(s, id);
       if (displayValues.length === 0) return;
       // Apply per-circle EMA filtering
-      const vf = getValueFilter();
       if (s.filteredValues === null || s.filteredValues.length !== displayValues.length) {
         s.filteredValues = [...displayValues];
       } else {
@@ -1556,7 +1708,9 @@ namespace crt
     });
     async function pollLoop() {
       const start = Date.now();
-      if (recState === 'playing') {
+      if (snapReplaying && snapFrames.length > 0) {
+        applyFrame(snapFrames[snapIdx]);
+      } else if (recState === 'playing') {
         if (playIdx < recFrames.length) {
           applyFrame(recFrames[playIdx]);
           playIdx++;
