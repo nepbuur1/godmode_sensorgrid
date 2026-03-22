@@ -272,7 +272,7 @@ Clicking a circle within a selected sensor shows it with a blue border and revea
 #### Record & Play panel
 Below the display control buttons, a grey-bordered panel provides record and playback controls for sensor data:
 
-- **Record** — turns red when active. Each frame received from `/api/allmeasurements` (containing all sensors' raw measurement arrays and loadcell data) is stored in a JavaScript array. Starting a new recording discards any previous recording.
+- **Record** — turns red when active. Each frame received from `/api/allmeasurements` is stored in a JavaScript array, enriched with `loadcellGram` (the browser-computed calibrated weight in grams, using the current tare/scale settings) alongside the raw `loadcellRaw` value. Disabled sensors are recorded as empty data. Starting a new recording discards any previous recording.
 - **Pause** — toggles orange to pause/resume recording without discarding stored frames.
 - **Stop** — stops recording and un-presses the Record button. Enables the Play button.
 - **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data.

@@ -394,3 +394,38 @@ By default, it is enabled. But if it is checked as disabled, with regard to data
 and recording, it will be treated as a sensor that is not powered/online.
 
 ### Phase 5x
+Currently, only "loadcellRaw" is transmitted for each sensor, each frame.
+I'd like to add to that "loadcellGram", which is the value in grams of the calibrated loadcell, as shown at that time as text value in the loadcell panel of the sensor.
+
+### Phase 5y
+Currently, every frame, circle values are calculated and EMA filtered using the "Value Filter" setting.
+That is great, I certainly want to keep it that way.
+But in addition, I'd like to calculate for every raw input value also it's ema-sibling, called ema-raw input, because I'd like to use it for "snapshots":
+I'd like to add a "Snapshot" recording panel, below the Recording panel, with lila border:
+- First button "Snapshot": like with record, but instead of storing the raw input values it stores the ema-raw values
+  (which could either originate from inputs or prerecorded raw values that are being streamed, depending on whether
+  recording playmode is active), and unlike with record, it only adds them only exactly when the snapshot button got pressed (so not streaming).
+- Second button "Clear Snapshots".
+- Download button (allowing to download the snapshots, similar to downloading a recording).
+- A textfield showing the amount of snapshots.
+The row below it, is meant for replaying snapshots:
+- A button "Snapshot Replay"
+When that button is pressed, it disappears and next buttons and widges appear instead on its row:
+- A button "Step Back"
+- A button "Step Forward"
+- A button "Goto First"
+- A button "Goto Last"
+- A button "Stop Snapshot Replay"
+- A textfield that shows the currently selected Snapshot index, starting with 0.
+In "Snapshot Replay mode", the (ema-raw) values of the snapshot are being used instead of the 
+raw input values from recording or input polling, 10 times per second.
+- The Back button lowers the index, unless it is already zero
+- The Forward button increases the index, unless there are no snapshots left.
+- Goto First resets the index to 0.
+- Goto Last sets is to the last snapshot.
+- "Snapshot replay mode" should be exited whenever "Stop Snapshot Replay" is selected, or when 
+  "Clear Snapshots" is pressed.
+- In that case, the source of raw input values for displaying depends on whether
+  playing recording is still selected (uses recorded values) or not (uses polled input values).
+- As long as there are no Snapshots, the "Snapshot Replay" button should be grayed / non-responsive.
+

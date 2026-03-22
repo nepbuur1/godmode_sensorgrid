@@ -1505,17 +1505,18 @@ namespace crt
         const res = await fetch("/api/allmeasurements");
         if (!res.ok) return;
         const all = await res.json();
-        // Record frame if recording (filter out disabled sensors)
+        applyFrame(all);
+        // Record frame after applyFrame so filteredWeight is up to date
         if (recState === 'recording') {
           const filtered = {sensors: all.sensors.map(d => {
             const s = sensors[d.id];
-            if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0};
-            return d;
+            if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0, loadcellGram: 0};
+            const gram = (s && s.filteredWeight !== null) ? parseFloat(s.filteredWeight.toFixed(1)) : 0;
+            return {id: d.id, count: d.count, values: d.values, hasLoadcell: d.hasLoadcell, loadcellRaw: d.loadcellRaw, loadcellGram: gram};
           })};
           recFrames.push(filtered);
           recUpdateInfo();
         }
-        applyFrame(all);
         // Collect residual noise samples after offset removal
         if (residualCollecting && residualSensorId !== null) {
           const s = sensors[residualSensorId];
