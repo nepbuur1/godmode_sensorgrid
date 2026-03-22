@@ -382,5 +382,8 @@ Below the current row of buttons (Norm display, MaxFixed Display, Color Display,
   So while playing, there is no need to poll for incoming sensor data.
 - If new recording is started using the Record button, any previously recorded data is overwritten.
 
-
+### Phase 5v
+On the right side of the record panel discussed att phase 5u, I'd like to add a "Download" button.
+It can be used to download the latest stopped or paused recording thus far, for now, lets's just download the json that you're currently storing the recorded data in.
+As long as no recording has been made, or recording is in progress (not paused), that download button is grayed, and cannot be pressed.
 

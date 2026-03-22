@@ -386,6 +386,7 @@ namespace crt
       <button id="btnPause" onclick="recPause()" disabled>Pause</button>
       <button id="btnStop" onclick="recStop()" disabled>Stop</button>
       <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
+      <button id="btnDownload" onclick="recDownload()" disabled>Download</button>
       <span class="rec-info" id="recInfo">Ready</span>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel">
@@ -546,6 +547,7 @@ namespace crt
       document.getElementById('btnStop').disabled = false;
       document.getElementById('btnPlay').disabled = true;
       document.getElementById('btnPlay').classList.remove('play-active');
+      document.getElementById('btnDownload').disabled = true;
       recUpdateInfo();
     }
 
@@ -553,9 +555,11 @@ namespace crt
       if (recState === 'recording') {
         recState = 'paused';
         document.getElementById('btnPause').classList.add('pause-active');
+        document.getElementById('btnDownload').disabled = (recFrames.length === 0);
       } else if (recState === 'paused') {
         recState = 'recording';
         document.getElementById('btnPause').classList.remove('pause-active');
+        document.getElementById('btnDownload').disabled = true;
       }
       recUpdateInfo();
     }
@@ -568,6 +572,7 @@ namespace crt
       document.getElementById('btnPause').classList.remove('pause-active');
       document.getElementById('btnStop').disabled = true;
       document.getElementById('btnPlay').disabled = (recFrames.length === 0);
+      document.getElementById('btnDownload').disabled = (recFrames.length === 0);
       recUpdateInfo();
     }
 
@@ -585,6 +590,19 @@ namespace crt
       document.getElementById('btnPlay').classList.add('play-active');
       document.getElementById('btnRecord').classList.remove('rec-active');
       recUpdateInfo();
+    }
+
+    function recDownload() {
+      if (recFrames.length === 0) return;
+      const json = JSON.stringify(recFrames);
+      const blob = new Blob([json], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      a.download = 'recording_' + ts + '.json';
+      a.click();
+      URL.revokeObjectURL(url);
     }
 
     function recUpdateInfo() {

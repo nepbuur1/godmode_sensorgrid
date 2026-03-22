@@ -275,6 +275,7 @@ Below the display control buttons, a grey-bordered panel provides record and pla
 - **Pause** — toggles orange to pause/resume recording without discarding stored frames.
 - **Stop** — stops recording and un-presses the Record button. Enables the Play button.
 - **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data.
+- **Download** — downloads the recorded frames as a JSON file (timestamped filename). Enabled only when recording is paused or stopped with frames available.
 - **Info label** — shows current state and frame count (e.g. "Recording: 47 frames", "Playing: 12/47").
 
 **Recording capacity estimate:** Each frame stores the parsed JSON response as a JavaScript object. With 4 sensors × 128 values (JS floats at 8 bytes each), plus object/array overhead in the V8 engine, each frame occupies roughly 10-15 KB of browser heap memory. At 10 fps (POLL_MS=100), this amounts to ~100-150 KB/sec or ~6-9 MB/min. With modern browsers allowing 1-4 GB of JS heap, recordings of **55-80+ minutes** are comfortably achievable. If longer recordings are needed in the future, the storage could be switched to typed arrays for ~5x reduction in memory usage.
