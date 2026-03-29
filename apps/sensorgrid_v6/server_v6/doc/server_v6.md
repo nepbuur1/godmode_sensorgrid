@@ -68,3 +68,10 @@ Server node app for the sensorgrid. Runs a WiFi access point and actively polls 
   - ? set newRegisterReceived + register data
   - ? reassemble multi-packet DATA into reassemblyBuffer
   - ? set newDataReceived when all packets received
+
+## Known Limitations
+
+### Grid HTML page size limit (~67 KB)
+The grid visualization page (`crt_GridHtml.h`) is served as a single `const char[]` raw literal via `server.send()`. When the HTML exceeds approximately 67 KB, the ESP32-S3 WebServer silently fails: it returns HTTP 200 with `Content-Length: 0` (empty body). This was confirmed by adding a 20 KB padding comment to the HTML and observing the failure in Chrome DevTools.
+
+The exact threshold depends on available heap at the time of the request. The current working size is ~66.5 KB. To stay within the limit, non-essential JS comments were removed during phase 6f to make room for new features. Future additions to the grid page should account for this constraint — either by trimming existing code or by switching to chunked transfer encoding / serving the page from SPIFFS/LittleFS.

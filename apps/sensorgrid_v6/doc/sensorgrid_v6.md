@@ -313,3 +313,25 @@ idf.py -p /dev/ttyACMx monitor
 (replace `x` with 0, 1, 2, or 3)
 
 Press `Ctrl+]` to exit the monitor.
+
+### Known limitations
+
+#### Grid HTML page size limit (~67 KB)
+The grid visualization page (`crt_GridHtml.h`) is stored as a `const char[]` raw literal and served via the ESP32 WebServer's `server.send()`. When the total HTML size exceeds approximately 67 KB, the WebServer silently fails — returning HTTP 200 with `Content-Length: 0` (empty body). This was experimentally confirmed by adding 20 KB of padding and observing the failure. The current working size is ~66.5 KB. When adding new features to the grid page, existing code may need to be trimmed (e.g. removing comments) to stay within the limit.
+
+#### Grid HTML size breakdown
+
+| Section | Size | % |
+|---------|------|---|
+| HTML body structure (buttons, panels, inputs, layout divs) | 11.3 KB | 17% |
+| CSS (styles for all panels, grids, buttons, colors) | 8.8 KB | 13% |
+| Grid/circle rendering (hex grid creation, circle drawing, colorization) | 6.8 KB | 10% |
+| WebGL 3D surface (shaders, mesh generation, GL calls) | 6.8 KB | 10% |
+| applyFrame/fetchAll/pollLoop (data pipeline, EMA filtering, main loop) | 5.4 KB | 8% |
+| Record/Play functions (record, pause, stop, play, playpaused, upload, slider) | 5.1 KB | 8% |
+| Color/calibration (color gradients, norm modes, indiv/sum calibration) | 4.7 KB | 7% |
+| Sensor state & selection (per-sensor object, click handlers, info panels) | 4.6 KB | 7% |
+| Snapshot functions (take, clear, download, upload, replay, slider) | 4.2 KB | 6% |
+| Loadcell support (tare, scale, weight display, cookie persistence) | 3.2 KB | 5% |
+| Histogram drawing (bin counting, bar rendering) | 3.1 KB | 5% |
+| Plot drawing (running plot of top 3 values) | 2.2 KB | 3% |
