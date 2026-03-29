@@ -88,6 +88,7 @@ namespace crt
       <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
       <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
       <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
+      <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
     <div class="circle-info-panel" id="circleInfoPanel">
       <div class="circle-info-row">
@@ -108,6 +109,7 @@ namespace crt
         <label>grams <input type="text" id="ciGrams2" readonly value="-" size="6"/></label>
         <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
       </div>
+      <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
     <div class="sensor-layout">
       <div class="sensor-widget" id="sw1" onclick="selectSensor(1)">
@@ -371,6 +373,12 @@ namespace crt
 
     function doCapture() {
       if (selectedSensorId === null) return;
+      if (normSumCap || normIndivCap) {
+        var msg = "Please first disable " + (normSumCap ? "NormSumCap" : "NormIndivCap") + " mode and wait a few seconds.";
+        var el = document.getElementById("captureError");
+        el.textContent = msg; el.style.display = "inline";
+        return;
+      }
       const s = sensors[selectedSensorId];
       if (s.lastValues.length === 0) return;
       const displayValues = getDisplayValues(s, selectedSensorId);
@@ -381,12 +389,17 @@ namespace crt
       setCookie("gvMaxSumCaptured" + selectedSensorId, sum, 365);
       recolorAll();
     }
+    function clearCaptureErrors() {
+      document.getElementById("captureError").style.display = "none";
+      document.getElementById("captureIndivError").style.display = "none";
+    }
     function toggleNormSumCap() {
       normSumCap = !normSumCap;
       if (normSumCap) {
         normIndivCap = false;
         document.getElementById("btnNormIndivCap").classList.remove("active");
       }
+      if (!normSumCap && !normIndivCap) clearCaptureErrors();
       document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
       saveToggleStates();
       recolorAll();
@@ -397,6 +410,7 @@ namespace crt
         normSumCap = false;
         document.getElementById("btnNormSumCap").classList.remove("active");
       }
+      if (!normSumCap && !normIndivCap) clearCaptureErrors();
       document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
       saveToggleStates();
       recolorAll();
@@ -462,6 +476,12 @@ namespace crt
 
     function captureIndiv(tupleIdx) {
       if (selectedSensorId === null || selectedCircleIdx === null) return;
+      if (normSumCap || normIndivCap) {
+        var msg = "Please first disable " + (normSumCap ? "NormSumCap" : "NormIndivCap") + " mode and wait a few seconds.";
+        var el = document.getElementById("captureIndivError");
+        el.textContent = msg; el.style.display = "inline";
+        return;
+      }
       const s = sensors[selectedSensorId];
       if (s.filteredValues === null || selectedCircleIdx >= s.filteredValues.length) return;
       ensureIndivCaps(s, s.cells.length);

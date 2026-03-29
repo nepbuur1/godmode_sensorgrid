@@ -486,7 +486,11 @@ Please alse move to separate files that are to be served separately:
 - Record/Play functions (record, pause, stop, play, playpaused, upload, slider)
 - Snapshot functions (take, clear, download, upload, replay, slider)
 - Loadcell support (tare, scale, weight display, cookie persistence)
-- Loadcell support (tare, scale, weight display, cookie persistence)
 - Histogram drawing (bin counting, bar rendering)
 - Plot drawing (running plot of top 3 values)
 
+### Phase 6j
+If Capture Sum button is pressed while Norm SumCap is enabled, don't let it do it's thing. Just show a error message: "Please first disable NormSumCap mode and wait a few seconds."
+The error message disappears once Norm SumCap is disabled.
+Similarly, if Capture Sum button is pressed while "Norm IndivCap" is enabled, similar behaviour.
+Similarly, if Capture Indiv1, 2 or 3 is pressed while Norm SumCap or Norm IndivCap is enabled, apply similar behaviour.
