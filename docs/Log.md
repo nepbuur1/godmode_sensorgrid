@@ -563,3 +563,138 @@ In Norm IndivCap mode, circles with all tuples at zero now display 0 instead of 
 #### Modified files
 - **`crt_GridHtml.h`** — changed `indivLookup()` to return 0 when no tuples are set
 
+## Phase 6
+
+### Summary
+Created sensorgrid_v6 by fully copying sensorgrid_v5 and renaming all sub-apps from v5 to v6 (server_v6, sensor_v6, client_v6). No code changes, providing a clean baseline for v6 features.
+
+### What was done
+- Copied `apps/sensorgrid_v5/` to `apps/sensorgrid_v6/`
+- Renamed directories, source files, includes, log strings, and documentation from v5 to v6
+- Added v6 include paths to `main/CMakeLists.txt`
+- Added v6 includes to `main/main.cpp`
+
+### Phase 6a: Dynamic sensor discovery (time-based)
+
+#### Summary
+Changed the server from waiting for a fixed number of sensors to using a 10-second discovery window. After the window, the server transitions to operational mode if at least one sensor has registered. Green LED flashes during discovery window; red after window expires with no sensors. Old fixed-count behavior preserved via `USE_TIMED_DISCOVERY` define.
+
+#### Modified files
+- **`server_v6_ino.h`** — added `USE_TIMED_DISCOVERY` define, `DISCOVER_WINDOW_MS` constant
+- **`crt_ServerNode.h`** — added `initMs` member, time-based discovery logic, conditional green/red LED flashing
+
+### Phase 6b: Snapshot upload
+
+#### Summary
+Added an Upload button to the Snapshots panel, allowing previously downloaded snapshot files to be uploaded and replayed.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `btnSnapUpload` button and `snapFileInput` file input element
+- **`crt_GridSnapshot.h`** (later split) — added `snapUpload(event)` function to parse and load JSON snapshot files
+
+### Phase 6c: Record upload
+
+#### Summary
+Added an Upload button to the Record panel, allowing previously downloaded recording files to be uploaded and played back.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `btnRecUpload` button and `recFileInput` file input element
+- **`crt_GridRecPlay.h`** (later split) — added `recUpload(event)` function to parse and load JSON recording files
+
+### Phase 6d: Snapshot slider
+
+#### Summary
+Added a horizontal slider to the Snapshots panel for quick navigation between snapshots. The slider is only visible when more than 3 snapshots are present.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `snapSliderRow` element (initially hidden)
+- **`crt_GridSnapshot.h`** (later split) — added `snapSliderChange(val)` function, slider sync with snapshot index
+
+### Phase 6e: Play pause button and button group spacing
+
+#### Summary
+Added a Pause button for playback in the Record panel (separate from the recording pause). Added spacing between button groups to clarify grouping: Record/Pause/Stop | Play/Pause | Download/Upload.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `btnPlayPause` button, margin-left spacing between button groups
+- **`crt_GridRecPlay.h`** (later split) — added `recPlayPause()` function, "playpaused" state handling
+- **`crt_GridCss.h`** (later split) — added `.pause-active` CSS class (orange background)
+
+### Phase 6f: Record slider
+
+#### Summary
+Added a horizontal slider to the Record panel, visible during playback. The slider syncs bidirectionally: dragging it sets the playback position, and during playback the slider automatically updates to reflect the current frame.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `recSliderRow` element (initially hidden)
+- **`crt_GridRecPlay.h`** (later split) — added `recSliderChange(val)` function, slider range/position sync
+
+### Phase 6g: CSS separation
+
+#### Summary
+Moved all CSS from inline `<style>` in the grid HTML to a separate `crt_GridCss.h` file, served via `/grid.css`.
+
+#### Created files
+- **`crt_GridCss.h`** — all CSS rules for the grid page
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed inline CSS, added `<link>` to `/grid.css`
+- **`crt_ServerNode.h`** — added `/grid.css` HTTP route
+
+### Phase 6h: 3D surface separation
+
+#### Summary
+Moved the WebGL 3D surface rendering code to a separate `crt_Grid3D.h` file, served via `/grid3d.js`.
+
+#### Created files
+- **`crt_Grid3D.h`** — WebGL shaders, matrix math, surface rendering, 3D toggle function
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed inline 3D code, added `<script src="/grid3d.js">`
+- **`crt_ServerNode.h`** — added `/grid3d.js` HTTP route
+
+### Phase 6i: JavaScript module separation
+
+#### Summary
+Split the remaining JavaScript from the monolithic grid HTML into six separate files, each served as a standalone `.js` resource. This significantly reduces the main HTML payload and improves maintainability.
+
+#### Created files
+- **`crt_GridCircle.h`** — grid/circle rendering (`createGrid`, `colorForValue`, `getDisplayValues`, `indivLookup`, etc.), served via `/gridcircle.js`
+- **`crt_GridRecPlay.h`** — record/play functions (`recRecord`, `recPause`, `recStop`, `recPlay`, `recPlayPause`, `recDownload`, `recUpload`, `recSliderChange`), served via `/gridrecplay.js`
+- **`crt_GridSnapshot.h`** — snapshot functions (`snapTake`, `snapClear`, `snapDownload`, `snapUpload`, `snapReplayStart`, `snapStepBack/Forward`, `snapSliderChange`), served via `/gridsnapshot.js`
+- **`crt_GridLoadcell.h`** — loadcell support (`lcTare`, `lcCalibrate`, `updateLoadcell`), served via `/gridloadcell.js`
+- **`crt_GridHistogram.h`** — histogram drawing and statistics (`createHistogram`, `updateHistogram`, `updateStats`), served via `/gridhistogram.js`
+- **`crt_GridPlot.h`** — running plot of top 3 values (`updatePlot`, `getPlotMax`), served via `/gridplot.js`
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed all extracted JS, added `<script>` tags for each new file
+- **`crt_ServerNode.h`** — added 6 new HTTP routes
+
+### Phase 6j: Capture error messages when normalization active
+
+#### Summary
+When Capture Sum or Capture Indiv buttons are pressed while Norm SumCap or Norm IndivCap is active, the capture is blocked and an error message is shown: "Please first disable NormSumCap mode and wait a few seconds." The error disappears once the normalization mode is disabled.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `captureError` and `captureIndivError` span elements, error styling (red, bold), `clearCaptureErrors()` function, guard logic in `doCapture()` and `captureIndiv()`
+
+### Phase 6k: Button spacing
+
+#### Summary
+Added additional spacing between button groups for clearer visual grouping: between Color Display and Norm SumCap, between Stop and Play, between Pause and Download.
+
+#### Modified files
+- **`crt_GridHtml.h`** — added `margin-left: 1rem` to Norm SumCap, Play, and Download buttons
+
+### Phase 6l: Remove average and sqrt(var) from statistics
+
+#### Summary
+Removed the "average" and "sqrt(var)" columns from the statistics tables, along with all related calculations. Only "sum" and "max" remain.
+
+#### Modified files
+- **`crt_GridHtml.h`** — removed `avg` and `std` table headers and cells from all 4 sensor stats tables
+- **`crt_GridHistogram.h`** — simplified `updateStats()` to only compute sum and max (removed mean, variance, and standard deviation calculations)
+
+### Flash status
+- Server_v6 flashed to /dev/ttyACM0
+

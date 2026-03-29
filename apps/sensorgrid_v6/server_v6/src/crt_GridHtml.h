@@ -121,7 +121,7 @@ namespace crt
         <canvas class="surface-canvas" id="surface1" width="250" height="200"></canvas>
         <div class="histogram" id="hist1"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum1">-</td><td id="max1">-</td><td id="avg1">-</td><td id="std1">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th></tr><tr><td id="sum1">-</td><td id="max1">-</td></tr></table>
         <canvas class="running-plot" id="plot1" width="250" height="120"></canvas>
         <div class="loadcell-section" id="lc1">
           <h4>Loadcell</h4>
@@ -145,7 +145,7 @@ namespace crt
         <canvas class="surface-canvas" id="surface2" width="250" height="200"></canvas>
         <div class="histogram" id="hist2"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum2">-</td><td id="max2">-</td><td id="avg2">-</td><td id="std2">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th></tr><tr><td id="sum2">-</td><td id="max2">-</td></tr></table>
         <canvas class="running-plot" id="plot2" width="250" height="120"></canvas>
         <div class="loadcell-section" id="lc2">
           <h4>Loadcell</h4>
@@ -169,7 +169,7 @@ namespace crt
         <canvas class="surface-canvas" id="surface3" width="250" height="200"></canvas>
         <div class="histogram" id="hist3"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum3">-</td><td id="max3">-</td><td id="avg3">-</td><td id="std3">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th></tr><tr><td id="sum3">-</td><td id="max3">-</td></tr></table>
         <canvas class="running-plot" id="plot3" width="250" height="120"></canvas>
         <div class="loadcell-section" id="lc3">
           <h4>Loadcell</h4>
@@ -193,7 +193,7 @@ namespace crt
         <canvas class="surface-canvas" id="surface4" width="250" height="200"></canvas>
         <div class="histogram" id="hist4"></div>
         <div class="hist-axis"><span>0</span><span>32768</span><span>65535</span></div>
-        <table class="stats-table"><tr><th>sum</th><th>max</th><th>average</th><th>sqrt(var)</th></tr><tr><td id="sum4">-</td><td id="max4">-</td><td id="avg4">-</td><td id="std4">-</td></tr></table>
+        <table class="stats-table"><tr><th>sum</th><th>max</th></tr><tr><td id="sum4">-</td><td id="max4">-</td></tr></table>
         <canvas class="running-plot" id="plot4" width="250" height="120"></canvas>
         <div class="loadcell-section" id="lc4">
           <h4>Loadcell</h4>
@@ -239,8 +239,6 @@ namespace crt
         histEl: document.getElementById("hist" + id),
         sumEl: document.getElementById("sum" + id),
         maxEl: document.getElementById("max" + id),
-        avgEl: document.getElementById("avg" + id),
-        stdEl: document.getElementById("std" + id),
         cells: [],
         histBars: [],
         currentCount: 0,
@@ -248,8 +246,6 @@ namespace crt
         offsets: null,
         filteredSum: null,
         filteredMax: null,
-        filteredAvg: null,
-        filteredStd: null,
         plotCanvas: document.getElementById("plot" + id),
         plotHistory: [],
         is3D: false,
@@ -345,13 +341,9 @@ namespace crt
         s.filteredValues = null;
         s.filteredSum = null;
         s.filteredMax = null;
-        s.filteredAvg = null;
-        s.filteredStd = null;
         s.plotHistory = [];
         s.sumEl.textContent = "-";
         s.maxEl.textContent = "-";
-        s.avgEl.textContent = "-";
-        s.stdEl.textContent = "-";
         if (s.lcVisible) { s.lcEl.style.display = "none"; s.lcVisible = false; }
         s.histBars.forEach(b => b.style.height = "1px");
         const ctx = s.plotCanvas.getContext("2d");

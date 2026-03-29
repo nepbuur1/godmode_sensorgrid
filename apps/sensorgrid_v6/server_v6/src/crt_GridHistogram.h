@@ -53,29 +53,16 @@ namespace crt
         if (v > max) max = v;
         sum += v;
       }
-      const avg = sum / values.length;
-      let sumSqDiff = 0;
-      for (const v of values) {
-        const d = v - avg;
-        sumSqDiff += d * d;
-      }
-      const std = Math.sqrt(sumSqDiff / values.length);
       if (s.filteredSum === null) {
         s.filteredSum = sum;
         s.filteredMax = max;
-        s.filteredAvg = avg;
-        s.filteredStd = std;
       } else {
         const f = getStatsFilter();
         s.filteredSum = s.filteredSum * f + sum * (1 - f);
         s.filteredMax = s.filteredMax * f + max * (1 - f);
-        s.filteredAvg = s.filteredAvg * f + avg * (1 - f);
-        s.filteredStd = s.filteredStd * f + std * (1 - f);
       }
       s.sumEl.textContent = s.filteredSum.toFixed(1);
       s.maxEl.textContent = s.filteredMax.toFixed(1);
-      s.avgEl.textContent = s.filteredAvg.toFixed(1);
-      s.stdEl.textContent = s.filteredStd.toFixed(1);
     }
 )rawliteral";
 

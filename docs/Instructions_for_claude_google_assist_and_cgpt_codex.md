@@ -501,3 +501,5 @@ Please add a bit additional spacing between next buttons:
 - Stop and Play
 - Pause and Download
 
+### Phase 6l
+From the statistics section (sum, max, average, sqrt(var)), please remove average and sqrt(var) and all calculations that were needed for it.
