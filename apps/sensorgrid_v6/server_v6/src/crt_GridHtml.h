@@ -33,7 +33,7 @@ namespace crt
         <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
         <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
         <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
-        <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()">Norm SumCap</button>
+        <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()" style="margin-left:1rem;">Norm SumCap</button>
         <button class="toggle-btn" id="btnNormIndivCap" onclick="toggleNormIndivCap()">Norm IndivCap</button>
       </div>
       <div class="ctrl-fields">
@@ -46,9 +46,9 @@ namespace crt
       <button id="btnRecord" onclick="recRecord()">Record</button>
       <button id="btnPause" onclick="recPause()" disabled>Pause</button>
       <button id="btnStop" onclick="recStop()" disabled>Stop</button>
-      <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
+      <button id="btnPlay" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
       <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
-      <button id="btnDownload" onclick="recDownload()" disabled>Download</button>
+      <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
       <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <span class="rec-info" id="recInfo">Ready</span>

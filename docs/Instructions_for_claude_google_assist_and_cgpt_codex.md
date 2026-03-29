@@ -494,3 +494,10 @@ If Capture Sum button is pressed while Norm SumCap is enabled, don't let it do i
 The error message disappears once Norm SumCap is disabled.
 Similarly, if Capture Sum button is pressed while "Norm IndivCap" is enabled, similar behaviour.
 Similarly, if Capture Indiv1, 2 or 3 is pressed while Norm SumCap or Norm IndivCap is enabled, apply similar behaviour.
+
+### Phase 6k
+Please add a bit additional spacing between next buttons:
+- Color Display and Norm SumCap
+- Stop and Play
+- Pause and Download
+
