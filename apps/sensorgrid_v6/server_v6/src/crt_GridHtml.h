@@ -433,6 +433,8 @@ namespace crt
         <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
         <button id="btnSnapClear" onclick="snapClear()">Clear Snapshots</button>
         <button id="btnSnapDownload" onclick="snapDownload()" disabled>Download</button>
+        <button id="btnSnapUpload" onclick="document.getElementById('snapFileInput').click()">Upload</button>
+        <input type="file" id="snapFileInput" accept=".json" style="display:none" onchange="snapUpload(event)"/>
         <span class="snap-info" id="snapInfo">Snapshots: 0</span>
       </div>
       <div class="snapshot-row" id="snapReplayRow">
@@ -713,6 +715,29 @@ namespace crt
       a.download = 'snapshots_' + ts + '.json';
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function snapUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!Array.isArray(data) || data.length === 0) {
+            alert('Invalid snapshot file: expected a non-empty JSON array.');
+            return;
+          }
+          if (snapReplaying) snapReplayStop();
+          snapFrames = data;
+          snapIdx = 0;
+          snapUpdateUI();
+        } catch (err) {
+          alert('Failed to parse snapshot file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';  // allow re-uploading the same file
     }
 
     function snapReplayStart() {

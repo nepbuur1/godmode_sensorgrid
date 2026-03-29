@@ -454,4 +454,10 @@ of sensors by flashing the same red oled light. During the previously described 
 flashes the same light, with same frequency, but with green oled light. So in other words, when/as long no sensor is found,
 after 10 seconds, the green flashing becomes red flashing.
 
+### Phase 6b
+Earlier, we implemented functionality to download recorded snapshots (using Download button in the Snapshots panel).
+I'd like to the panel an Upload button, which allows to do the reverse upload a previously saved snapshot file,
+such that the Snapshots functionality after that behaves, as if (only) the uploaded Snapshots were taken.
+
+
 
