@@ -436,3 +436,22 @@ Moreover, the current frame, when sent to the server, should include the informa
 The server, as it polls its sensors, thus is notified via that information that a Snapshot is requested for the corresponding sensor.
 The effect is that after having polled and processed the sensor values, prior to polling the next frame, it responds as if the Snapshot button was pressed for the sensor panel of the corresponding sensor (with the snapshotFrameRequest true). This thus offers a possibility "to press the Snapshot button" from a remote sensor.
 
+### Phase 6
+Now we move on to a new project, called sensorgrid_v6.
+For starters, by fully copying sensorgrid_v5. (and renaming the sub-apps to server_v6, sensor_v6 and client_v6).
+As no code changes, this won't require reprogramming of the devices.
+
+### Phase 6a
+Note: as always USB connected device(s) using cp210x have a pressure grid attached, and is/are only eligible to
+program sensor_v6 on.
+For this phase, only the server needs to be updated (you could check out which device is the server by listening to its serial output):
+So far, after startup, the server waits for a fixed amount of sensors to join.
+I'd like to change that (while retaining the option to revert to that behaviour via a #define):
+From now on, I'd like the server to spend the first 10 seconds after booting to connect to all available sensors.
+If after those 10 seconds, it has connected to at least one sensor, it can switch to operational mode. No need to wait for
+additional sensors to join. If no sensor has joined yet, it indicates it as it already did when waiting for remaining fixed amount
+of sensors by flashing the same red oled light. During the previously described first 10 seconds after boot, it
+flashes the same light, with same frequency, but with green oled light. So in other words, when/as long no sensor is found,
+after 10 seconds, the green flashing becomes red flashing.
+
+
