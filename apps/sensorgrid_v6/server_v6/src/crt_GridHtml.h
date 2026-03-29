@@ -426,6 +426,8 @@ namespace crt
       <button id="btnStop" onclick="recStop()" disabled>Stop</button>
       <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
       <button id="btnDownload" onclick="recDownload()" disabled>Download</button>
+      <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
+      <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <span class="rec-info" id="recInfo">Ready</span>
     </div>
     <div class="snapshot-panel">
@@ -664,6 +666,36 @@ namespace crt
       a.download = 'recording_' + ts + '.json';
       a.click();
       URL.revokeObjectURL(url);
+    }
+
+    function recUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!Array.isArray(data) || data.length === 0) {
+            alert('Invalid recording file: expected a non-empty JSON array.');
+            return;
+          }
+          recFrames = data;
+          playIdx = 0;
+          recState = 'stopped';
+          document.getElementById('btnRecord').classList.remove('rec-active');
+          document.getElementById('btnPause').disabled = true;
+          document.getElementById('btnPause').classList.remove('pause-active');
+          document.getElementById('btnStop').disabled = true;
+          document.getElementById('btnPlay').disabled = false;
+          document.getElementById('btnPlay').classList.remove('play-active');
+          document.getElementById('btnDownload').disabled = false;
+          recUpdateInfo();
+        } catch (err) {
+          alert('Failed to parse recording file: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
     }
 
     function recUpdateInfo() {

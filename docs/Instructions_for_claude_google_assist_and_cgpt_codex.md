@@ -459,5 +459,8 @@ Earlier, we implemented functionality to download recorded snapshots (using Down
 I'd like to the panel an Upload button, which allows to do the reverse upload a previously saved snapshot file,
 such that the Snapshots functionality after that behaves, as if (only) the uploaded Snapshots were taken.
 
+### Phase 6c
+Please add similar functionality for the (stream-) Record panel.
+
 
 
