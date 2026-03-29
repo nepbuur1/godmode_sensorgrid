@@ -480,4 +480,13 @@ Move the css part of the html file to a separate file, which is thus served sepa
 ### Phase 6h
 Please move the 3d surface part of the html to a separate file, which is thus served separately.
 
+### Phase 6i
+Please alse move to separate files that are to be served separately:
+- The Grid/circle rendering (hex grid creation, circle drawing, colorization)
+- Record/Play functions (record, pause, stop, play, playpaused, upload, slider)
+- Snapshot functions (take, clear, download, upload, replay, slider)
+- Loadcell support (tare, scale, weight display, cookie persistence)
+- Loadcell support (tare, scale, weight display, cookie persistence)
+- Histogram drawing (bin counting, bar rendering)
+- Plot drawing (running plot of top 3 values)
 

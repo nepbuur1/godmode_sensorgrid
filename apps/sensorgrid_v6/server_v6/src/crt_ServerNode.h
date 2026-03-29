@@ -11,6 +11,12 @@
 #include "crt_GridHtml.h"
 #include "crt_GridCss.h"
 #include "crt_Grid3D.h"
+#include "crt_GridRecPlay.h"
+#include "crt_GridSnapshot.h"
+#include "crt_GridHistogram.h"
+#include "crt_GridPlot.h"
+#include "crt_GridCircle.h"
+#include "crt_GridLoadcell.h"
 
 // Define USE_TIMED_DISCOVERY to use time-based discovery (10s window).
 // Undefine to revert to the v5 behaviour of waiting for a fixed sensor count.
@@ -567,6 +573,24 @@ namespace crt
 			});
 			server.on("/grid3d.js", HTTP_GET, [this]() {
 				server.send(200, "application/javascript", GRID_3D_JS);
+			});
+			server.on("/gridrecplay.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_RECPLAY_JS);
+			});
+			server.on("/gridsnapshot.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_SNAPSHOT_JS);
+			});
+			server.on("/gridhistogram.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_HISTOGRAM_JS);
+			});
+			server.on("/gridplot.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_PLOT_JS);
+			});
+			server.on("/gridcircle.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_CIRCLE_JS);
+			});
+			server.on("/gridloadcell.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_LOADCELL_JS);
 			});
 			server.on("/api/sensors", HTTP_GET, [this]() {
 				handleApiSensors();
