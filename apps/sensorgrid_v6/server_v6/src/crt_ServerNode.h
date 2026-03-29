@@ -10,6 +10,7 @@
 #include "crt_IndexHtml.h"
 #include "crt_GridHtml.h"
 #include "crt_GridCss.h"
+#include "crt_Grid3D.h"
 
 // Define USE_TIMED_DISCOVERY to use time-based discovery (10s window).
 // Undefine to revert to the v5 behaviour of waiting for a fixed sensor count.
@@ -563,6 +564,9 @@ namespace crt
 			});
 			server.on("/grid.css", HTTP_GET, [this]() {
 				server.send(200, "text/css", GRID_CSS);
+			});
+			server.on("/grid3d.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_3D_JS);
 			});
 			server.on("/api/sensors", HTTP_GET, [this]() {
 				handleApiSensors();

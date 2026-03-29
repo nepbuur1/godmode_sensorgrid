@@ -477,3 +477,7 @@ When playing is active (either paused or not), the slider should become visible.
 ### Phase 6g
 Move the css part of the html file to a separate file, which is thus served separately.
 
+### Phase 6h
+Please move the 3d surface part of the html to a separate file, which is thus served separately.
+
+
