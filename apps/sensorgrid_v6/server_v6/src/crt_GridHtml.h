@@ -450,6 +450,9 @@ namespace crt
         <button onclick="snapReplayStop()">Stop Snapshot Replay</button>
         <span class="snap-info" id="snapIdxInfo">Index: 0</span>
       </div>
+      <div class="snapshot-row" id="snapSliderRow" style="display:none;">
+        <input type="range" id="snapSlider" min="0" max="0" value="0" style="flex:1;" oninput="snapSliderChange(this.value)"/>
+      </div>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel">
       <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
@@ -808,11 +811,21 @@ namespace crt
       snapUpdateUI();
     }
 
+    function snapSliderChange(val) {
+      snapIdx = parseInt(val);
+      document.getElementById('snapIdxInfo').textContent = 'Index: ' + snapIdx;
+    }
+
     function snapUpdateUI() {
       document.getElementById('snapInfo').textContent = 'Snapshots: ' + snapFrames.length;
       document.getElementById('snapIdxInfo').textContent = 'Index: ' + snapIdx;
       document.getElementById('btnSnapDownload').disabled = (snapFrames.length === 0);
       document.getElementById('btnSnapReplay').disabled = (snapFrames.length === 0);
+      const slider = document.getElementById('snapSlider');
+      slider.max = Math.max(0, snapFrames.length - 1);
+      slider.value = snapIdx;
+      const showSlider = snapReplaying && snapFrames.length > 3;
+      document.getElementById('snapSliderRow').style.display = showSlider ? 'flex' : 'none';
     }
 
     // Residual noise measurement state

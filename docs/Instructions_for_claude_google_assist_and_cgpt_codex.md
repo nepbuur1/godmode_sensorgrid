@@ -462,5 +462,6 @@ such that the Snapshots functionality after that behaves, as if (only) the uploa
 ### Phase 6c
 Please add similar functionality for the (stream-) Record panel.
 
-
+### Phase 6d
+To the snapshots panel, I'd like to use a horizontal slider. Moving the slider allows to quickly navigate to a snapshot. For instance if the slider is moved by the user to center position, the center snapshot is selected. The slider should only be visible when more than 3 snapshots are present.
 
