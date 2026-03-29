@@ -473,3 +473,7 @@ the first group (Record, Pause, Stop) for recording. The second group (Play, Pau
 ### Phase 6f
 To the record panel, I'd like to add a slider, similar as the one of the snapshot panel.
 When playing is active (either paused or not), the slider should become visible. After moving the slider, the current frame being played should be set in accordance with the slider position. Conversely, while playing, the slider position should automatically update in accordance with the frame played.
+
+### Phase 6g
+Move the css part of the html file to a separate file, which is thus served separately.
+
