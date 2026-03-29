@@ -431,6 +431,9 @@ namespace crt
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <span class="rec-info" id="recInfo">Ready</span>
     </div>
+    <div id="recSliderRow" style="display:none;padding:0 0.5rem;">
+      <input type="range" id="recSlider" min="0" max="0" value="0" style="width:100%;" oninput="recSliderChange(this.value)"/>
+    </div>
     <div class="snapshot-panel">
       <div class="snapshot-row">
         <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
@@ -719,6 +722,11 @@ namespace crt
       event.target.value = '';
     }
 
+    function recSliderChange(val) {
+      playIdx = parseInt(val);
+      recUpdateInfo();
+    }
+
     function recUpdateInfo() {
       const el = document.getElementById('recInfo');
       if (recState === 'recording') el.textContent = 'Recording: ' + recFrames.length + ' frames';
@@ -727,6 +735,10 @@ namespace crt
       else if (recState === 'playing') el.textContent = 'Playing: ' + playIdx + '/' + recFrames.length;
       else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length;
       else el.textContent = 'Ready';
+      var sl = document.getElementById('recSlider');
+      var show = (recState === 'playing' || recState === 'playpaused');
+      document.getElementById('recSliderRow').style.display = show ? 'block' : 'none';
+      if (show) { sl.max = Math.max(0, recFrames.length - 1); sl.value = playIdx; }
     }
 
     // Snapshot state
@@ -941,15 +953,12 @@ namespace crt
 
     function selectSensor(id) {
       if (selectedSensorId === id) return;
-      // Deselect previous
       if (selectedSensorId !== null) {
         document.getElementById("sw" + selectedSensorId).classList.remove("selected");
       }
       selectedSensorId = id;
       document.getElementById("sw" + id).classList.add("selected");
-      // Show the selected sensor info panel
       document.getElementById("selectedInfoPanel").classList.add("visible");
-      // Populate fields from the selected sensor's state
       const s = sensors[id];
       document.getElementById("fldSumCap").value = s.maxSumCaptured != null ? s.maxSumCaptured : "-";
       document.getElementById("fldResNoise").value = s.avResidualNoiseSum ? s.avResidualNoiseSum.toFixed(1) : "-";
@@ -963,7 +972,6 @@ namespace crt
       s.enabled = document.getElementById("chkEnableSensor").checked;
       setCookie("gvEnabled" + selectedSensorId, s.enabled ? "1" : "0", 365);
       if (!s.enabled) {
-        // Clear display to show as offline
         s.gridEl.innerHTML = '<div class="no-data">Disabled</div>';
         s.cells = [];
         s.currentCount = 0;
@@ -979,12 +987,9 @@ namespace crt
         s.avgEl.textContent = "-";
         s.stdEl.textContent = "-";
         if (s.lcVisible) { s.lcEl.style.display = "none"; s.lcVisible = false; }
-        // Clear histogram
         s.histBars.forEach(b => b.style.height = "1px");
-        // Clear plot
         const ctx = s.plotCanvas.getContext("2d");
         ctx.clearRect(0, 0, s.plotCanvas.width, s.plotCanvas.height);
-        // Clear 3D surface
         if (s.is3D && s.gl) {
           s.gl.clearColor(0.067, 0.067, 0.067, 1);
           s.gl.clear(s.gl.COLOR_BUFFER_BIT | s.gl.DEPTH_BUFFER_BIT);
@@ -1004,7 +1009,6 @@ namespace crt
       if (selectedSensorId === null) return;
       const s = sensors[selectedSensorId];
       if (s.lastValues.length === 0) return;
-      // Compute sum of displayed (filtered) circle values
       const displayValues = getDisplayValues(s, selectedSensorId);
       let sum = 0;
       for (const v of displayValues) sum += v;
@@ -1043,7 +1047,6 @@ namespace crt
       const s = sensors[id];
       if (s.lastValues.length > 0) {
         s.offsets = [...s.lastValues];
-        // Start collecting grid-sum samples for 1 second to compute avResidualNoiseSum
         residualCollecting = true;
         residualSensorId = id;
         residualStartTime = Date.now();
@@ -1081,12 +1084,9 @@ namespace crt
       ev.stopPropagation();
       selectSensor(sensorId);
       selectedCircleIdx = circleIdx;
-      // Update circle borders for all sensors
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
-      // Show circle info panel
       const panel = document.getElementById("circleInfoPanel");
       panel.classList.add("visible");
-      // Populate fields
       const s = sensors[sensorId];
       ensureIndivCaps(s, s.cells.length);
       const tuples = s.indivCaps[circleIdx];
@@ -1106,7 +1106,6 @@ namespace crt
       s.indivCaps[selectedCircleIdx][tupleIdx] = {cap: circleValue, grams: calGrams};
       document.getElementById("ciCap" + tupleIdx).value = Math.round(circleValue);
       document.getElementById("ciGrams" + tupleIdx).value = calGrams;
-      // Save to cookie
       try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
       updateCircleBorders(s);
     }
@@ -1117,7 +1116,6 @@ namespace crt
       s.indivCaps = [];
       ensureIndivCaps(s, s.cells.length);
       try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
-      // Update display if circle is selected
       if (selectedCircleIdx !== null) {
         for (let t = 0; t < 3; t++) {
           document.getElementById("ciCap" + t).value = "-";
@@ -1291,7 +1289,6 @@ namespace crt
       }
     }
 
-    // --- WebGL 3D Surface ---
     const GL_VS = `attribute vec3 aPos; attribute vec3 aNor; attribute vec3 aCol;
       uniform mat4 uMVP; varying vec3 vCol; varying vec3 vNor; varying vec3 vPos;
       void main(){ gl_Position = uMVP * vec4(aPos, 1.0); vCol = aCol; vNor = aNor; vPos = aPos; }`;
@@ -1377,21 +1374,18 @@ namespace crt
       if (yMax === null || yMax <= 0) yMax = Math.max(1, ...vals);
       const hScale = 5;
 
-      // Build height map
       const H = new Float32Array(nR * nC);
       for (let i = 0; i < nR * nC; i++) {
         const v = i < vals.length ? vals[i] : 0;
         H[i] = (v / yMax) * hScale;
       }
 
-      // 9 floats per vertex: pos(3) + normal(3) + color(3), stride 36
       const verts = new Float32Array(nR * nC * 9);
       for (let r = 0; r < nR; r++) {
         for (let c = 0; c < nC; c++) {
           const idx = r * nC + c;
           const v = idx < vals.length ? vals[idx] : 0;
           const rgb = colorRGB(v, mn, mx);
-          // Compute normal from height differences
           const hl = c > 0 ? H[idx-1] : H[idx];
           const hr = c < nC-1 ? H[idx+1] : H[idx];
           const hu = r > 0 ? H[idx-nC] : H[idx];
@@ -1473,7 +1467,6 @@ namespace crt
         const gray = Math.round(128 + 127 * t);
         return { bg: `rgb(${gray},${gray},${gray})`, dark: gray < 128 };
       }
-      // Color gradient: medium-gray -> blue -> green -> yellow -> red
       const fl = Math.round(128 * (1 - t));
       let cr, cg, cb;
       if (t < 0.25) {
@@ -1506,7 +1499,6 @@ namespace crt
     }
 
     function indivLookup(rawVal, tuples) {
-      // Build sorted points from (0,0) + non-zero tuples
       const pts = [{x:0, y:0}];
       for (const t of tuples) {
         if (t.cap !== 0 || t.grams !== 0) {
@@ -1515,9 +1507,7 @@ namespace crt
       }
       if (pts.length === 1) return 0; // no tuples set
       pts.sort((a, b) => a.x - b.x);
-      // Piecewise linear interpolation / extrapolation
       if (rawVal <= pts[0].x) {
-        // Extrapolate using first segment
         const p0 = pts[0], p1 = pts[1];
         const slope = (p1.x !== p0.x) ? (p1.y - p0.y) / (p1.x - p0.x) : 0;
         return p0.y + slope * (rawVal - p0.x);
@@ -1529,7 +1519,6 @@ namespace crt
           return p0.y + t * (p1.y - p0.y);
         }
       }
-      // Extrapolate beyond last point
       const pA = pts[pts.length - 2], pB = pts[pts.length - 1];
       const slope = (pB.x !== pA.x) ? (pB.y - pA.y) / (pB.x - pA.x) : 0;
       return pB.y + slope * (rawVal - pB.x);
@@ -1576,7 +1565,6 @@ namespace crt
       SENSOR_IDS.forEach(id => colorCells(sensors[id], id));
     }
 
-    // --- Loadcell support ---
 
     function setCookie(name, value, days) {
       const d = new Date();
@@ -1593,7 +1581,6 @@ namespace crt
       return null;
     }
 
-    // Load calibration from cookies on startup
     SENSOR_IDS.forEach(id => {
       const s = sensors[id];
       const savedTare = getCookie("lcTare" + id);
@@ -1604,7 +1591,6 @@ namespace crt
       if (savedKnown !== null) s.lcKnownEl.value = savedKnown;
     });
 
-    // Restore grid view settings from cookies
     (function restoreSettings() {
       const sv = (key, elId) => {
         const v = getCookie(key);
@@ -1614,7 +1600,6 @@ namespace crt
       sv("gvStatsFilter", "fldStatsFilter");
       sv("gvValueFilter", "fldValueFilter");
 
-      // Restore per-sensor capture state
       SENSOR_IDS.forEach(id => {
         const s = sensors[id];
         const ms = getCookie("gvMaxSumCaptured" + id);
@@ -1695,7 +1680,6 @@ namespace crt
         createGrid(s, data.count, id);
       }
       s.lastValues = data.values;
-      // Compute EMA of raw input values (used for snapshots)
       const vf = getValueFilter();
       if (s.emaRawValues === null || s.emaRawValues.length !== data.values.length) {
         s.emaRawValues = [...data.values];
@@ -1706,7 +1690,6 @@ namespace crt
       }
       const displayValues = getDisplayValues(s, id);
       if (displayValues.length === 0) return;
-      // Apply per-circle EMA filtering
       if (s.filteredValues === null || s.filteredValues.length !== displayValues.length) {
         s.filteredValues = [...displayValues];
       } else {
@@ -1750,7 +1733,6 @@ namespace crt
         if (!res.ok) return;
         const all = await res.json();
         applyFrame(all);
-        // Record frame after applyFrame so filteredWeight is up to date
         if (recState === 'recording') {
           const filtered = {sensors: all.sensors.map(d => {
             const s = sensors[d.id];
@@ -1761,7 +1743,6 @@ namespace crt
           recFrames.push(filtered);
           recUpdateInfo();
         }
-        // Collect residual noise samples after offset removal
         if (residualCollecting && residualSensorId !== null) {
           const s = sensors[residualSensorId];
           if (s.lastValues.length > 0 && s.offsets) {
@@ -1788,12 +1769,10 @@ namespace crt
           }
         }
       } catch (e) {
-        // leave as-is on error
       }
       statusEl.textContent = "Laatste update: " + new Date().toLocaleTimeString();
     }
 
-    // Initialize
     SENSOR_IDS.forEach(id => {
       createGrid(sensors[id], 0, id);
       createHistogram(sensors[id]);

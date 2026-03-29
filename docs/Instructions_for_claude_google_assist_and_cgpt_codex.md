@@ -469,3 +469,7 @@ To the snapshots panel, I'd like to use a horizontal slider. Moving the slider a
 I'd like to add an additional Pause button to the stream record panel, to the right of the Play button. When playing (Play button green), it can be Paused playing by pressing that Pause button. It can be unpaused by pressing that Pause Button once more.
 Furthermore, I'd like a little additional space between the Stop (recording) button and the Play button to its right. I'd also like a little additional space to the left of the download button. that way, the grouping of the buttons becomes more clear:
 the first group (Record, Pause, Stop) for recording. The second group (Play, Pause) for playing and the third group (Download, Upload) for file management.
+
+### Phase 6f
+To the record panel, I'd like to add a slider, similar as the one of the snapshot panel.
+When playing is active (either paused or not), the slider should become visible. After moving the slider, the current frame being played should be set in accordance with the slider position. Conversely, while playing, the slider position should automatically update in accordance with the frame played.
