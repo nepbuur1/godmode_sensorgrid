@@ -465,3 +465,7 @@ Please add similar functionality for the (stream-) Record panel.
 ### Phase 6d
 To the snapshots panel, I'd like to use a horizontal slider. Moving the slider allows to quickly navigate to a snapshot. For instance if the slider is moved by the user to center position, the center snapshot is selected. The slider should only be visible when more than 3 snapshots are present.
 
+### Phase 6e
+I'd like to add an additional Pause button to the stream record panel, to the right of the Play button. When playing (Play button green), it can be Paused playing by pressing that Pause button. It can be unpaused by pressing that Pause Button once more.
+Furthermore, I'd like a little additional space between the Stop (recording) button and the Play button to its right. I'd also like a little additional space to the left of the download button. that way, the grouping of the buttons becomes more clear:
+the first group (Record, Pause, Stop) for recording. The second group (Play, Pause) for playing and the third group (Download, Upload) for file management.

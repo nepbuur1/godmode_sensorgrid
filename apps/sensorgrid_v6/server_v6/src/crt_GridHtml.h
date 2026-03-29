@@ -425,6 +425,7 @@ namespace crt
       <button id="btnPause" onclick="recPause()" disabled>Pause</button>
       <button id="btnStop" onclick="recStop()" disabled>Stop</button>
       <button id="btnPlay" onclick="recPlay()" disabled>Play</button>
+      <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
       <button id="btnDownload" onclick="recDownload()" disabled>Download</button>
       <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
@@ -598,7 +599,7 @@ namespace crt
     let selectedSensorId = null;
     let selectedCircleIdx = null;
     // Record & Play state
-    // recState: 'idle' | 'recording' | 'paused' | 'stopped' | 'playing'
+    // recState: 'idle' | 'recording' | 'paused' | 'stopped' | 'playing' | 'playpaused'
     let recState = 'idle';
     let recFrames = [];    // array of raw API response objects
     let playIdx = 0;
@@ -613,6 +614,8 @@ namespace crt
       document.getElementById('btnStop').disabled = false;
       document.getElementById('btnPlay').disabled = true;
       document.getElementById('btnPlay').classList.remove('play-active');
+      document.getElementById('btnPlayPause').disabled = true;
+      document.getElementById('btnPlayPause').classList.remove('pause-active');
       document.getElementById('btnDownload').disabled = true;
       recUpdateInfo();
     }
@@ -644,17 +647,30 @@ namespace crt
 
     function recPlay() {
       if (recFrames.length === 0) return;
-      if (recState === 'playing') {
-        // Stop playback, return to stopped state
+      if (recState === 'playing' || recState === 'playpaused') {
         recState = 'stopped';
         document.getElementById('btnPlay').classList.remove('play-active');
+        document.getElementById('btnPlayPause').classList.remove('pause-active');
+        document.getElementById('btnPlayPause').disabled = true;
         recUpdateInfo();
         return;
       }
       recState = 'playing';
       playIdx = 0;
       document.getElementById('btnPlay').classList.add('play-active');
+      document.getElementById('btnPlayPause').disabled = false;
       document.getElementById('btnRecord').classList.remove('rec-active');
+      recUpdateInfo();
+    }
+
+    function recPlayPause() {
+      if (recState === 'playing') {
+        recState = 'playpaused';
+        document.getElementById('btnPlayPause').classList.add('pause-active');
+      } else if (recState === 'playpaused') {
+        recState = 'playing';
+        document.getElementById('btnPlayPause').classList.remove('pause-active');
+      }
       recUpdateInfo();
     }
 
@@ -691,6 +707,8 @@ namespace crt
           document.getElementById('btnStop').disabled = true;
           document.getElementById('btnPlay').disabled = false;
           document.getElementById('btnPlay').classList.remove('play-active');
+          document.getElementById('btnPlayPause').disabled = true;
+          document.getElementById('btnPlayPause').classList.remove('pause-active');
           document.getElementById('btnDownload').disabled = false;
           recUpdateInfo();
         } catch (err) {
@@ -706,7 +724,8 @@ namespace crt
       if (recState === 'recording') el.textContent = 'Recording: ' + recFrames.length + ' frames';
       else if (recState === 'paused') el.textContent = 'Paused: ' + recFrames.length + ' frames';
       else if (recState === 'stopped') el.textContent = 'Stopped: ' + recFrames.length + ' frames';
-      else if (recState === 'playing') el.textContent = 'Playing: ' + (playIdx) + '/' + recFrames.length;
+      else if (recState === 'playing') el.textContent = 'Playing: ' + playIdx + '/' + recFrames.length;
+      else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length;
       else el.textContent = 'Ready';
     }
 
@@ -1789,9 +1808,9 @@ namespace crt
           playIdx++;
           recUpdateInfo();
         }
-        if (playIdx >= recFrames.length) {
-          playIdx = 0; // loop back to start
-        }
+        if (playIdx >= recFrames.length) { playIdx = 0; }
+      } else if (recState === 'playpaused') {
+        if (playIdx > 0) applyFrame(recFrames[playIdx - 1]);
       } else {
         await fetchAll();
       }
