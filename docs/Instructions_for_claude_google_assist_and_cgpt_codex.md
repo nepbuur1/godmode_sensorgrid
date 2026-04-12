@@ -525,3 +525,13 @@ should be deselected again and thus the accompanying red bordered panel should h
 
 ### Phase 6p
 Please reposition the panel with green border and the one with red border (when visible) below the collection of sensorgrid panels (currently, they are still positioned above them)
+
+### Phase 6q
+Now, when a recording has been made or uploaded (after pressing the Stop button in the record panel or after uploading a recording via the Upload button in the recording panel), then below the recording panel, a figure is shown, depending on whether a circle is selected:
+1. when a circle is selected, the corresponding figure for that circle is shown (explanation on the figure can be found below).
+2. when no circle is selectd, no figure is shown below the recording panel.
+3. The figure has an x axis and an y-axis.
+4. It shows all measurement data that is connected to the selected circle.
+5. The x-axis is scaled in such a way, that all datapoints fit on the screen.
+6. The y-axis shows the "circle value" of each datapoint for the circle, exactly as it would be calculated when the recording is played (and displayed on the circles of the sensorgrid, as currently implemented).
+7. At the left of the y-axis, useful ticks (5 to 10) are shown. For instance, when max circle value for the selected circle is 105 grams, 7 ticks of 20 grams are shown: one at 0, one at 20, one at 40 .. one at 120.

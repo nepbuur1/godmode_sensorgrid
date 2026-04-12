@@ -15,6 +15,7 @@ namespace crt
   <link rel="stylesheet" href="/grid.css">
   <script src="/grid3d.js"></script>
   <script src="/gridrecplay.js"></script>
+  <script src="/gridrecchart.js"></script>
   <script src="/gridsnapshot.js"></script>
   <script src="/gridhistogram.js"></script>
   <script src="/gridplot.js"></script>
@@ -56,6 +57,7 @@ namespace crt
     <div id="recSliderRow" style="display:none;padding:0 0.5rem;">
       <input type="range" id="recSlider" min="0" max="0" value="0" style="width:100%;" oninput="recSliderChange(this.value)"/>
     </div>
+    <canvas id="recChart" width="800" height="250" style="display:none;width:100%;background:#1a1a1a;border-radius:6px;margin:0.3rem 0;"></canvas>
     <div class="snapshot-panel">
       <div class="snapshot-row">
         <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
@@ -317,6 +319,7 @@ namespace crt
       selectedCircleIdx = null;
       document.getElementById("circleInfoPanel").classList.remove("visible");
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
+      updateRecChart();
     }
 
     function deselectSensor() {
@@ -503,6 +506,7 @@ namespace crt
         document.getElementById("ciCap" + t).value = tuples[t].cap ? Math.round(tuples[t].cap) : "-";
         document.getElementById("ciGrams" + t).value = tuples[t].grams || "-";
       }
+      updateRecChart();
     }
 
     function captureIndiv(tupleIdx) {

@@ -50,6 +50,7 @@ namespace crt
       document.getElementById('btnPlay').disabled = (recFrames.length === 0);
       document.getElementById('btnDownload').disabled = (recFrames.length === 0);
       recUpdateInfo();
+      updateRecChart();
     }
 
     function recPlay() {
@@ -118,6 +119,7 @@ namespace crt
           document.getElementById('btnPlayPause').classList.remove('pause-active');
           document.getElementById('btnDownload').disabled = false;
           recUpdateInfo();
+          updateRecChart();
         } catch (err) {
           alert('Failed to parse recording file: ' + err.message);
         }
