@@ -112,7 +112,7 @@ namespace crt
       <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
     <div class="sensor-layout">
-      <div class="sensor-widget" id="sw1" onclick="selectSensor(1)">
+      <div class="sensor-widget" id="sw1" onclick="onSensorPanelClick(1, event)">
         <h3>Sensor 1</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" id="btn3d1" onclick="toggle3D(1)">3D Surface</button>
@@ -136,7 +136,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw2" onclick="selectSensor(2)">
+      <div class="sensor-widget" id="sw2" onclick="onSensorPanelClick(2, event)">
         <h3>Sensor 2</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" id="btn3d2" onclick="toggle3D(2)">3D Surface</button>
@@ -160,7 +160,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw3" onclick="selectSensor(3)">
+      <div class="sensor-widget" id="sw3" onclick="onSensorPanelClick(3, event)">
         <h3>Sensor 3</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" id="btn3d3" onclick="toggle3D(3)">3D Surface</button>
@@ -184,7 +184,7 @@ namespace crt
           </div>
         </div>
       </div>
-      <div class="sensor-widget" id="sw4" onclick="selectSensor(4)">
+      <div class="sensor-widget" id="sw4" onclick="onSensorPanelClick(4, event)">
         <h3>Sensor 4</h3>
         <div class="panel-buttons">
           <button class="toggle-btn offset-btn" id="btn3d4" onclick="toggle3D(4)">3D Surface</button>
@@ -324,8 +324,16 @@ namespace crt
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
     }
 
+    function onSensorPanelClick(id, ev) {
+      if (ev.target.closest('button, input, .cell')) return;
+      selectSensor(id);
+    }
+
     function selectSensor(id) {
-      if (selectedSensorId === id) return;
+      if (selectedSensorId === id) {
+        deselectSensor();
+        return;
+      }
       if (selectedSensorId !== null) {
         document.getElementById("sw" + selectedSensorId).classList.remove("selected");
       }
