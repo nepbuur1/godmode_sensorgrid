@@ -503,3 +503,6 @@ Please add a bit additional spacing between next buttons:
 
 ### Phase 6l
 From the statistics section (sum, max, average, sqrt(var)), please remove average and sqrt(var) and all calculations that were needed for it.
+
+### Phase 6m
+Currently, it is possible to select a single sensor-circle by clicking it (and the corresponding panel with red border then becomes visible). That's great. But in the future, it should be toggling rather than for all times. So when the sensor-circle is clicked once more, it becomes unselected again. (no longer blue border on the circle and the panel with red border hides again)

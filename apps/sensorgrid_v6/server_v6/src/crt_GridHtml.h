@@ -313,6 +313,17 @@ namespace crt
       return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
     }
 
+    function deselectSensor() {
+      if (selectedSensorId !== null) {
+        document.getElementById("sw" + selectedSensorId).classList.remove("selected");
+      }
+      selectedSensorId = null;
+      selectedCircleIdx = null;
+      document.getElementById("selectedInfoPanel").classList.remove("visible");
+      document.getElementById("circleInfoPanel").classList.remove("visible");
+      SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
+    }
+
     function selectSensor(id) {
       if (selectedSensorId === id) return;
       if (selectedSensorId !== null) {
@@ -452,6 +463,10 @@ namespace crt
 
     function selectCircle(sensorId, circleIdx, ev) {
       ev.stopPropagation();
+      if (selectedSensorId === sensorId && selectedCircleIdx === circleIdx) {
+        deselectSensor();
+        return;
+      }
       selectSensor(sensorId);
       selectedCircleIdx = circleIdx;
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
