@@ -134,6 +134,7 @@ namespace crt
     function recSliderChange(val) {
       playIdx = parseInt(val);
       recUpdateInfo();
+      updateRecChart();
     }
 
     function recUpdateInfo() {

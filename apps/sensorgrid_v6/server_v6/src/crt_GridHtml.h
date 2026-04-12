@@ -718,6 +718,7 @@ namespace crt
           applyFrame(recFrames[playIdx]);
           playIdx++;
           recUpdateInfo();
+          updateRecChart();
         }
         if (playIdx >= recFrames.length) { playIdx = 0; }
       } else if (recState === 'playpaused') {

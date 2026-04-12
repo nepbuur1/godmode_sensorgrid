@@ -120,6 +120,15 @@ namespace crt
       }
       ctx.stroke();
 
+      // Draw playback position dot
+      const pi = Math.max(0, Math.min(playIdx, vals.length - 1));
+      const dotX = marginL + (vals.length > 1 ? pi / (vals.length - 1) * plotW : plotW / 2);
+      const dotY = marginT + plotH - (vals[pi] - tickMin) / yRange * plotH;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath();
+      ctx.arc(dotX, dotY, 4, 0, 2 * Math.PI);
+      ctx.fill();
+
       // X-axis label
       ctx.fillStyle = '#888';
       ctx.textAlign = 'center';

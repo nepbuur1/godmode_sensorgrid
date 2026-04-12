@@ -541,3 +541,6 @@ Reconsidering, please only show the figure while next constraints are met simult
 1. a circle is selected (like already implemented)
 2. a recording has been made or uploaded (like already implememented).
 3. the Play button is selected/green (and thus progress bar with slider are visible as well) (this is a new additional constraint)
+
+### Phase 6s
+Whenever the record-circle-figure (as implemented above) is visible, a white dot should be shown in the figure at the exact (x,y) location / datapoint of where the "play pointer / slider" currently is.
