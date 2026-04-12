@@ -535,3 +535,9 @@ Now, when a recording has been made or uploaded (after pressing the Stop button 
 5. The x-axis is scaled in such a way, that all datapoints fit on the screen.
 6. The y-axis shows the "circle value" of each datapoint for the circle, exactly as it would be calculated when the recording is played (and displayed on the circles of the sensorgrid, as currently implemented).
 7. At the left of the y-axis, useful ticks (5 to 10) are shown. For instance, when max circle value for the selected circle is 105 grams, 7 ticks of 20 grams are shown: one at 0, one at 20, one at 40 .. one at 120.
+
+### Phase 6r
+Reconsidering, please only show the figure while next constraints are met simultaneously:
+1. a circle is selected (like already implemented)
+2. a recording has been made or uploaded (like already implememented).
+3. the Play button is selected/green (and thus progress bar with slider are visible as well) (this is a new additional constraint)

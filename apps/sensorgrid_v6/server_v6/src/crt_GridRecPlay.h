@@ -61,6 +61,7 @@ namespace crt
         document.getElementById('btnPlayPause').classList.remove('pause-active');
         document.getElementById('btnPlayPause').disabled = true;
         recUpdateInfo();
+        updateRecChart();
         return;
       }
       recState = 'playing';
@@ -69,6 +70,7 @@ namespace crt
       document.getElementById('btnPlayPause').disabled = false;
       document.getElementById('btnRecord').classList.remove('rec-active');
       recUpdateInfo();
+      updateRecChart();
     }
 
     function recPlayPause() {
@@ -80,6 +82,7 @@ namespace crt
         document.getElementById('btnPlayPause').classList.remove('pause-active');
       }
       recUpdateInfo();
+      updateRecChart();
     }
 
     function recDownload() {

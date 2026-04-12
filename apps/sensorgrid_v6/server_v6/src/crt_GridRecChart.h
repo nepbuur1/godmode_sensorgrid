@@ -9,7 +9,8 @@ namespace crt
     function updateRecChart() {
       const canvas = document.getElementById('recChart');
       if (!canvas) return;
-      if (recFrames.length === 0 || selectedSensorId === null || selectedCircleIdx === null) {
+      if (recFrames.length === 0 || selectedSensorId === null || selectedCircleIdx === null ||
+          (recState !== 'playing' && recState !== 'playpaused')) {
         canvas.style.display = 'none';
         return;
       }
