@@ -558,4 +558,12 @@ Great, now about that figure:
   g. The x-coordinate of that white dot thus should always be at the center of the horizontal x-axis of the right figure.
   h. The right coordinate does not need to show the tick values of the y-axis next to it. 
      (because that is already shown next to the y-axis of the left figure)
-     
+
+### Phase 6u
+Great, now, in the record bar, on the far right, I'd like to add a small zoom-slider, with following properties:
+1. the zoom-slider can be used to change the zoom-factor. to the far left, the zoom-factor equals 10, to the far-right, the zoom-factor equals 1000. In between, log-interpolated values can be selected for the zoom-factor.
+2. the zoom-slider is only visible when the "record-circle-value-figures" are visible.
+3. the latest zoom-factor is stored, such that it is reapplied when the webpage is visited lateron.
+4. to the right of the zoom-slider, the value of the resulting zoom-factor is displayed as a number (text).
+
+

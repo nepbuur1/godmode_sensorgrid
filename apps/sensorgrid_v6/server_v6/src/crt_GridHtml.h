@@ -53,6 +53,11 @@ namespace crt
       <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <span class="rec-info" id="recInfo">Ready</span>
+      <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
+        <label style="font-size:0.75rem;color:#aaa;">Zoom</label>
+        <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>
+        <span id="recZoomVal" style="font-size:0.75rem;color:#ccc;min-width:2.5rem;">10x</span>
+      </span>
     </div>
     <div id="recSliderRow" style="display:none;padding:0 0.5rem;">
       <input type="range" id="recSlider" min="0" max="0" value="0" style="width:100%;" oninput="recSliderChange(this.value)"/>
@@ -709,6 +714,7 @@ namespace crt
       createGrid(sensors[id], 0, id);
       createHistogram(sensors[id]);
     });
+    initRecZoom();
     async function pollLoop() {
       const start = Date.now();
       if (snapReplaying && snapFrames.length > 0) {

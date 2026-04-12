@@ -6,11 +6,34 @@
 namespace crt
 {
 	const char GRID_RECCHART_JS[] = R"rawliteral(
+    var recZoomFactor = 10;
+
+    function initRecZoom() {
+      const saved = getCookie("gvRecZoom");
+      if (saved) {
+        recZoomFactor = parseFloat(saved) || 10;
+        recZoomFactor = Math.max(10, Math.min(1000, recZoomFactor));
+      }
+      const t = (Math.log(recZoomFactor) - Math.log(10)) / (Math.log(1000) - Math.log(10));
+      document.getElementById('recZoomSlider').value = Math.round(t * 100);
+      document.getElementById('recZoomVal').textContent = Math.round(recZoomFactor) + 'x';
+    }
+
+    function recZoomChange(val) {
+      const t = val / 100;
+      recZoomFactor = Math.exp(Math.log(10) + t * (Math.log(1000) - Math.log(10)));
+      document.getElementById('recZoomVal').textContent = Math.round(recZoomFactor) + 'x';
+      setCookie("gvRecZoom", recZoomFactor, 365);
+      updateRecChart();
+    }
+
     function updateRecChart() {
       const canvas = document.getElementById('recChart');
       if (!canvas) return;
-      if (recFrames.length === 0 || selectedSensorId === null || selectedCircleIdx === null ||
-          (recState !== 'playing' && recState !== 'playpaused')) {
+      const chartVisible = recFrames.length > 0 && selectedSensorId !== null && selectedCircleIdx !== null &&
+          (recState === 'playing' || recState === 'playpaused');
+      document.getElementById('recZoomRow').style.display = chartVisible ? 'inline-flex' : 'none';
+      if (!chartVisible) {
         canvas.style.display = 'none';
         return;
       }
@@ -166,7 +189,7 @@ namespace crt
       }
 
       // Zoom: show 1/10 of total frames, centered on playIdx
-      const zoomFactor = 10;
+      const zoomFactor = recZoomFactor;
       const halfSpan = (vals.length - 1) / zoomFactor / 2;
       const centerIdx = pi;
       const xMinF = centerIdx - halfSpan;
