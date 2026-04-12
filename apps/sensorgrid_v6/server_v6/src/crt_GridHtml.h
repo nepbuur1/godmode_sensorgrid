@@ -80,7 +80,7 @@ namespace crt
         <input type="range" id="snapSlider" min="0" max="0" value="0" style="flex:1;" oninput="snapSliderChange(this.value)"/>
       </div>
     </div>
-    <div class="selected-info-panel" id="selectedInfoPanel">
+    <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
       <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
       <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
       <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
@@ -90,7 +90,7 @@ namespace crt
       <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
       <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
-    <div class="circle-info-panel" id="circleInfoPanel">
+    <div class="circle-info-panel" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
       <div class="circle-info-row">
         <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
         <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
@@ -313,27 +313,43 @@ namespace crt
       return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
     }
 
-    function deselectSensor() {
-      if (selectedSensorId !== null) {
-        document.getElementById("sw" + selectedSensorId).classList.remove("selected");
-      }
-      selectedSensorId = null;
+    function deselectCircle() {
       selectedCircleIdx = null;
-      document.getElementById("selectedInfoPanel").classList.remove("visible");
       document.getElementById("circleInfoPanel").classList.remove("visible");
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
     }
 
+    function deselectSensor() {
+      deselectCircle();
+      if (selectedSensorId !== null) {
+        document.getElementById("sw" + selectedSensorId).classList.remove("selected");
+      }
+      selectedSensorId = null;
+      document.getElementById("selectedInfoPanel").classList.remove("visible");
+    }
+
     function onSensorPanelClick(id, ev) {
       if (ev.target.closest('button, input, .cell')) return;
-      selectSensor(id);
+      if (selectedSensorId === id) {
+        deselectSensor();
+      } else {
+        selectSensor(id);
+      }
+    }
+
+    function onInfoPanelClick(ev) {
+      if (ev.target.closest('button, input')) return;
+      deselectSensor();
+    }
+
+    function onCircleInfoPanelClick(ev) {
+      if (ev.target.closest('button, input')) return;
+      deselectCircle();
     }
 
     function selectSensor(id) {
-      if (selectedSensorId === id) {
-        deselectSensor();
-        return;
-      }
+      if (selectedSensorId === id) return;
+      deselectCircle();
       if (selectedSensorId !== null) {
         document.getElementById("sw" + selectedSensorId).classList.remove("selected");
       }
@@ -472,7 +488,7 @@ namespace crt
     function selectCircle(sensorId, circleIdx, ev) {
       ev.stopPropagation();
       if (selectedSensorId === sensorId && selectedCircleIdx === circleIdx) {
-        deselectSensor();
+        deselectCircle();
         return;
       }
       selectSensor(sensorId);

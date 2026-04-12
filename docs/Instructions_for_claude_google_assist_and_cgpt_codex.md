@@ -509,3 +509,17 @@ Currently, it is possible to select a single sensor-circle by clicking it (and t
 
 ### Phase 6n
 Currently, it is possible to select a single sensor-panel by clicking it (and the corresponding panel with green border then becomes visible). That's great. But in the future, it should be toggling rather than for all times. When **the background** of the sensor-panel is clicked (once more), it becomes unselected again. (the panel with green border hides again).
+
+### Phase 6o
+Now, I'd like to additional ways to toggle selection of a circle or sensor panel - by clicking on the background (so not on one of the widgets) of the corresponding red-bordered and green-bordered data entry-panel.
+
+Once more, in more detail: 
+0. if another sensor is selected (without selecting a circle), the current circle
+should be deselected again and thus the accompanying red bordered panel should hide.
+1. Only one panel can be selected at a time. 
+2. Only one circle can be selected at a time. 
+3. While a circle is in selected state, the corresponding sensor-panel should be in selected state too.
+(not the other way round: a sensor panel can be in selected state while not (yet) having selected a circle. 
+4. While a circle is in selected state <-> the corresponding red bordered circle-entry-panel should be visible. (and vice versa)
+5. While a sensor panel is in slected state <-> the corresponding green bordered sensor-panel entry panel should be visible. (and vice versa).
+
