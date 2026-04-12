@@ -80,37 +80,6 @@ namespace crt
         <input type="range" id="snapSlider" min="0" max="0" value="0" style="flex:1;" oninput="snapSliderChange(this.value)"/>
       </div>
     </div>
-    <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
-      <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
-      <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
-      <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
-      <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
-      <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
-      <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
-      <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
-      <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
-    </div>
-    <div class="circle-info-panel" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
-      <div class="circle-info-row">
-        <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
-        <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
-        <label>grams <input type="text" id="ciGrams0" readonly value="-" size="6"/></label>
-        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams0" value="0" size="6"/></label>
-      </div>
-      <div class="circle-info-row">
-        <button class="toggle-btn" onclick="captureIndiv(1)">Capture Indiv 2</button>
-        <label>cap <input type="text" id="ciCap1" readonly value="-" size="6"/></label>
-        <label>grams <input type="text" id="ciGrams1" readonly value="-" size="6"/></label>
-        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams1" value="0" size="6"/></label>
-      </div>
-      <div class="circle-info-row">
-        <button class="toggle-btn" onclick="captureIndiv(2)">Capture Indiv 3</button>
-        <label>cap <input type="text" id="ciCap2" readonly value="-" size="6"/></label>
-        <label>grams <input type="text" id="ciGrams2" readonly value="-" size="6"/></label>
-        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
-      </div>
-      <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
-    </div>
     <div class="sensor-layout">
       <div class="sensor-widget" id="sw1" onclick="onSensorPanelClick(1, event)">
         <h3>Sensor 1</h3>
@@ -208,6 +177,37 @@ namespace crt
           </div>
         </div>
       </div>
+    </div>
+    <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
+      <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
+      <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
+      <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
+      <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
+      <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
+      <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
+      <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
+      <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
+    </div>
+    <div class="circle-info-panel" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
+        <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams0" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams0" value="0" size="6"/></label>
+      </div>
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(1)">Capture Indiv 2</button>
+        <label>cap <input type="text" id="ciCap1" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams1" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams1" value="0" size="6"/></label>
+      </div>
+      <div class="circle-info-row">
+        <button class="toggle-btn" onclick="captureIndiv(2)">Capture Indiv 3</button>
+        <label>cap <input type="text" id="ciCap2" readonly value="-" size="6"/></label>
+        <label>grams <input type="text" id="ciGrams2" readonly value="-" size="6"/></label>
+        <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
+      </div>
+      <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
     <div id="status">...</div>
   </div>

@@ -523,3 +523,5 @@ should be deselected again and thus the accompanying red bordered panel should h
 4. While a circle is in selected state <-> the corresponding red bordered circle-entry-panel should be visible. (and vice versa)
 5. While a sensor panel is in slected state <-> the corresponding green bordered sensor-panel entry panel should be visible. (and vice versa).
 
+### Phase 6p
+Please reposition the panel with green border and the one with red border (when visible) below the collection of sensorgrid panels (currently, they are still positioned above them)
