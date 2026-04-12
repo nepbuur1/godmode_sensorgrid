@@ -544,3 +544,18 @@ Reconsidering, please only show the figure while next constraints are met simult
 
 ### Phase 6s
 Whenever the record-circle-figure (as implemented above) is visible, a white dot should be shown in the figure at the exact (x,y) location / datapoint of where the "play pointer / slider" currently is.
+
+### Phase 6t
+Great, now about that figure:
+1. From now on, it should fit in the left 75% of the screen, rather than 100%.
+2. The free 25% to the right of it should be filled with a similar figure:
+  a. the y scale (and hor tick lines) are identical to that of the left figure.
+  b. opposed to the left figure, it only shows a subrange of datapoints.
+  c. the x range (the range of datapoints) is selected around the current position (as corresponding to the white dot in the left figure)
+  d. by default, the x-axis is "zoomed in" by factor 10 with respect to the figure on the left.
+  e. because of that, the right figure is effectively a "local zoom in" that only shows a zoomed in part of the left plot, for the subrange that fits, given the zoom-factor.
+  f. The right figure also shows a white dot at the current data-point that is played.
+  g. The x-coordinate of that white dot thus should always be at the center of the horizontal x-axis of the right figure.
+  h. The right coordinate does not need to show the tick values of the y-axis next to it. 
+     (because that is already shown next to the y-axis of the left figure)
+     
