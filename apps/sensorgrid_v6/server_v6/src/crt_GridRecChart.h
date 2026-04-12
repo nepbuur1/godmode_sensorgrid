@@ -38,7 +38,7 @@ namespace crt
     var recChartMouseIsDown = false;
     document.addEventListener('mouseup', function() { recChartMouseIsDown = false; });
 
-    function recChartHitTest(ev) {
+    function recChartHitTest(ev, leftOnly) {
       if (!recChartLayout || recFrames.length === 0) return -1;
       const canvas = document.getElementById('recChart');
       const rect = canvas.getBoundingClientRect();
@@ -51,8 +51,8 @@ namespace crt
         const t = (mx - L.lMarginL) / L.lPlotW;
         return Math.round(t * (recFrames.length - 1));
       }
-      // Right figure
-      if (mx >= L.rOriginX && mx <= L.rOriginX + L.rPlotW) {
+      // Right figure (click only, not drag)
+      if (!leftOnly && mx >= L.rOriginX && mx <= L.rOriginX + L.rPlotW) {
         const t = (mx - L.rOriginX) / L.rPlotW;
         const frame = L.xMinF + t * (L.xMaxF - L.xMinF);
         return Math.max(0, Math.min(recFrames.length - 1, Math.round(frame)));
@@ -60,8 +60,8 @@ namespace crt
       return -1;
     }
 
-    function recChartSeek(ev) {
-      const idx = recChartHitTest(ev);
+    function recChartSeek(ev, leftOnly) {
+      const idx = recChartHitTest(ev, leftOnly);
       if (idx < 0) return;
       playIdx = idx;
       recUpdateInfo();
@@ -81,7 +81,7 @@ namespace crt
     }
 
     function recChartMouseMove(ev) {
-      if (recChartMouseIsDown) recChartSeek(ev);
+      if (recChartMouseIsDown) recChartSeek(ev, true);
     }
 
     function recChartTouchStart(ev) {
@@ -96,7 +96,7 @@ namespace crt
     function recChartTouchMove(ev) {
       if (recChartMouseIsDown) {
         ev.preventDefault();
-        recChartSeek(ev.touches[0]);
+        recChartSeek(ev.touches[0], true);
       }
     }
 
