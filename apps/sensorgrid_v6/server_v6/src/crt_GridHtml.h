@@ -53,6 +53,7 @@ namespace crt
       <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <span class="rec-info" id="recInfo">Ready</span>
+      <span id="recCircleVal" style="display:none;font-size:0.8rem;color:#ccc;margin-left:0.5rem;"></span>
       <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
         <label style="font-size:0.75rem;color:#aaa;">Zoom</label>
         <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>

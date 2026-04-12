@@ -566,4 +566,12 @@ Great, now, in the record bar, on the far right, I'd like to add a small zoom-sl
 3. the latest zoom-factor is stored, such that it is reapplied when the webpage is visited lateron.
 4. to the right of the zoom-slider, the value of the resulting zoom-factor is displayed as a number (text).
 
+### Phase 6v
+Great, now, I'd like to add some small enhancements:
+1. when the "record-circle-value-figures" are visible, the record panel should show the currently selected/played circle-value (as number, text) to the right of the text that displays the current frame number.
+2. below the x-axis of the right "record-circle-value-zoomed-in-figure", I'd like to display a text that shows how 
+many seconds the the displayed subrange represents. For example " <- 1.2s -> ". The subrange in seconds can be calculated 
+from the subrange in frames and the amount of frames per second involved (if unknown, assume 10fps).
+3. when the user holds the mouse button on a location of either of the record-circle-value figures, the 
+current "play counter/position" is updated to the x-position/frame that corresponds to the location of the mouse in the figure.
 
