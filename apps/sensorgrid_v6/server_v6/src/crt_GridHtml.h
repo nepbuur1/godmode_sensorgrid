@@ -807,7 +807,7 @@ namespace crt
       let snapshotTriggered = false;
       for (const data of all.sensors) {
         updateSensor(data.id, data);
-        updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw);
+        updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw, data.loadcellGram);
         if (data.snapshotRequested) snapshotTriggered = true;
       }
       if (snapshotTriggered) snapTake();

@@ -25,7 +25,7 @@ namespace crt
       setCookie("lcKnown" + id, knownGrams, 365);
     }
 
-    function updateLoadcell(id, hasLoadcell, rawValue) {
+    function updateLoadcell(id, hasLoadcell, rawValue, recordedGram) {
       const s = sensors[id];
       if (!s.enabled) return;
       if (hasLoadcell) {
@@ -34,14 +34,22 @@ namespace crt
           s.lcVisible = true;
         }
         s.lcLastRaw = rawValue;
-        const weightGrams = s.lcScale !== 0
-          ? (rawValue - s.lcTareOffset) / s.lcScale
-          : 0;
-        if (s.filteredWeight === null) {
-          s.filteredWeight = weightGrams;
+        if (typeof recordedGram === "number") {
+          // Playback / snapshot replay: show the value exactly as it was recorded
+          // (already filtered live at record time). Showing it directly avoids a
+          // second EMA pass - which lagged the loadcell window ~2-3 samples behind
+          // the green curve - and is robust to tare/scale changes since recording.
+          s.filteredWeight = recordedGram;
         } else {
-          const f = getStatsFilter() * 0.8;
-          s.filteredWeight = s.filteredWeight * f + weightGrams * (1 - f);
+          const weightGrams = s.lcScale !== 0
+            ? (rawValue - s.lcTareOffset) / s.lcScale
+            : 0;
+          if (s.filteredWeight === null) {
+            s.filteredWeight = weightGrams;
+          } else {
+            const f = getStatsFilter() * 0.8;
+            s.filteredWeight = s.filteredWeight * f + weightGrams * (1 - f);
+          }
         }
         s.lcWeightEl.textContent = s.filteredWeight.toFixed(1) + " g";
       } else {

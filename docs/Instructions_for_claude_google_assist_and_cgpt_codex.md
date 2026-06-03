@@ -592,3 +592,13 @@ Great! Currently, in Play mode, a blue curve shows the recorded sensor values fo
 sensor. a white dot should locate the position on that curve for the current time.
 It appears though, thath the white dot should be displayed on the curve one timestep to the left, in order
 to match the value on the curve with the value of the sensor as displayed in the sensorgrid.
+
+### Phase 6z
+Great! Currently, in Play mode, a blue curve shows the recorded sensor values for the currently selected
+sensor. I would also to display a green curve in the same figure. It shows the recorded loadcell value.
+The y-axis for the load cell values should be shown at the right side of the figure. The horizontal 
+lines used for the y-axis ticks of the sensor value should also be used for the y-axis ticks of the
+loadcell values on the right side. So for instance if there are already 6 horizontal "grid"-lines, 
+with along the left y-axis (for the sensor): 0, 500, 1000, 1500, 2000, 2500, 3000.
+Then, for instance if the maximum loadcell value measured is 355, then the same y-lines can be used
+for the load-cell y-axes, with values 0, 60, 120, 180, 240, 300, 360.

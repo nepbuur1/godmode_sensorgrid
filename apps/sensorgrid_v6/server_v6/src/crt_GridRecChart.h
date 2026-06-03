@@ -118,13 +118,19 @@ namespace crt
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Extract circle values from recording frames
+      // Extract circle values (blue) and recorded loadcell values (green) from frames.
       const vals = [];
+      const lcVals = [];
+      let hasLc = false;
+      let lcMax = 0;
       for (let f = 0; f < recFrames.length; f++) {
         const frame = recFrames[f];
         let v = null;
+        let lv = 0;
         for (const sd of frame.sensors) {
           if (sd.id === selectedSensorId) {
+            if (sd.hasLoadcell) hasLc = true;
+            if (typeof sd.loadcellGram === 'number') lv = sd.loadcellGram;
             const s = sensors[selectedSensorId];
             if (sd.values && selectedCircleIdx < sd.values.length) {
               const raw = sd.values[selectedCircleIdx];
@@ -147,6 +153,8 @@ namespace crt
           }
         }
         vals.push(v !== null ? v : 0);
+        lcVals.push(lv);
+        if (lv > lcMax) lcMax = lv;
       }
 
       if (vals.length === 0) { canvas.style.display = 'none'; return; }
@@ -185,12 +193,26 @@ namespace crt
       const tickMin = Math.floor(yMin / step) * step;
       const tickMax = Math.ceil(yMax / step) * step;
       const yRange = tickMax - tickMin;
+      const nIntervals = Math.max(1, Math.round((tickMax - tickMin) / step));
+
+      // Loadcell (green) right-axis scale: reuse the SAME horizontal grid lines.
+      // The bottom grid line = 0; pick a round per-line step so the top line just
+      // covers the maximum recorded loadcell value (phase 6z). e.g. lcMax=355 over
+      // 6 intervals -> step 60 -> top 360, labels 0,60,120,180,240,300,360.
+      const drawLc = hasLc && lcMax > 0;
+      let lcStep = 1, lcTickMax = nIntervals;
+      if (drawLc) {
+        const lcRough = lcMax / nIntervals;
+        const lcMag = Math.pow(10, Math.floor(Math.log10(lcRough)));
+        lcStep = Math.ceil(lcRough / lcMag) * lcMag;
+        lcTickMax = lcStep * nIntervals;
+      }
 
       const splitX = Math.round(W * 0.75);
       const gap = 10;
 
       // === LEFT FIGURE (overview) ===
-      const lMarginL = 60, lMarginR = 5, lMarginT = 10, lMarginB = 30;
+      const lMarginL = 60, lMarginR = drawLc ? 40 : 5, lMarginT = 10, lMarginB = 30;
       const lPlotW = splitX - lMarginL - lMarginR;
       const lPlotH = H - lMarginT - lMarginB;
 
@@ -214,6 +236,27 @@ namespace crt
         ctx.moveTo(lMarginL, y);
         ctx.lineTo(lMarginL + lPlotW, y);
         ctx.stroke();
+        if (drawLc) {
+          const lcLab = Math.round((tick - tickMin) / step) * lcStep;
+          ctx.fillStyle = '#4f4';
+          ctx.textAlign = 'left';
+          ctx.fillText(lcStep >= 1 ? Math.round(lcLab) : lcLab.toFixed(1), lMarginL + lPlotW + 5, y);
+          ctx.fillStyle = '#ccc';
+          ctx.textAlign = 'right';
+        }
+      }
+
+      // Green loadcell curve first, so the blue sensor curve is drawn on top of it.
+      if (drawLc) {
+        ctx.strokeStyle = '#4f4';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        for (let i = 0; i < lcVals.length; i++) {
+          const x = lMarginL + (lcVals.length > 1 ? i / (lcVals.length - 1) * lPlotW : lPlotW / 2);
+          const y = lMarginT + lPlotH - (lcVals[i] / lcTickMax) * lPlotH;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
       }
 
       ctx.strokeStyle = '#4af';
@@ -226,6 +269,16 @@ namespace crt
         else ctx.lineTo(x, y);
       }
       ctx.stroke();
+
+      // Yellow dot on the green loadcell curve at the current position.
+      if (drawLc) {
+        const lcDotX = lMarginL + (lcVals.length > 1 ? pi / (lcVals.length - 1) * lPlotW : lPlotW / 2);
+        const lcDotY = lMarginT + lPlotH - (lcVals[pi] / lcTickMax) * lPlotH;
+        ctx.fillStyle = '#ff0';
+        ctx.beginPath();
+        ctx.arc(lcDotX, lcDotY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
 
       const lDotX = lMarginL + (vals.length > 1 ? pi / (vals.length - 1) * lPlotW : lPlotW / 2);
       const lDotY = lMarginT + lPlotH - (vals[pi] - tickMin) / yRange * lPlotH;
@@ -277,6 +330,21 @@ namespace crt
       ctx.beginPath();
       ctx.rect(rOriginX, rMarginT2, rPlotW, rPlotH);
       ctx.clip();
+      // Green loadcell curve first, so the blue sensor curve is drawn on top of it.
+      if (drawLc) {
+        ctx.strokeStyle = '#4f4';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        let lcStarted = false;
+        for (let i = 0; i < lcVals.length; i++) {
+          const t = (xMaxF !== xMinF) ? (i - xMinF) / (xMaxF - xMinF) : 0.5;
+          const x = rOriginX + t * rPlotW;
+          const y = rMarginT2 + rPlotH - (lcVals[i] / lcTickMax) * rPlotH;
+          if (!lcStarted) { ctx.moveTo(x, y); lcStarted = true; }
+          else ctx.lineTo(x, y);
+        }
+        ctx.stroke();
+      }
       ctx.strokeStyle = '#4af';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -290,6 +358,15 @@ namespace crt
       }
       ctx.stroke();
       ctx.restore();
+
+      // Yellow dot on the green loadcell curve (centred, like the white dot).
+      if (drawLc) {
+        const rLcDotY = rMarginT2 + rPlotH - (lcVals[pi] / lcTickMax) * rPlotH;
+        ctx.fillStyle = '#ff0';
+        ctx.beginPath();
+        ctx.arc(rOriginX + rPlotW / 2, rLcDotY, 4, 0, 2 * Math.PI);
+        ctx.fill();
+      }
 
       const rDotX = rOriginX + rPlotW / 2;
       const rDotY = rMarginT2 + rPlotH - (vals[pi] - tickMin) / yRange * rPlotH;
