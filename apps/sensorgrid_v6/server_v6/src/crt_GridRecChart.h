@@ -151,8 +151,13 @@ namespace crt
 
       if (vals.length === 0) { canvas.style.display = 'none'; return; }
 
-      // Show current circle value
-      const pi = Math.max(0, Math.min(playIdx, vals.length - 1));
+      // Show current circle value.
+      // The sensorgrid displays frame (playIdx - 1): during playback the frame is
+      // applied to the grid and then playIdx is incremented before this redraw, and
+      // in playpaused/seek the grid shows recFrames[playIdx - 1]. So the white dot
+      // (and value label / zoom centre) must use playIdx - 1 to line up with the
+      // value shown on the sensorgrid (phase 6y).
+      const pi = Math.max(0, Math.min(playIdx - 1, vals.length - 1));
       document.getElementById('recCircleVal').textContent = 'val=' + Math.round(vals[pi]);
 
       // Compute y range

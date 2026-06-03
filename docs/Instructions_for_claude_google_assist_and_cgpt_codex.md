@@ -586,3 +586,9 @@ as before (apart from (recorded) sensor values or snapshots).
 ### Phase 6x
 Great, now it would be great if when downloading and uploading recordings and snapshots, the same metadata
 is included (at the end of the json file involved.)
+
+### Phase 6y
+Great! Currently, in Play mode, a blue curve shows the recorded sensor values for the currently selected
+sensor. a white dot should locate the position on that curve for the current time.
+It appears though, thath the white dot should be displayed on the curve one timestep to the left, in order
+to match the value on the curve with the value of the sensor as displayed in the sensorgrid.
