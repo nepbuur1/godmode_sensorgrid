@@ -62,6 +62,12 @@ namespace crt
       border-radius: 3px;
       width: 70px;
     }
+    .ctrl-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+      margin-left: auto;
+    }
     .toggle-btn {
       padding: 0.4rem 1rem;
       border: 2px solid #999;

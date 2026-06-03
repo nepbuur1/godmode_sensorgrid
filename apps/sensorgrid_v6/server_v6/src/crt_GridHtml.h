@@ -42,6 +42,11 @@ namespace crt
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
         <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365)"/></label>
       </div>
+      <div class="ctrl-meta">
+        <button class="toggle-btn" id="btnUploadMeta" onclick="document.getElementById('metaFileInput').click()">Upload Meta</button>
+        <button class="toggle-btn" id="btnDownloadMeta" onclick="metaDownload()">Download Meta</button>
+        <input type="file" id="metaFileInput" accept=".json" style="display:none" onchange="metaUpload(event)"/>
+      </div>
     </div>
     <div class="rec-play-panel">
       <button id="btnRecord" onclick="recRecord()">Record</button>
@@ -603,6 +608,131 @@ namespace crt
       if (getCookie("gvNormSumCap") === "1") { normSumCap = true; document.getElementById("btnNormSumCap").classList.add("active"); }
       if (getCookie("gvNormIndivCap") === "1") { normIndivCap = true; document.getElementById("btnNormIndivCap").classList.add("active"); }
     })();
+
+    // ---- Page metadata (settings/calibrations) download & upload (phase 6w) ----
+    // Captures everything that defines the page state EXCEPT recorded sensor
+    // values and snapshots, so the state can be restored later.
+    function buildMetaState() {
+      const meta = { version: 1, global: {}, sensors: {} };
+      meta.global.normalized = normalized;
+      meta.global.maxFixed = maxFixed;
+      meta.global.colorized = colorized;
+      meta.global.normSumCap = normSumCap;
+      meta.global.normIndivCap = normIndivCap;
+      meta.global.fixedMax = document.getElementById("fldFixedMax").value;
+      meta.global.statsFilter = document.getElementById("fldStatsFilter").value;
+      meta.global.valueFilter = document.getElementById("fldValueFilter").value;
+      if (typeof recZoomFactor !== "undefined") meta.global.recZoomFactor = recZoomFactor;
+      SENSOR_IDS.forEach(id => {
+        const s = sensors[id];
+        meta.sensors[id] = {
+          enabled: s.enabled,
+          calGrams: s.calGrams,
+          maxSumCaptured: s.maxSumCaptured,
+          avResidualNoiseSum: s.avResidualNoiseSum,
+          indivCaps: s.indivCaps,
+          offsets: s.offsets,
+          lcTareOffset: s.lcTareOffset,
+          lcScale: s.lcScale,
+          lcKnown: s.lcKnownEl.value
+        };
+      });
+      return meta;
+    }
+
+    function applyMetaState(meta) {
+      if (!meta || typeof meta !== "object") throw new Error("expected a JSON object");
+      const g = meta.global || {};
+      if ("normalized" in g) normalized = !!g.normalized;
+      if ("maxFixed" in g) maxFixed = !!g.maxFixed;
+      if ("colorized" in g) colorized = !!g.colorized;
+      if ("normSumCap" in g) normSumCap = !!g.normSumCap;
+      if ("normIndivCap" in g) normIndivCap = !!g.normIndivCap;
+      document.getElementById("btnNormalize").classList.toggle("active", normalized);
+      document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
+      document.getElementById("btnColorize").classList.toggle("active", colorized);
+      document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
+      document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
+      if (!normSumCap && !normIndivCap) clearCaptureErrors();
+      if ("fixedMax" in g) document.getElementById("fldFixedMax").value = g.fixedMax;
+      if ("statsFilter" in g) document.getElementById("fldStatsFilter").value = g.statsFilter;
+      if ("valueFilter" in g) document.getElementById("fldValueFilter").value = g.valueFilter;
+      saveToggleStates();
+      setCookie("gvColorized", colorized ? "1" : "0", 365);
+      setCookie("gvFixedMax", document.getElementById("fldFixedMax").value, 365);
+      setCookie("gvStatsFilter", document.getElementById("fldStatsFilter").value, 365);
+      setCookie("gvValueFilter", document.getElementById("fldValueFilter").value, 365);
+      if ("recZoomFactor" in g && typeof recZoomFactor !== "undefined") {
+        recZoomFactor = Math.max(10, Math.min(1000, parseFloat(g.recZoomFactor) || 10));
+        setCookie("gvRecZoom", recZoomFactor, 365);
+        initRecZoom();
+      }
+      const sm = meta.sensors || {};
+      SENSOR_IDS.forEach(id => {
+        const m = sm[id] || sm[String(id)];
+        if (!m) return;
+        const s = sensors[id];
+        if ("enabled" in m) { s.enabled = !!m.enabled; setCookie("gvEnabled" + id, s.enabled ? "1" : "0", 365); }
+        if ("calGrams" in m) { s.calGrams = parseFloat(m.calGrams) || 1000; setCookie("gvCalGrams" + id, s.calGrams, 365); }
+        if ("maxSumCaptured" in m) {
+          s.maxSumCaptured = (m.maxSumCaptured == null) ? null : parseFloat(m.maxSumCaptured);
+          if (s.maxSumCaptured != null) setCookie("gvMaxSumCaptured" + id, s.maxSumCaptured, 365);
+        }
+        if ("avResidualNoiseSum" in m) { s.avResidualNoiseSum = parseFloat(m.avResidualNoiseSum) || 0; setCookie("gvResNoise" + id, s.avResidualNoiseSum, 365); }
+        if ("indivCaps" in m && Array.isArray(m.indivCaps)) {
+          s.indivCaps = m.indivCaps;
+          try { localStorage.setItem("gvIndivCaps" + id, JSON.stringify(s.indivCaps)); } catch (e) {}
+        }
+        if ("offsets" in m) { s.offsets = Array.isArray(m.offsets) ? m.offsets : null; }
+        if ("lcTareOffset" in m) { s.lcTareOffset = parseFloat(m.lcTareOffset) || 0; setCookie("lcTare" + id, s.lcTareOffset, 365); }
+        if ("lcScale" in m) { s.lcScale = parseFloat(m.lcScale) || 1; setCookie("lcScale" + id, s.lcScale, 365); }
+        if ("lcKnown" in m) { s.lcKnownEl.value = m.lcKnown; setCookie("lcKnown" + id, m.lcKnown, 365); }
+      });
+      // Refresh UI to reflect the restored state.
+      SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
+      recolorAll();
+      if (selectedSensorId !== null) {
+        const s = sensors[selectedSensorId];
+        document.getElementById("fldSumCap").value = s.maxSumCaptured != null ? s.maxSumCaptured : "-";
+        document.getElementById("fldResNoise").value = s.avResidualNoiseSum ? s.avResidualNoiseSum.toFixed(1) : "-";
+        document.getElementById("fldCalGrams").value = s.calGrams;
+        document.getElementById("chkEnableSensor").checked = s.enabled;
+        if (selectedCircleIdx !== null && s.indivCaps[selectedCircleIdx]) {
+          const tuples = s.indivCaps[selectedCircleIdx];
+          for (let t = 0; t < 3; t++) {
+            document.getElementById("ciCap" + t).value = tuples[t].cap ? Math.round(tuples[t].cap) : "-";
+            document.getElementById("ciGrams" + t).value = tuples[t].grams || "-";
+          }
+        }
+      }
+    }
+
+    function metaDownload() {
+      const json = JSON.stringify(buildMetaState(), null, 2);
+      const blob = new Blob([json], {type: "application/json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
+      a.download = "gridmeta_" + ts + ".json";
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function metaUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          applyMetaState(JSON.parse(e.target.result));
+        } catch (err) {
+          alert("Failed to parse meta file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = "";
+    }
 
     function updateSensor(id, data) {
       const s = sensors[id];

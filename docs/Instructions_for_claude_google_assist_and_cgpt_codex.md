@@ -575,3 +575,10 @@ from the subrange in frames and the amount of frames per second involved (if unk
 3. when the user holds the mouse button on a location of either of the record-circle-value figures, the 
 current "play counter/position" is updated to the x-position/frame that corresponds to the location of the mouse in the figure.
 
+### Phase 6w
+On the main page, completely to the topRight (so to the right of the block: with Fixed Max Display, Stats
+filter and Value Filter), I'd like to have two butons. The top one is [Upload Meta] the bottom one is [Download Meta]. When the download meta button is pressed, all metadata of this /grid page can be downloaded
+as a json file. (so the state of whether Norm Display is enabled, the calibrations for each sensor, the 
+calibration values for the loadcell, the Stats filter value, etc.). In a later point in time, the user
+may use the "Upload Meta" button to upload these meta data, such that the webpage gets the same state
+as before (apart from (recorded) sensor values or snapshots).

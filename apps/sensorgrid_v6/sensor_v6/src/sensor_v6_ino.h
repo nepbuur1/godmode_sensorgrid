@@ -6,7 +6,7 @@
 
 // Change SENSOR_ID before flashing each sensor node:
 // sensor_1 = 1, sensor_2 = 2, etc.
-static const uint8_t SENSOR_ID = 1;
+static const uint8_t SENSOR_ID = 2;
 
 static const int FIXED_CHANNEL = 1;
 static const unsigned long SAMPLE_INTERVAL_MS = 100;
