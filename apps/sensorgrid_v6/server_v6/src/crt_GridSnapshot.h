@@ -35,7 +35,7 @@ namespace crt
 
     function snapDownload() {
       if (snapFrames.length === 0) return;
-      const json = JSON.stringify(snapFrames);
+      const json = JSON.stringify(metaAppendForExport(snapFrames));
       const blob = new Blob([json], {type: 'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -52,7 +52,9 @@ namespace crt
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const data = JSON.parse(e.target.result);
+          const parsed = JSON.parse(e.target.result);
+          const split = metaSplitFromImport(parsed);
+          const data = split.frames;
           if (!Array.isArray(data) || data.length === 0) {
             alert('Invalid snapshot file: expected a non-empty JSON array.');
             return;
@@ -60,6 +62,7 @@ namespace crt
           if (snapReplaying) snapReplayStop();
           snapFrames = data;
           snapIdx = 0;
+          if (split.meta) applyMetaState(split.meta);
           snapUpdateUI();
         } catch (err) {
           alert('Failed to parse snapshot file: ' + err.message);

@@ -582,3 +582,7 @@ as a json file. (so the state of whether Norm Display is enabled, the calibratio
 calibration values for the loadcell, the Stats filter value, etc.). In a later point in time, the user
 may use the "Upload Meta" button to upload these meta data, such that the webpage gets the same state
 as before (apart from (recorded) sensor values or snapshots).
+
+### Phase 6x
+Great, now it would be great if when downloading and uploading recordings and snapshots, the same metadata
+is included (at the end of the json file involved.)

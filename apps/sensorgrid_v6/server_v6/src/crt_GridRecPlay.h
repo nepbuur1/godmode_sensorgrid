@@ -87,7 +87,7 @@ namespace crt
 
     function recDownload() {
       if (recFrames.length === 0) return;
-      const json = JSON.stringify(recFrames);
+      const json = JSON.stringify(metaAppendForExport(recFrames));
       const blob = new Blob([json], {type: 'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -104,13 +104,16 @@ namespace crt
       const reader = new FileReader();
       reader.onload = function(e) {
         try {
-          const data = JSON.parse(e.target.result);
+          const parsed = JSON.parse(e.target.result);
+          const split = metaSplitFromImport(parsed);
+          const data = split.frames;
           if (!Array.isArray(data) || data.length === 0) {
             alert('Invalid recording file: expected a non-empty JSON array.');
             return;
           }
           recFrames = data;
           playIdx = 0;
+          if (split.meta) applyMetaState(split.meta);
           recState = 'stopped';
           document.getElementById('btnRecord').classList.remove('rec-active');
           document.getElementById('btnPause').disabled = true;

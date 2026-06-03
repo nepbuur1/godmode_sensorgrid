@@ -707,6 +707,24 @@ namespace crt
       }
     }
 
+    // Append the page metadata as a tagged trailing array element, so recording
+    // and snapshot files carry it at the end (phase 6x). Backward compatible:
+    // older files simply lack the trailing {__meta__:...} element.
+    function metaAppendForExport(frames) {
+      return frames.concat([{ __meta__: buildMetaState() }]);
+    }
+    // Split an imported array into {frames, meta}, stripping a trailing
+    // {__meta__:...} element if present (returns meta=null otherwise).
+    function metaSplitFromImport(arr) {
+      if (Array.isArray(arr) && arr.length > 0) {
+        const last = arr[arr.length - 1];
+        if (last && typeof last === "object" && last.__meta__) {
+          return { frames: arr.slice(0, -1), meta: last.__meta__ };
+        }
+      }
+      return { frames: arr, meta: null };
+    }
+
     function metaDownload() {
       const json = JSON.stringify(buildMetaState(), null, 2);
       const blob = new Blob([json], {type: "application/json"});
