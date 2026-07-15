@@ -662,3 +662,28 @@ If the card does not mount, please first suspect the wiring, the pull-up on CS, 
 in that order, before suspecting the code.
 
 Once this works, we can decide in a next phase how to move the static files of server_v7 to the card.
+
+#### Phase 7b outcome
+The card is proven: two different cards both pass 5/5 at 20MHz (mount, verified round-trip, root listing,
+clean unmount), at roughly 0.5-0.7 MB/s. The module is fed from an external 5V supply with a 47uF buffer
+capacitor - a larger one crashed the PC twice through USB inrush current.
+
+40MHz was tested and fails, but *not* for the expected reason. It is not the wiring and not the clock:
+above 20MHz the driver switches the card into SDR25 high-speed mode via CMD6, and both cards then refuse
+the following SEND_CSD - while the bus is still at 400kHz. Requesting 20001kHz (identical actual bus clock
+to the working 20000kHz) fails too, which proves it is the mode switch and not the speed. So the advice to
+document "tight wiring is needed for 40MHz" was measured and disproven, and the 20MHz fallback is not a
+concession to wiring quality but the only mode these cards accept.
+
+Chasing 40MHz looks pointless anyway: we use only 19-27% of the bandwidth 20MHz already offers, so the
+clock is not the bottleneck. Real gains would need SD 4-bit mode, which this module cannot do because its
+74LVC125A buffer is unidirectional. See Log.md, Phase 7b, for the analysis and for module alternatives.
+
+Note the premise of phase 7a has weakened: the devkit has 16MB of flash while the partition table only
+uses 2MB. Re-partitioning is probably the cheaper way to relieve server_v7.
+
+### Phase 7c
+Let's reconfig server_v7, such that it can use the full 16MB of memory of the esp32-s3-N16r8 module on our board,
+and flash it to the attached devkit. I have also plugged in an already programmed sensor_v6 board (which should be 
+identical to the current sensor_v7, at this point), but not attached to WSL yet. Just let me know if you need that 
+for your tests.

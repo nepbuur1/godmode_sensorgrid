@@ -103,8 +103,11 @@ namespace crt
 //#include <sensor_v5.ino>
 //#include <client_v5.ino>
 
+// **** Standalone hardware test app (phase 7b) ****
+#include <hello_simcard.ino>
+
 // **** Sensor Grid apps (sensorgrid_v7) ****
-#include <server_v7.ino>
+//#include <server_v7.ino>
 //#include <sensor_v7.ino>
 //#include <client_v7.ino>
 

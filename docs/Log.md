@@ -757,3 +757,93 @@ Note: `GPIO12` is a strapping pin (MTDI) on the classic ESP32, but **not** on th
 #### Status
 - Wiring scheme delivered; nothing connected or built yet. Phase 7b (the `hello_simcard` test app) follows.
 
+### Phase 7b: hello_simcard test app
+
+#### Summary
+Built and verified the standalone `hello_simcard` app on the real hardware. The microSD module works:
+both cards tested mount, the read-back matches what was written, and the throughput is roughly 0.5-0.7 MB/s.
+The card is proven. Along the way, the assumption that 40 MHz depends on wiring quality was measured and
+disproven — the 20 MHz ceiling turns out to be a protocol matter, not an electrical one.
+
+#### Hardware as finally connected
+- Module fed from an **external** 5V supply, GND common with the devkit, **47uF** buffer capacitor.
+  A larger capacitor was tried first and crashed the PC twice: its inrush charging current browned out
+  the host USB 5V. 47uF is the working compromise.
+- Wiring as per phase 7a: CS=GPIO10, MOSI=GPIO11, SCK=GPIO12, MISO=GPIO13, 10k pull-up on CS.
+- Short custom-cut breadboard leads, not dupont wires.
+
+#### Created files
+- **`apps/hello_simcard/src/`**
+  - `crt_SdCard.h` - owns the SPI bus, the card handle and the FAT mount; offers file/directory access and card properties
+  - `crt_SdCardTest.h` - control object: runs the five-step sequence once at boot, reports the verdict on the RGB LED
+  - `hello_simcard.ino` / `hello_simcard_ino.h` - Arduino wrapper holding the pin and frequency configuration
+- **`apps/hello_simcard/doc/`** - `hello_simcard.md` (summary, object model, object list, call trees, full speed analysis), `test.md` (measured results), plus `mermaid/` and `img/`
+- **`apps/hello_simcard/tests/`** - empty, matching the other apps (the app itself is the test)
+
+#### Modified files
+- **`main/main.cpp`** - added the `hello_simcard.ino` include (active; the v7 includes are commented out)
+- **`main/CMakeLists.txt`** - added the `apps/hello_simcard/src` include path
+
+#### Measured results (20 MHz, both cards pass 5/5)
+| Card (CID name) | Type | Capacity | Write | Read |
+|-----------------|------|----------|-------|------|
+| `SD16G` | SDHC | 7684 MB | 664-672 kB/s | 478-483 kB/s |
+| `CBADS` | SDHC | 15115 MB | 630 kB/s | 675 kB/s |
+
+Despite similar packaging these are demonstrably different cards: different CID name, different capacity,
+and an opposite read/write balance.
+
+#### Key finding: what limits the speed to 20 MHz
+Anything above 20 MHz fails identically on **both** cards, always with
+`sdmmc_enable_hs_mode_and_check: send_csd returned 0x108`.
+
+- `sdmmc_enable_hs_mode_and_check()` (IDF `components/sdmmc/sdmmc_sd.c`) switches the card into SDR25
+  high-speed mode via CMD6 as soon as `host.max_freq_khz > SDMMC_FREQ_DEFAULT` (20000), then re-reads
+  the CSD. That re-read fails.
+- That check is init step 140 in `sdmmc_init.c`; the host clock is only raised at step **160**. The
+  failure therefore happens while the bus is still at its 400 kHz probing speed.
+- **Decisive experiment:** requesting 20001 kHz also fails, while the SPI divider makes its actual bus
+  clock identical to the passing 20000 kHz case (80/4 = 20 MHz; the next step up, 80/3 = 26.7 MHz,
+  exceeds the request). Same clock, opposite outcome — so the mode switch is the variable, not the speed.
+
+This rules out the clock rate, signal integrity, the wiring and the 74LVC125A buffer. That buffer is
+stateless and combinational, transparent at 400 kHz, and demonstrably works at 400 kHz during every
+successful mount. Two candidates remain and could not be separated with the cards at hand: either both
+cards share a controller with a broken CMD6 in SPI mode, or the high-speed switch over SPI does not work
+on this IDF/host combination at all. A third card from a genuinely different manufacturer would decide it.
+
+Whether the module and wiring could carry 40 MHz *electrically* remains untested — the card refuses
+before the clock is ever raised.
+
+#### Is 40 MHz worth chasing?
+Probably not. At 20 MHz a single SPI data line offers 2.5 MB/s; we measure 0.48-0.68 MB/s, i.e. 19-27%
+of that. The clock is not the bottleneck — FAT bookkeeping, per-block CRC and the card's internal timing
+are. The real lever for throughput would be SD 4-bit mode (four data lines at the same clock), which needs
+a module without the unidirectional 74LVC125A buffer: either a plain bufferless microSD socket breakout
+(the ESP32-S3 is a 3.3V host, so no level shifting is needed at all) or a purpose-built bidirectional SD
+transceiver such as the **TI TXS0206A** (auto-direction sensing, up to 60 MHz / 60 Mbps per channel) or
+the **TI TXS02612** (SDIO port expander with level translation). Note that 4-bit mode does not depend on
+the CMD6 switch our cards reject.
+
+#### Defects found and fixed
+- **Stack overflow at test 5/5**: `DirEntry entries[32]` (~2.3 kB) sat on the 3584 byte main task stack.
+  Moved to the heap.
+- **Misleading mount diagnostic**: it blamed power and wiring unconditionally, which at >20 MHz points
+  exactly the wrong way. Now a separate message when a high-speed rate was requested, recommending the
+  20 MHz fallback.
+
+#### Known open issue
+The MISO probe assumes a powered card holds MISO high at idle. `SD16G` does, `CBADS` does not — so the
+probe warns about missing power or a missing MISO connection while everything works. Card-dependent and
+unreliable; it should be softened to a neutral observation.
+
+#### Relevance to the original goal
+Phase 7a introduced the card to relieve the app partition, which was 98% full. That premise has since
+weakened: the devkit has 16 MB of flash while the image header and partition table only use 2 MB
+(`W spi_flash: Detected size(16384k) larger than the size in the binary image header(2048k)`). Re-partitioning
+is likely the cheaper route for server_v7's static files, which makes `hello_simcard` primarily a piece of
+proven hardware rather than a stepping stone. That decision is for a following phase.
+
+#### Status
+- Card proven, 5/5 on both cards at 20 MHz, LED green. The device is left with the working 20 MHz build.
+

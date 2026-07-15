@@ -1,0 +1,18 @@
+graph LR
+    SdCardTest["&laquo;control&raquo;
+SdCardTest"]
+    SdCard["&laquo;boundary&raquo;
+SdCard"]
+    StatusLed["&laquo;boundary&raquo;
+StatusLed"]
+
+    SdCardTest -- "isMisoPulledHigh()" --> SdCard
+    SdCardTest -- "mount()" --> SdCard
+    SdCardTest -- "getProperties()" --> SdCard
+    SdCardTest -- "writeFile(path, contents)" --> SdCard
+    SdCardTest -- "readFile(path)" --> SdCard
+    SdCardTest -- "readRootDirectory()" --> SdCard
+    SdCardTest -- "removeFile(path)" --> SdCard
+    SdCardTest -- "unmount()" --> SdCard
+    SdCardTest -- "flashGreen()" --> StatusLed
+    SdCardTest -- "flashRed()" --> StatusLed

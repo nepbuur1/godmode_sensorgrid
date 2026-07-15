@@ -119,6 +119,9 @@ set(COMPONENT_ADD_INCLUDEDIRS
 
 "../apps/pong/pong"
 
+# Standalone hardware test app (phase 7b)
+"../apps/hello_simcard/src"
+
 # Sensor Grid apps (sensorgrid_v7) - listed first: latest crt_SensorGridPacket.h
 "../apps/sensorgrid_v7/sensorgrid_common"
 "../apps/sensorgrid_v7/server_v7/src"
