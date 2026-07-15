@@ -716,3 +716,44 @@ Created sensorgrid_v7 by fully copying sensorgrid_v6 and renaming all sub-apps f
 ### Note
 - The app binary is 0xF9A40 bytes against an app partition of 0x100000 — only 2% free. This is not a v7 regression (v6 was the same size), but adding v7 functionality will require attention to the partition layout.
 
+### Phase 7a: microSD interconnection plan
+
+#### Summary
+Design-only phase, no code changes. Produced a wiring scheme for connecting a microSD card module (labelled "simcard" in the assignment; the module is in fact a microSD adapter — a SIM holder has no SPI) to the server's ESP32-S3 devkit. The goal it serves: move the static files served by server_v7 off the flash to relieve the 2% free app partition noted above.
+
+#### Hardware
+- Module: microSD adapter with a 74LVC125A quad buffer **and** an AMS1117 regulator -> **VCC = 5V**. (Without the regulator it would have been 3.3V; feeding 5V to a regulator-less board destroys the card, so the variant had to be established first.)
+- Card: 8GB microSD = SDHC, to be formatted FAT32.
+- The server devkit had no pins connected to anything yet, so the whole pin space was available.
+
+#### Wiring scheme
+| SD module | ESP32-S3 | IO_MUX function |
+|-----------|----------|-----------------|
+| `GND`  | `GND`     | |
+| `VCC`  | `5V`      | AMS1117 regulates to 3.3V |
+| `CS`   | `GPIO10`  | FSPICS0 |
+| `MOSI` | `GPIO11`  | FSPID |
+| `SCK`  | `GPIO12`  | FSPICLK |
+| `MISO` | `GPIO13`  | FSPIQ |
+
+Plus: 10k pull-up from `GPIO10` (CS) to 3.3V (the pin floats during reset), and a 10-47uF capacitor at the module's VCC (SD cards draw 100mA+ current spikes).
+
+#### Key design decisions
+- **SPI2 (FSPI) IO_MUX pins instead of the right-side header.** IO_MUX allows up to 80MHz where the GPIO matrix caps at 40MHz — and SD-SPI runs up to 40MHz, exactly at that limit. Costs nothing here since the devkit was empty. Note that this is the same pin set `crt_RealMeasurement.h` uses for the ADS1220 on the *sensor* devices; different physical devices, so no conflict, and it keeps the project convention consistent.
+- **IO_MUX does not reduce CPU load** — that is a common misconception. It affects maximum clock and signal delay only. CPU relief comes from **DMA**, which works equally on both routings. For Phase 7b this means: use the ESP-IDF `sdspi` driver (`SDSPI_HOST_DEFAULT()` + `SPI_DMA_CH_AUTO`), not the Arduino `SD.h` library, which does byte-wise SPI without DMA.
+- **SDMMC (the dedicated, genuinely CPU-cheaper peripheral) is not possible with this module.** Wiring-wise it would fit — on the card `CS`=DAT3, `MOSI`=CMD, `SCK`=CLK, `MISO`=DAT0, so 1-bit SDMMC is the same four wires. But SDMMC needs CMD and DAT0 to be bidirectional, and the 74LVC125A buffers in the path are unidirectional. SPI mode it is. A different, unbuffered adapter would be needed to change this.
+
+#### Pins deliberately avoided
+| Pin | Reason |
+|-----|--------|
+| `GPIO0`, `GPIO45` | strapping pins (BOOT / VDD_SPI select); a pull-up on the module can break booting |
+| `GPIO48` | in use as the RGB status LED (`crt_ServerNode.h` -> `neopixelWrite(RGB_BUILTIN, ...)`) |
+| `GPIO38` | is the RGB LED instead of 48 on some DevKitC-1 revisions |
+| `GPIO19`, `GPIO20` | native USB D-/D+, used to flash and monitor the server |
+| `GPIO35/36/37` | physically committed on modules with octal PSRAM. PSRAM is not enabled in `sdkconfig` and `crt_SensorNode.h` already uses 35 as `SNAPSHOT_PIN`, so they are probably free — but there was no need to take the risk |
+
+Note: `GPIO12` is a strapping pin (MTDI) on the classic ESP32, but **not** on the ESP32-S3, where the strapping pins are only 0, 3, 45 and 46.
+
+#### Status
+- Wiring scheme delivered; nothing connected or built yet. Phase 7b (the `hello_simcard` test app) follows.
+

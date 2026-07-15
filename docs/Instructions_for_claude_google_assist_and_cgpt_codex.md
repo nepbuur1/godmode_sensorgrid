@@ -608,3 +608,57 @@ Now we move on to a new project, called sensorgrid_v7.
 For starters, by fully copying sensorgrid_v6. (and renaming the sub-apps to server_v7, sensor_v7 and client_v7).
 As no code changes, this won't require reprogramming of the devices.
 
+### Phase 7a
+As you mentioned, the esp memory is almost full after programming it.
+I intend to alleviate the memory constraints by moving the static files that are served by our current
+webserver (server_v7) to a simcard. I want to get there in steps. The first step is to add an app to the 
+apps folder with a "hello_simcard" app, to test the simcard separately. But the first step of that is 
+that I connect the simcard module to the esp32-S3. In this very phase-phase 7a, all I ask from you, is
+to provide me with a usable interconnection plan of my simcard module to my ESP32-S3 devkit.
+Preferably, I'd like to use a subset of the pins on the right side of the devkit:
+gnd, 20,21,47,48,45,0,35,36,37,38,39,40,41,42 - unless for instance some pins of the left side offer
+hardware accelerated benefits that those pins don't offer. Of course, we don't like to use pins that
+could interfere with internal processes or boot-associated complexities.
+The pins on my micro simcard adapter are : gnd, vcc, miso, mosi, sck, cs.
+(I guess regular SPI).
+The chip on the board has on it (per row):lvc125A, 0140001, yxQ18 (or yxO18?), 13D.
+Looking forward to your connection scheme.
+
+#### Phase 7a outcome
+The board turned out to have an AMS1117 regulator, so VCC = 5V. The agreed wiring uses the SPI2 (FSPI)
+IO_MUX pins, since the server devkit had no pins connected yet:
+GND->GND, VCC->5V, CS->GPIO10, MOSI->GPIO11, SCK->GPIO12, MISO->GPIO13.
+Plus a 10k pull-up on CS and a 10-47uF capacitor at the module VCC.
+See Log.md, Phase 7a, for the reasoning and for the pins that were deliberately avoided.
+
+### Phase 7b (proposal drafted by Claude - Marius, please review/adjust or rewrite in your own words)
+Now that the wiring of the microSD module is settled, add a "hello_simcard" app to the apps folder, to
+test the card separately, before anything is moved out of server_v7.
+
+Keep it a standalone app (apps/hello_simcard), not part of sensorgrid_v7 - it exists to prove the
+hardware, not to serve anything. Follow the usual conventions from Software_dev_guidelines.md: src and
+tests subfolders, a doc subfolder with img and mermaid, a hello_simcard.md with a summary, the object
+model and the call-tree, and use the global logger rather than print/println.
+
+Use the wiring from phase 7a. Use the ESP-IDF sdspi driver (SDSPI_HOST_DEFAULT() with SPI_DMA_CH_AUTO)
+rather than the Arduino SD.h library: SD.h does byte-wise SPI without DMA, and the server is already
+busy enough. Start at 20MHz (SDMMC_FREQ_DEFAULT) and only try 40MHz once it is stable - with dupont
+wires 40MHz often does not survive.
+
+The app should do the following, and log each step so I can follow it on the monitor:
+- mount the card (FAT32, 8GB SDHC) and report failure clearly if it does not mount
+- log the card properties: type, capacity, sector size, and the speed it negotiated
+- write a test file, read it back, and verify the contents match
+- write a larger file (say 256kB) and read it back, to get a rough idea of the throughput we can expect
+  when serving static files
+- list the contents of the root directory
+- unmount cleanly
+
+Suggested success criteria: the card mounts, the read-back matches what was written, and the measured
+throughput is high enough to serve our static files without becoming the bottleneck (the WiFi link is
+expected to be the limit, not the card).
+
+If the card does not mount, please first suspect the wiring, the pull-up on CS, and the clock speed,
+in that order, before suspecting the code.
+
+Once this works, we can decide in a next phase how to move the static files of server_v7 to the card.
