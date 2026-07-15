@@ -1,0 +1,37 @@
+graph LR
+    SensorNode["&laquo;control&raquo;
+SensorNode"]
+    IMeasurementProvider["&laquo;interface&raquo;
+IMeasurementProvider"]
+    StubMeasurement["&laquo;entity&raquo;
+StubMeasurement"]
+    RealMeasurement["&laquo;entity&raquo;
+RealMeasurement"]
+    MCP23017["&laquo;boundary&raquo;
+MCP23017"]
+    ADG706["&laquo;boundary&raquo;
+ADG706"]
+    ADS1220["&laquo;boundary&raquo;
+ADS1220"]
+    WiFi["&laquo;boundary&raquo;
+WiFi"]
+    EspNow["&laquo;boundary&raquo;
+EspNow"]
+
+    SensorNode -- "detect() / measure()" --> IMeasurementProvider
+    StubMeasurement -. "implements" .-> IMeasurementProvider
+    RealMeasurement -. "implements" .-> IMeasurementProvider
+    RealMeasurement -- "selectColumn()" --> ADG706
+    RealMeasurement -- "startConversion()
+readRaw()" --> ADS1220
+    RealMeasurement -- "readReg() / writeReg()" --> MCP23017
+    ADG706 -- "digitalWrite()" --> MCP23017
+    ADS1220 -- "select/deselect CS" --> MCP23017
+    SensorNode -- "setStaMode()" --> WiFi
+    SensorNode -- "setChannel(channel)" --> WiFi
+    SensorNode -- "init()" --> EspNow
+    EspNow -- "onDataRecv(DISCOVER)" --> SensorNode
+    SensorNode -- "send(RegisterPacket)" --> EspNow
+    EspNow -- "onDataRecv(POLL)" --> SensorNode
+    SensorNode -- "send(DataPacket(s)
+128×uint16_t, 2 pkts)" --> EspNow

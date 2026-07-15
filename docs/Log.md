@@ -698,3 +698,21 @@ Removed the "average" and "sqrt(var)" columns from the statistics tables, along 
 ### Flash status
 - Server_v6 flashed to /dev/ttyACM0
 
+## Phase 7
+
+### Summary
+Created sensorgrid_v7 by fully copying sensorgrid_v6 and renaming all sub-apps from v6 to v7 (server_v7, sensor_v7, client_v7). No code changes, providing a clean baseline for v7 features. As the code is functionally identical, no reprogramming of the devices was needed.
+
+### What was done
+- Copied `apps/sensorgrid_v6/` to `apps/sensorgrid_v7/`
+- Renamed directories, source files, includes, log strings, and documentation from v6 to v7 (including the `doc/mermaid/*.mmd` and `doc/img/*.svg` object model files)
+- Added v7 include paths to `main/CMakeLists.txt`, listed above v6 so the latest `crt_SensorGridPacket.h` is picked up
+- Added v7 includes to `main/main.cpp`, with `server_v7.ino` active (the v6 includes were commented out but retained)
+
+### Verification
+- Built successfully with each of `server_v7.ino`, `sensor_v7.ino` and `client_v7.ino` active in turn; `server_v7.ino` left as the active app
+- No devices were connected, so no on-target test was run. Not needed for this phase: v7 is byte-for-byte equivalent in behaviour to the already verified v6.
+
+### Note
+- The app binary is 0xF9A40 bytes against an app partition of 0x100000 — only 2% free. This is not a v7 regression (v6 was the same size), but adding v7 functionality will require attention to the partition layout.
+

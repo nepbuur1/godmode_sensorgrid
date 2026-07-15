@@ -602,3 +602,9 @@ loadcell values on the right side. So for instance if there are already 6 horizo
 with along the left y-axis (for the sensor): 0, 500, 1000, 1500, 2000, 2500, 3000.
 Then, for instance if the maximum loadcell value measured is 355, then the same y-lines can be used
 for the load-cell y-axes, with values 0, 60, 120, 180, 240, 300, 360.
+
+### Phase 7
+Now we move on to a new project, called sensorgrid_v7.
+For starters, by fully copying sensorgrid_v6. (and renaming the sub-apps to server_v7, sensor_v7 and client_v7).
+As no code changes, this won't require reprogramming of the devices.
+
