@@ -175,3 +175,18 @@ set(COMPONENT_ADD_INCLUDEDIRS
 )
 
 register_component()
+
+# App-selectie en sensor-id via CMake-cachevariabelen, gezet door build_server.bat /
+# build_sensor.bat (en de .sh-varianten):
+#   idf.py -D SENSORGRID_APP=server_v7|sensor_v7|client_v7  ->  #define SENSORGRID_APP_<NAAM> 1
+#   idf.py -D SENSORGRID_SENSOR_ID=<n>                       ->  #define SENSORGRID_SENSOR_ID <n>
+# Zonder deze variabelen geldt de handmatige selectie in main.cpp (en SENSOR_ID in sensor_v7_ino.h).
+if(DEFINED SENSORGRID_APP AND NOT "${SENSORGRID_APP}" STREQUAL "")
+    string(TOUPPER "${SENSORGRID_APP}" SENSORGRID_APP_UPPER)
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE "SENSORGRID_APP_${SENSORGRID_APP_UPPER}=1")
+    message(STATUS "sensorgrid app: ${SENSORGRID_APP}")
+endif()
+if(DEFINED SENSORGRID_SENSOR_ID AND NOT "${SENSORGRID_SENSOR_ID}" STREQUAL "")
+    target_compile_definitions(${COMPONENT_LIB} PRIVATE "SENSORGRID_SENSOR_ID=${SENSORGRID_SENSOR_ID}")
+    message(STATUS "sensorgrid sensor id: ${SENSORGRID_SENSOR_ID}")
+endif()

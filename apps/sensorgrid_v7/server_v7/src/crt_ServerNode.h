@@ -18,6 +18,8 @@
 #include "crt_GridPlot.h"
 #include "crt_GridCircle.h"
 #include "crt_GridLoadcell.h"
+#include "crt_GridAutoCalib.h"
+#include "crt_GridAutoCalibUi.h"
 
 // Define USE_TIMED_DISCOVERY to use time-based discovery (10s window).
 // Undefine to revert to the v5 behaviour of waiting for a fixed sensor count.
@@ -595,6 +597,12 @@ namespace crt
 			});
 			server.on("/gridloadcell.js", HTTP_GET, [this]() {
 				server.send(200, "application/javascript", GRID_LOADCELL_JS);
+			});
+			server.on("/gridautocalib.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_AUTOCALIB_JS);
+			});
+			server.on("/gridautocalibui.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_AUTOCALIBUI_JS);
 			});
 			server.on("/api/sensors", HTTP_GET, [this]() {
 				handleApiSensors();

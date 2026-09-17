@@ -4,9 +4,13 @@
 #include <Arduino.h>
 #include "crt_SensorNode.h"
 
-// Change SENSOR_ID before flashing each sensor node:
-// sensor_1 = 1, sensor_2 = 2, etc.
-static const uint8_t SENSOR_ID = 2;
+// Sensor id per module: sensor_1 = 1, sensor_2 = 2, etc. Wordt gezet door build_sensor.bat
+// <actie> <poort> <id> (idf.py -D SENSORGRID_SENSOR_ID=<id>); zonder die variabele geldt de
+// waarde hieronder.
+#ifndef SENSORGRID_SENSOR_ID
+#define SENSORGRID_SENSOR_ID 2
+#endif
+static const uint8_t SENSOR_ID = SENSORGRID_SENSOR_ID;
 
 static const int FIXED_CHANNEL = 1;
 static const unsigned long SAMPLE_INTERVAL_MS = 100;

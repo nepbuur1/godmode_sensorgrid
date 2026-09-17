@@ -21,6 +21,8 @@ namespace crt
   <script src="/gridplot.js"></script>
   <script src="/gridcircle.js"></script>
   <script src="/gridloadcell.js"></script>
+  <script src="/gridautocalib.js"></script>
+  <script src="/gridautocalibui.js"></script>
 </head>
 <body>
   <nav>
@@ -57,6 +59,7 @@ namespace crt
       <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
       <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
+      <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
       <span class="rec-info" id="recInfo">Ready</span>
       <span id="recCircleVal" style="display:none;font-size:0.8rem;color:#666;margin-left:0.5rem;"></span>
       <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
@@ -69,6 +72,7 @@ namespace crt
       <input type="range" id="recSlider" min="0" max="0" value="0" style="width:100%;" oninput="recSliderChange(this.value)"/>
     </div>
     <canvas id="recChart" width="800" height="250" style="display:none;width:100%;background:#1a1a1a;border-radius:6px;margin:0.3rem 0;"></canvas>
+    <div class="ac-panel" id="acResultPanel" style="display:none;"></div>
     <div class="snapshot-panel">
       <div class="snapshot-row">
         <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
@@ -198,6 +202,7 @@ namespace crt
       <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
       <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
       <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
+      <button class="toggle-btn" id="btnCalibCheck" onmousedown="acCheckStart(event)" onmouseup="acCheckStop()" onmouseleave="acCheckStop()" ontouchstart="acCheckStart(event)" ontouchend="acCheckStop()" title="Ingedrukt houden: per cirkel de kalibratie-versie. zwart = nooit, groen = actueel, oranje = 1 ronde gemist, rood = 2 of meer">kalibratie_check</button>
       <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
       <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
@@ -221,6 +226,7 @@ namespace crt
         <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
       </div>
       <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
+      <div class="circle-info-row"><span id="ciAuto" style="font-size:0.75rem;color:#555;"></span></div>
     </div>
     <div id="status">...</div>
   </div>
@@ -281,11 +287,34 @@ namespace crt
         calGrams: 1000,
         // Per-circle indiv captures: array of [{cap,grams},{cap,grams},{cap,grams}] per circle
         indivCaps: [],
+        // Auto-kalibratie (Herkalibreer druksensoren, meta v2): per cirkel de PWL-knopen
+        // [{raw,gram} x 6] of [], de versie-byte 0..255 en het logje van de laatste run.
+        pwl: [],
+        calVer: [],
+        calLog: [],
         enabled: true,
         emaRawValues: null
       };
     });
     const statusEl = document.getElementById("status");
+    // Auto-kalibratie, globaal (meta v2): datum van de laatste run en de globale versie-byte.
+    let calibDate = null;
+    let calibVersion = 0;
+    const AC_EMPTY_LOG = {status: "skipped", reason: "", nTreads: 0};
+    function saveCalibGlobals() {
+      try {
+        localStorage.setItem("gvCalibDate", calibDate === null ? "" : calibDate);
+        localStorage.setItem("gvCalibVersion", String(calibVersion));
+      } catch (e) {}
+    }
+    function saveCalibSensor(id) {
+      const s = sensors[id];
+      try {
+        localStorage.setItem("gvPwl" + id, JSON.stringify(s.pwl));
+        localStorage.setItem("gvCalVer" + id, JSON.stringify(s.calVer));
+        localStorage.setItem("gvCalLog" + id, JSON.stringify(s.calLog));
+      } catch (e) {}
+    }
 
     function saveToggleStates() {
       setCookie("gvNormalized", normalized ? "1" : "0", 365);
@@ -473,7 +502,21 @@ namespace crt
       }
     }
 
+    // Breng pwl/calVer/calLog op de lengte van de grid (bestaande waarden blijven staan).
+    function ensurePwl(s, count) {
+      if (count <= 0) return;
+      if (s.pwl.length === count && s.calVer.length === count && s.calLog.length === count) return;
+      const pwl = [], ver = [], log = [];
+      for (let i = 0; i < count; i++) {
+        pwl.push(i < s.pwl.length && Array.isArray(s.pwl[i]) ? s.pwl[i] : []);
+        ver.push(i < s.calVer.length ? (s.calVer[i] | 0) : 0);
+        log.push(i < s.calLog.length && s.calLog[i] ? s.calLog[i] : AC_EMPTY_LOG);
+      }
+      s.pwl = pwl; s.calVer = ver; s.calLog = log;
+    }
+
     function ensureIndivCaps(s, count) {
+      ensurePwl(s, count);
       if (count <= 0) return;
       if (s.indivCaps.length === count) return;
       const old = s.indivCaps;
@@ -493,7 +536,7 @@ namespace crt
         cell.classList.remove("cell-selected", "cell-captured");
         if (selectedSensorId !== null && sensors[selectedSensorId] === s && selectedCircleIdx === i) {
           cell.classList.add("cell-selected");
-        } else if (isCircleFullyCaptured(s.indivCaps[i])) {
+        } else if ((s.pwl && s.pwl[i] && s.pwl[i].length >= 2) || isCircleFullyCaptured(s.indivCaps[i])) {
           cell.classList.add("cell-captured");
         }
       });
@@ -517,6 +560,7 @@ namespace crt
         document.getElementById("ciCap" + t).value = tuples[t].cap ? Math.round(tuples[t].cap) : "-";
         document.getElementById("ciGrams" + t).value = tuples[t].grams || "-";
       }
+      if (typeof acUpdateCircleInfo === "function") acUpdateCircleInfo(sensorId, circleIdx);
       updateRecChart();
     }
 
@@ -598,9 +642,18 @@ namespace crt
         const cg = getCookie("gvCalGrams" + id);
         if (cg !== null) s.calGrams = parseFloat(cg) || 1000;
         try { const ic = localStorage.getItem("gvIndivCaps" + id); if (ic) s.indivCaps = JSON.parse(ic); } catch(e) {}
+        try {
+          const pw = localStorage.getItem("gvPwl" + id); if (pw) s.pwl = JSON.parse(pw);
+          const cv = localStorage.getItem("gvCalVer" + id); if (cv) s.calVer = JSON.parse(cv);
+          const cl = localStorage.getItem("gvCalLog" + id); if (cl) s.calLog = JSON.parse(cl);
+        } catch(e) {}
         const en = getCookie("gvEnabled" + id);
         if (en === "0") s.enabled = false;
       });
+      try {
+        const cd = localStorage.getItem("gvCalibDate"); if (cd !== null) calibDate = cd === "" ? null : cd;
+        const cv = localStorage.getItem("gvCalibVersion"); if (cv !== null) calibVersion = parseInt(cv) || 0;
+      } catch(e) {}
 
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
       if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
@@ -613,7 +666,9 @@ namespace crt
     // Captures everything that defines the page state EXCEPT recorded sensor
     // values and snapshots, so the state can be restored later.
     function buildMetaState() {
-      const meta = { version: 1, global: {}, sensors: {} };
+      const meta = { version: 2, global: {}, sensors: {} };
+      meta.global.calibDate = calibDate;
+      meta.global.calibVersion = calibVersion;
       meta.global.normalized = normalized;
       meta.global.maxFixed = maxFixed;
       meta.global.colorized = colorized;
@@ -631,6 +686,9 @@ namespace crt
           maxSumCaptured: s.maxSumCaptured,
           avResidualNoiseSum: s.avResidualNoiseSum,
           indivCaps: s.indivCaps,
+          pwl: s.pwl,
+          calVer: s.calVer,
+          calLog: s.calLog,
           offsets: s.offsets,
           lcTareOffset: s.lcTareOffset,
           lcScale: s.lcScale,
@@ -667,6 +725,9 @@ namespace crt
         setCookie("gvRecZoom", recZoomFactor, 365);
         initRecZoom();
       }
+      if ("calibDate" in g) calibDate = (typeof g.calibDate === "string" && g.calibDate) ? g.calibDate : null;
+      if ("calibVersion" in g) calibVersion = Math.max(0, Math.min(255, parseInt(g.calibVersion) || 0));
+      if ("calibDate" in g || "calibVersion" in g) saveCalibGlobals();
       const sm = meta.sensors || {};
       SENSOR_IDS.forEach(id => {
         const m = sm[id] || sm[String(id)];
@@ -684,6 +745,11 @@ namespace crt
           try { localStorage.setItem("gvIndivCaps" + id, JSON.stringify(s.indivCaps)); } catch (e) {}
         }
         if ("offsets" in m) { s.offsets = Array.isArray(m.offsets) ? m.offsets : null; }
+        let calChanged = false;
+        if (Array.isArray(m.pwl)) { s.pwl = m.pwl; calChanged = true; }
+        if (Array.isArray(m.calVer)) { s.calVer = m.calVer.map(v => Math.max(0, Math.min(255, parseInt(v) || 0))); calChanged = true; }
+        if (Array.isArray(m.calLog)) { s.calLog = m.calLog; calChanged = true; }
+        if (calChanged) { if (s.cells.length > 0) ensurePwl(s, s.cells.length); saveCalibSensor(id); }
         if ("lcTareOffset" in m) { s.lcTareOffset = parseFloat(m.lcTareOffset) || 0; setCookie("lcTare" + id, s.lcTareOffset, 365); }
         if ("lcScale" in m) { s.lcScale = parseFloat(m.lcScale) || 1; setCookie("lcScale" + id, s.lcScale, 365); }
         if ("lcKnown" in m) { s.lcKnownEl.value = m.lcKnown; setCookie("lcKnown" + id, m.lcKnown, 365); }
@@ -710,8 +776,12 @@ namespace crt
     // Append the page metadata as a tagged trailing array element, so recording
     // and snapshot files carry it at the end (phase 6x). Backward compatible:
     // older files simply lack the trailing {__meta__:...} element.
-    function metaAppendForExport(frames) {
-      return frames.concat([{ __meta__: buildMetaState() }]);
+    // 'recording' (optioneel): het tag-blok van een recording (B8): {kind, calibratedAt, tool,
+    // version}; snapshots en losse meta-bestanden krijgen geen recording-blok.
+    function metaAppendForExport(frames, recording) {
+      const meta = buildMetaState();
+      if (recording) meta.recording = recording;
+      return frames.concat([{ __meta__: meta }]);
     }
     // Split an imported array into {frames, meta}, stripping a trailing
     // {__meta__:...} element if present (returns meta=null otherwise).
@@ -787,6 +857,8 @@ namespace crt
       const [mn, mx] = minMax(filteredDisplay);
       if (s.is3D && s.gl) {
         renderSurface(s, filteredDisplay, mn, mx);
+      } else if (typeof acIsCheckPainting === "function" && acIsCheckPainting(s)) {
+        acPaintCheckCells(s);
       } else {
         filteredDisplay.forEach((v, i) => {
           if (i < s.cells.length) {
@@ -885,6 +957,21 @@ namespace crt
       setTimeout(pollLoop, remaining);
     }
     pollLoop();
+
+    // Test-hook: leesbare paginastaat voor geautomatiseerde tests (TmpWindowsWebsiteTest).
+    // Onschadelijk op de ESP. loadRecordingText() vervangt de upload-dialoog.
+    window.__ac = {
+      meta: function() { return buildMetaState(); },
+      exportRecordingJson: function() { return JSON.stringify(metaAppendForExport(recFrames, recExportTag())); },
+      recordingTag: function() { return recordingTag; },
+      lastRun: function() { return acLastRun; },
+      checkMode: function() { return acCheckMode; },
+      loadRecordingText: function(text, name) {
+        recUpload({target: {files: [new File([text], name || 'upload.json')], value: ''}});
+      },
+      recState: function() { return recState; },
+      frames: function() { return recFrames.length; }
+    };
   </script>
 </body>
 </html>)rawliteral";

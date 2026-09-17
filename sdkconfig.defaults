@@ -1,0 +1,27 @@
+# Gemeenschappelijke sdkconfig-defaults voor alle sensorgrid-builds (server en sensor).
+# Wordt gecombineerd met sdkconfig.server.defaults of sdkconfig.sensor.defaults door
+# build_server.bat / build_sensor.bat (en de .sh-varianten) bij de eerste configuratie
+# (idf.py set-target). Daarna is de gegenereerde sdkconfig.server / sdkconfig.sensor leidend.
+
+# Doel: ESP32-S3, Arduino-core als component (setup()/loop() worden vanuit app_main aangeroepen,
+# dus geen autostart).
+CONFIG_IDF_TARGET="esp32s3"
+# CONFIG_AUTOSTART_ARDUINO is not set
+
+# Vereist door de Arduino-core (zie arduino-esp32 "Using as ESP-IDF component").
+CONFIG_FREERTOS_HZ=1000
+CONFIG_MBEDTLS_PSK_MODES=y
+CONFIG_MBEDTLS_KEY_EXCHANGE_PSK=y
+CONFIG_MBEDTLS_KEY_EXCHANGE_DHE_PSK=y
+CONFIG_MBEDTLS_KEY_EXCHANGE_ECDHE_PSK=y
+CONFIG_MBEDTLS_KEY_EXCHANGE_RSA_PSK=y
+
+# Console via de ingebouwde USB-JTAG/serial-poort (de devkits hangen alleen daarmee aan de PC),
+# zodat "idf.py monitor" de ESP_LOG-uitvoer toont.
+CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y
+
+# Eigen partitietabel; het bestand staat in sdkconfig.server.defaults / sdkconfig.sensor.defaults.
+CONFIG_PARTITION_TABLE_CUSTOM=y
+
+# C++-uitzonderingen zoals de eerdere fases (Arduino-libs verwachten dit soms).
+CONFIG_COMPILER_CXX_EXCEPTIONS=y

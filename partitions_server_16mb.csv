@@ -1,0 +1,8 @@
+# Partitietabel voor de SERVER (ESP32-S3-DevKitC-1 N16R8, 16 MB flash).
+# Single factory app (geen OTA) van 6 MB: de webinhoud van server_v7 groeit (autokalibratie),
+# en de vorige 1 MB-partitie was al voor 98% vol. De rest is spiffs voor later (fase 7a/7c).
+# Name,   Type, SubType, Offset,   Size,     Flags
+nvs,      data, nvs,     0x9000,   0x6000,
+phy_init, data, phy,     0xf000,   0x1000,
+factory,  app,  factory, 0x10000,  0x600000,
+spiffs,   data, spiffs,  0x610000, 0x9F0000,

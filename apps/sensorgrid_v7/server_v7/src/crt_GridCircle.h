@@ -121,7 +121,13 @@ namespace crt
         ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
         : s.lastValues;
       if (normIndivCap && s.indivCaps.length === offsetted.length) {
-        return offsetted.map((v, i) => indivLookup(v, s.indivCaps[i]));
+        // auto-PWL (Herkalibreer druksensoren) op de absolute raw, zonder offset;
+        // anders de handmatige 3-punts kalibratie op de geoffsette waarde.
+        return offsetted.map((v, i) => {
+          const pw = s.pwl && s.pwl[i];
+          if (pw && pw.length >= 2) return pwlLookup(s.lastValues[i], pw);
+          return indivLookup(v, s.indivCaps[i]);
+        });
       }
       if (normSumCap && s.maxSumCaptured != null) {
         const denom = s.maxSumCaptured - s.avResidualNoiseSum;
@@ -140,6 +146,10 @@ namespace crt
       const [mn, mx] = minMax(displayValues);
       if (s.is3D && s.gl) {
         renderSurface(s, displayValues, mn, mx);
+        return;
+      }
+      if (typeof acIsCheckPainting === "function" && acIsCheckPainting(s)) {
+        acPaintCheckCells(s);
         return;
       }
       displayValues.forEach((v, i) => {

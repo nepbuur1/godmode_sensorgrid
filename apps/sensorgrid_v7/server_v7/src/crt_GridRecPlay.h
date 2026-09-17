@@ -10,10 +10,24 @@ namespace crt
     var recState = 'idle';
     var recFrames = [];
     var playIdx = 0;
+    // Tag van de geladen/opgenomen recording (meta v2, B8): null = gewone opname;
+    // {kind:'calibration', calibratedAt, tool, version} na "Herkalibreer druksensoren" of na
+    // upload van zo'n bestand. Gaat mee in de download (metaAppendForExport).
+    var recordingTag = null;
+    function recExportTag() {
+      return recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
+    }
+    function recTagText() {
+      if (!recordingTag || recordingTag.kind !== 'calibration') return '';
+      var d = recordingTag.calibratedAt ? String(recordingTag.calibratedAt).replace('T', ' ').slice(0, 16) : '?';
+      return ' \u00b7 kalibratie-opname (' + d + ')';
+    }
 
     function recRecord() {
       recFrames = [];
       playIdx = 0;
+      recordingTag = null;
+      if (typeof acOnRecordingLoaded === 'function') acPreview = null;
       recState = 'recording';
       document.getElementById('btnRecord').classList.add('rec-active');
       document.getElementById('btnPause').disabled = false;
@@ -49,6 +63,7 @@ namespace crt
       document.getElementById('btnStop').disabled = true;
       document.getElementById('btnPlay').disabled = (recFrames.length === 0);
       document.getElementById('btnDownload').disabled = (recFrames.length === 0);
+      if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
       recUpdateInfo();
       updateRecChart();
     }
@@ -87,7 +102,7 @@ namespace crt
 
     function recDownload() {
       if (recFrames.length === 0) return;
-      const json = JSON.stringify(metaAppendForExport(recFrames));
+      const json = JSON.stringify(metaAppendForExport(recFrames, recExportTag()));
       const blob = new Blob([json], {type: 'application/json'});
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -113,7 +128,10 @@ namespace crt
           }
           recFrames = data;
           playIdx = 0;
+          recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
+            ? split.meta.recording : null;
           if (split.meta) applyMetaState(split.meta);
+          if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
           recState = 'stopped';
           document.getElementById('btnRecord').classList.remove('rec-active');
           document.getElementById('btnPause').disabled = true;
@@ -144,10 +162,11 @@ namespace crt
       const el = document.getElementById('recInfo');
       if (recState === 'recording') el.textContent = 'Recording: ' + recFrames.length + ' frames';
       else if (recState === 'paused') el.textContent = 'Paused: ' + recFrames.length + ' frames';
-      else if (recState === 'stopped') el.textContent = 'Stopped: ' + recFrames.length + ' frames';
-      else if (recState === 'playing') el.textContent = 'Playing: ' + playIdx + '/' + recFrames.length;
-      else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length;
+      else if (recState === 'stopped') el.textContent = 'Stopped: ' + recFrames.length + ' frames' + recTagText();
+      else if (recState === 'playing') el.textContent = 'Playing: ' + playIdx + '/' + recFrames.length + recTagText();
+      else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length + recTagText();
       else el.textContent = 'Ready';
+      if (typeof acUpdateRecalibButton === 'function') acUpdateRecalibButton();
       var sl = document.getElementById('recSlider');
       var show = (recState === 'playing' || recState === 'playpaused');
       document.getElementById('recSliderRow').style.display = show ? 'block' : 'none';

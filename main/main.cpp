@@ -104,12 +104,22 @@ namespace crt
 //#include <client_v5.ino>
 
 // **** Standalone hardware test app (phase 7b) ****
-#include <hello_simcard.ino>
+//#include <hello_simcard.ino>
 
 // **** Sensor Grid apps (sensorgrid_v7) ****
-//#include <server_v7.ino>
+// Selectie via build_server.bat / build_sensor.bat (idf.py -D SENSORGRID_APP=server_v7|sensor_v7|
+// client_v7, zie main/CMakeLists.txt). Zonder die variabele geldt de handmatige keuze hieronder.
+#if defined(SENSORGRID_APP_SERVER_V7)
+#include <server_v7.ino>
+#elif defined(SENSORGRID_APP_SENSOR_V7)
+#include <sensor_v7.ino>
+#elif defined(SENSORGRID_APP_CLIENT_V7)
+#include <client_v7.ino>
+#else
+#include <server_v7.ino>
 //#include <sensor_v7.ino>
 //#include <client_v7.ino>
+#endif
 
 // **** Sensor Grid apps (sensorgrid_v6) ****
 //#include <server_v6.ino>

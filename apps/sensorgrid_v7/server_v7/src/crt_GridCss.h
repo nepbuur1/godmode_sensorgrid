@@ -357,6 +357,22 @@ namespace crt
       color: #666;
       min-width: 120px;
     }
+    .ac-panel {
+      margin-bottom: 1rem;
+      padding: 0.5rem;
+      border: 2px solid #80cbc4;
+      border-radius: 6px;
+      background: #e0f2f1;
+      font-size: 0.8rem;
+      color: #444;
+    }
+    .ac-row { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; margin: 0.2rem 0; }
+    .ac-dim { color: #777; font-size: 0.75rem; }
+    .ac-warn { color: #c00; font-weight: 600; }
+    .ac-table { border-collapse: collapse; margin: 0.3rem 0; font-size: 0.75rem; }
+    .ac-table th, .ac-table td { border: 1px solid #b2dfdb; padding: 0.15rem 0.4rem; text-align: left; }
+    .ac-table tr.ac-ok td { background: #f1f8e9; }
+    .ac-table tr.ac-skip td { background: #fff3e0; }
     .snapshot-panel {
       margin-bottom: 1rem;
       padding: 0.5rem;

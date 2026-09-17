@@ -12,6 +12,12 @@ build_*/
 **/build/
 sdkconfig
 sdkconfig.old
+sdkconfig.server
+sdkconfig.server.old
+sdkconfig.sensor
+sdkconfig.sensor.old
+build_*.log
+flash_*.log
 dependencies.lock
 managed_components
 __pycache__/

@@ -1,0 +1,6 @@
+# Sensor-specifieke sdkconfig-defaults: ESP32-S3 met 8 MB flash, partitietabel
+# partitions_sensor_8mb.csv. Gebruikt door build_sensor.bat / build_sensor.sh.
+CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="8MB"
+CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_sensor_8mb.csv"
+CONFIG_PARTITION_TABLE_FILENAME="partitions_sensor_8mb.csv"
