@@ -40,8 +40,7 @@ namespace crt
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.download = 'snapshots_' + ts + '.json';
+      a.download = 'snapshots_' + recLocalStamp() + '.json';
       a.click();
       URL.revokeObjectURL(url);
     }

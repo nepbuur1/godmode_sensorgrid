@@ -17,9 +17,25 @@ namespace crt
     function recExportTag() {
       return recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
     }
+    // Tijdstempel in LOKALE tijd (CEST) voor bestandsnamen: YYYY-MM-DDTHH-MM-SS.
+    // (De datums in de data zelf, zoals calibDate, blijven ISO/UTC met 'Z'.)
+    function recLocalStamp(d) {
+      d = d || new Date();
+      var p = function(n) { return String(n).padStart(2, '0'); };
+      return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' +
+             p(d.getHours()) + '-' + p(d.getMinutes()) + '-' + p(d.getSeconds());
+    }
+    // ISO-tijd (UTC) leesbaar in lokale tijd: "YYYY-MM-DD HH:MM" (of met seconden).
+    function recFmtLocal(iso, withSeconds) {
+      var d = new Date(iso);
+      if (isNaN(d.getTime())) return String(iso);
+      var s = recLocalStamp(d).replace('T', ' ');
+      s = s.slice(0, 10) + ' ' + s.slice(11).replace(/-/g, ':');
+      return withSeconds ? s : s.slice(0, 16);
+    }
     function recTagText() {
       if (!recordingTag || recordingTag.kind !== 'calibration') return '';
-      var d = recordingTag.calibratedAt ? String(recordingTag.calibratedAt).replace('T', ' ').slice(0, 16) : '?';
+      var d = recordingTag.calibratedAt ? recFmtLocal(recordingTag.calibratedAt) : '?';
       return ' \u00b7 kalibratie-opname (' + d + ')';
     }
 
@@ -107,8 +123,7 @@ namespace crt
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      a.download = 'recording_' + ts + '.json';
+      a.download = 'recording_' + recLocalStamp() + '.json';
       a.click();
       URL.revokeObjectURL(url);
     }

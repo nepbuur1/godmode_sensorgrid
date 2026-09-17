@@ -115,28 +115,34 @@ namespace crt
       return pB.y + slope * (rawVal - pB.x);
     }
 
-    function getDisplayValues(s, id) {
-      if (s.lastValues.length === 0) return [];
-      const offsetted = s.offsets
-        ? s.lastValues.map((v, i) => v - (s.offsets[i] || 0))
-        : s.lastValues;
-      if (normIndivCap && s.indivCaps.length === offsetted.length) {
-        // auto-PWL (Herkalibreer druksensoren) op de absolute raw, zonder offset;
-        // anders de handmatige 3-punts kalibratie op de geoffsette waarde.
-        return offsetted.map((v, i) => {
-          const pw = s.pwl && s.pwl[i];
-          if (pw && pw.length >= 2) return pwlLookup(s.lastValues[i], pw);
-          return indivLookup(v, s.indivCaps[i]);
-        });
+    // De weergavewaarde van een cirkel volgens de actieve modus. Gedeeld door de grid
+    // (getDisplayValues) en de recording-grafiek (gridrecchart.js), zodat beide altijd dezelfde
+    // omrekening tonen. count = aantal waarden in het frame (guard voor de handmatige tabel).
+    //   Norm IndivCap: auto-PWL (Herkalibreer druksensoren) op de absolute raw, zonder offset;
+    //                  anders de handmatige 3-punts kalibratie op de geoffsette waarde.
+    //   Norm SumCap:   schaling naar calGrams via maxSumCaptured.
+    //   anders:        de geoffsette ruwe waarde.
+    function displayValueForCircle(s, id, i, rawValue, count) {
+      const offsetted = s.offsets ? rawValue - (s.offsets[i] || 0) : rawValue;
+      if (normIndivCap && s.indivCaps && s.indivCaps.length === count) {
+        const pw = s.pwl && s.pwl[i];
+        if (pw && pw.length >= 2) return pwlLookup(rawValue, pw);
+        return indivLookup(offsetted, s.indivCaps[i]);
       }
       if (normSumCap && s.maxSumCaptured != null) {
         const denom = s.maxSumCaptured - s.avResidualNoiseSum;
         if (denom > 0) {
           const cg = getCalGrams(id);
-          return offsetted.map(v => cg * v / denom);
+          return cg * offsetted / denom;
         }
       }
       return offsetted;
+    }
+
+    function getDisplayValues(s, id) {
+      if (s.lastValues.length === 0) return [];
+      const count = s.lastValues.length;
+      return s.lastValues.map((v, i) => displayValueForCircle(s, id, i, v, count));
     }
 
     function colorCells(s, id) {
@@ -163,6 +169,7 @@ namespace crt
     }
 
     function recolorAll() {
+      if (typeof recInvalidateRange === "function") recInvalidateRange();   // kalibratie/modus gewijzigd
       SENSOR_IDS.forEach(id => colorCells(sensors[id], id));
     }
 )rawliteral";

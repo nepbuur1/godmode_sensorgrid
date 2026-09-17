@@ -169,7 +169,7 @@ namespace crt
       const run = last.run;
       let html = '<div class="ac-row"><b>Herkalibreer druksensoren</b>';
       if (run.applied) {
-        html += '<span>kalibratie-versie ' + calibVersion + ', ' + acEsc(String(calibDate).replace('T', ' ').slice(0, 19)) +
+        html += '<span>kalibratie-versie ' + calibVersion + ', ' + acEsc(recFmtLocal(calibDate, true)) +
                 (run.reset ? ', versie-bytes gereset (255 bereikt)' : '') + '</span>';
       } else {
         html += '<span class="ac-warn">geen enkele sensor goedgekeurd: kalibratie, versie en datum ongewijzigd</span>';

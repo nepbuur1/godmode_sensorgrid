@@ -66,6 +66,13 @@ namespace crt
         <label style="font-size:0.75rem;color:#666;">Zoom</label>
         <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>
         <span id="recZoomVal" style="font-size:0.75rem;color:#666;min-width:2.5rem;">10x</span>
+        <label style="font-size:0.75rem;color:#666;margin-left:0.6rem;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
+        <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
+          <label style="font-size:0.75rem;color:#666;">y-clip</label>
+          <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
+          <label style="font-size:0.75rem;color:#666;">..</label>
+          <input type="text" id="fldClipHi" value="3000" size="5" onchange="recClipChange()" title="upper bound"/>
+        </span>
       </span>
     </div>
     <div id="recSliderRow" style="display:none;padding:0 0.5rem;">
@@ -473,6 +480,7 @@ namespace crt
       document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
       saveToggleStates();
       recolorAll();
+      updateRecChart();
     }
     function toggleNormIndivCap() {
       normIndivCap = !normIndivCap;
@@ -484,6 +492,7 @@ namespace crt
       document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
       saveToggleStates();
       recolorAll();
+      updateRecChart();
     }
 
     function doRemoveOffset() {
@@ -495,6 +504,7 @@ namespace crt
       const s = sensors[id];
       if (s.lastValues.length > 0) {
         s.offsets = [...s.lastValues];
+        if (typeof recInvalidateRange === "function") recInvalidateRange();
         residualCollecting = true;
         residualSensorId = id;
         residualStartTime = Date.now();
@@ -578,6 +588,7 @@ namespace crt
       const circleValue = s.filteredValues[selectedCircleIdx];
       const calGrams = parseFloat(document.getElementById("ciCalGrams" + tupleIdx).value) || 0;
       s.indivCaps[selectedCircleIdx][tupleIdx] = {cap: circleValue, grams: calGrams};
+      if (typeof recInvalidateRange === "function") recInvalidateRange();
       document.getElementById("ciCap" + tupleIdx).value = Math.round(circleValue);
       document.getElementById("ciGrams" + tupleIdx).value = calGrams;
       try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
@@ -589,6 +600,7 @@ namespace crt
       const s = sensors[selectedSensorId];
       s.indivCaps = [];
       ensureIndivCaps(s, s.cells.length);
+      if (typeof recInvalidateRange === "function") recInvalidateRange();
       try { localStorage.setItem("gvIndivCaps" + selectedSensorId, JSON.stringify(s.indivCaps)); } catch(e) {}
       if (selectedCircleIdx !== null) {
         for (let t = 0; t < 3; t++) {
@@ -678,6 +690,8 @@ namespace crt
       meta.global.statsFilter = document.getElementById("fldStatsFilter").value;
       meta.global.valueFilter = document.getElementById("fldValueFilter").value;
       if (typeof recZoomFactor !== "undefined") meta.global.recZoomFactor = recZoomFactor;
+      if (typeof recSingleY !== "undefined") meta.global.recSingleY = recSingleY;
+      if (typeof recClipLo !== "undefined") { meta.global.recClipLo = recClipLo; meta.global.recClipHi = recClipHi; }
       SENSOR_IDS.forEach(id => {
         const s = sensors[id];
         meta.sensors[id] = {
@@ -725,6 +739,16 @@ namespace crt
         setCookie("gvRecZoom", recZoomFactor, 365);
         initRecZoom();
       }
+      if ("recSingleY" in g && typeof recSingleY !== "undefined") {
+        recSingleY = !!g.recSingleY;
+        setCookie("gvRecSingleY", recSingleY ? "1" : "0", 365);
+        const chk = document.getElementById("chkSingleY");
+        if (chk) chk.checked = recSingleY;
+        if (typeof recShowClipRow === "function") recShowClipRow();
+      }
+      if (("recClipLo" in g || "recClipHi" in g) && typeof recSetClip === "function") {
+        recSetClip("recClipLo" in g ? g.recClipLo : recClipLo, "recClipHi" in g ? g.recClipHi : recClipHi);
+      }
       if ("calibDate" in g) calibDate = (typeof g.calibDate === "string" && g.calibDate) ? g.calibDate : null;
       if ("calibVersion" in g) calibVersion = Math.max(0, Math.min(255, parseInt(g.calibVersion) || 0));
       if ("calibDate" in g || "calibVersion" in g) saveCalibGlobals();
@@ -757,6 +781,7 @@ namespace crt
       // Refresh UI to reflect the restored state.
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
       recolorAll();
+      updateRecChart();
       if (selectedSensorId !== null) {
         const s = sensors[selectedSensorId];
         document.getElementById("fldSumCap").value = s.maxSumCaptured != null ? s.maxSumCaptured : "-";
@@ -801,8 +826,7 @@ namespace crt
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-      a.download = "gridmeta_" + ts + ".json";
+      a.download = "gridmeta_" + recLocalStamp() + ".json";
       a.click();
       URL.revokeObjectURL(url);
     }

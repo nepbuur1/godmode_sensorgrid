@@ -319,7 +319,9 @@ namespace crt
       border-radius: 6px;
       background: #f5f5f5;
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5rem;
+      row-gap: 0.4rem;
       align-items: center;
       justify-content: center;
     }
@@ -385,6 +387,7 @@ namespace crt
     }
     .snapshot-row {
       display: flex;
+      flex-wrap: wrap;
       gap: 0.5rem;
       align-items: center;
       justify-content: center;
