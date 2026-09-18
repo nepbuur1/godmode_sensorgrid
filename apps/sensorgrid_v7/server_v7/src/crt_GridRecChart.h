@@ -20,6 +20,44 @@ namespace crt
 
     function recInvalidateRange() { recRangeCache = null; }
 
+    // ---- Loadcell-gram voor de weergave ----
+    // Ongefilterde gram van een frame: uit het bestand als loadcellGram daar ongefilterd in staat
+    // (recording.lcGramRaw), anders (oudere opname, loadcellGram al live gefilterd) herberekend
+    // uit loadcellRaw met de tarra/schaal van de module (bij upload uit de meta hersteld).
+    function recLcGramOfFrame(sd, s) {
+      if (recLcGramRaw || !sd.hasLoadcell || !s || !s.lcScale) return (typeof sd.loadcellGram === 'number') ? sd.loadcellGram : 0;
+      return (sd.loadcellRaw - s.lcTareOffset) / s.lcScale;
+    }
+    // Zelfde Value Filter als de cirkels (updateSensor): EMA over de frames, gestart op frame 0.
+    function recEmaSeries(arr, vf) {
+      const out = new Array(arr.length);
+      let acc = 0;
+      for (let i = 0; i < arr.length; i++) {
+        acc = (i === 0) ? arr[i] : acc * vf + arr[i] * (1 - vf);
+        out[i] = acc;
+      }
+      return out;
+    }
+    // Gefilterde loadcell-gram per frame van een module (gecachet per frames/filter/tarra/schaal);
+    // gebruikt door de groene curve en door recApplyFrame (loadcell-venster bij afspelen).
+    var recLcCache = null;   // {frames, keys: {id: key}, series: {id: [...]}}
+    function recLcFilteredSeries(sensorId) {
+      const s = sensors[sensorId];
+      const vf = getValueFilter();
+      const key = recFrames.length + '|' + vf + '|' + (recLcGramRaw ? 1 : 0) + '|' + s.lcTareOffset + '|' + s.lcScale;
+      if (!recLcCache || recLcCache.frames !== recFrames) recLcCache = { frames: recFrames, keys: {}, series: {} };
+      if (recLcCache.keys[sensorId] === key) return recLcCache.series[sensorId];
+      const raw = new Array(recFrames.length);
+      for (let f = 0; f < recFrames.length; f++) {
+        let v = 0;
+        for (const sd of recFrames[f].sensors) { if (sd.id === sensorId) { v = recLcGramOfFrame(sd, s); break; } }
+        raw[f] = v;
+      }
+      recLcCache.keys[sensorId] = key;
+      recLcCache.series[sensorId] = recEmaSeries(raw, vf);
+      return recLcCache.series[sensorId];
+    }
+
     function recShowClipRow() {
       const row = document.getElementById('recClipRow');
       if (row) row.style.display = recSingleY ? 'inline-flex' : 'none';
@@ -58,8 +96,9 @@ namespace crt
         for (const sd of recFrames[f].sensors) {
           if (sd.id !== sensorId) continue;
           if (typeof sd.loadcellGram === 'number') {
-            if (sd.loadcellGram < lcMin) lcMin = sd.loadcellGram;
-            if (sd.loadcellGram > lcMax) lcMax = sd.loadcellGram;
+            const lg = recLcGramOfFrame(sd, s);
+            if (lg < lcMin) lcMin = lg;
+            if (lg > lcMax) lcMax = lg;
           }
           if (sd.values) {
             const n = sd.values.length;
@@ -146,7 +185,7 @@ namespace crt
       playIdx = idx;
       recUpdateInfo();
       if (recState === 'playpaused' && playIdx > 0) {
-        applyFrame(recFrames[playIdx - 1]);
+        recShowFrame(playIdx - 1);
       }
       updateRecChart();
     }
@@ -198,19 +237,17 @@ namespace crt
       const H = canvas.height;
       ctx.clearRect(0, 0, W, H);
 
-      // Extract circle values (blue) and recorded loadcell values (green) from frames.
-      const vals = [];
-      const lcVals = [];
+      // Extract circle values (blue) and loadcell values (green) from frames. Beide gaan door
+      // hetzelfde Value Filter als de cirkels (EMA over de frames vanaf frame 0), zodat curve,
+      // "val=" en celtekst dezelfde waarde tonen.
+      const rawVals = [];
       let hasLc = false;
-      let lcMax = 0;
       for (let f = 0; f < recFrames.length; f++) {
         const frame = recFrames[f];
         let v = null;
-        let lv = 0;
         for (const sd of frame.sensors) {
           if (sd.id === selectedSensorId) {
             if (sd.hasLoadcell) hasLc = true;
-            if (typeof sd.loadcellGram === 'number') lv = sd.loadcellGram;
             const s = sensors[selectedSensorId];
             if (sd.values && selectedCircleIdx < sd.values.length) {
               // zelfde omrekening als de grid (raw / Norm SumCap / Norm IndivCap incl. auto-PWL)
@@ -219,12 +256,14 @@ namespace crt
             break;
           }
         }
-        vals.push(v !== null ? v : 0);
-        lcVals.push(lv);
-        if (lv > lcMax) lcMax = lv;
+        rawVals.push(v !== null ? v : 0);
       }
 
-      if (vals.length === 0) { canvas.style.display = 'none'; return; }
+      if (rawVals.length === 0) { canvas.style.display = 'none'; return; }
+      const vals = recEmaSeries(rawVals, getValueFilter());
+      const lcVals = hasLc ? recLcFilteredSeries(selectedSensorId) : new Array(vals.length).fill(0);
+      let lcMax = 0;
+      for (const lv of lcVals) if (lv > lcMax) lcMax = lv;
 
       // Show current circle value.
       // The sensorgrid displays frame (playIdx - 1): during playback the frame is
@@ -448,7 +487,7 @@ namespace crt
 
       // Yellow dot on the green loadcell curve (centred, like the white dot).
       if (drawLc) {
-        const rLcDotY = rMarginT2 + rPlotH - (lcVals[pi] / lcTickMax) * rPlotH;
+        const rLcDotY = rMarginT2 + rPlotH - lcFrac(lcVals[pi]) * rPlotH;
         ctx.fillStyle = '#ff0';
         ctx.beginPath();
         ctx.arc(rOriginX + rPlotW / 2, rLcDotY, 4, 0, 2 * Math.PI);

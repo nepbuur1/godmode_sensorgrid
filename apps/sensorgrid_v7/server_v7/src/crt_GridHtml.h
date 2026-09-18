@@ -42,7 +42,7 @@ namespace crt
       <div class="ctrl-fields">
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
-        <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365)"/></label>
+        <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365);updateRecChart()"/></label>
       </div>
       <div class="ctrl-meta">
         <button class="toggle-btn" id="btnUploadMeta" onclick="document.getElementById('metaFileInput').click()">Upload Meta</button>
@@ -287,6 +287,7 @@ namespace crt
         lcScale: 1,
         lcVisible: false,
         lcLastRaw: 0,
+        lcRawHist: [],
         filteredWeight: null,
         filteredValues: null,
         maxSumCaptured: null,
@@ -846,7 +847,7 @@ namespace crt
       event.target.value = "";
     }
 
-    function updateSensor(id, data) {
+    function updateSensor(id, data, quiet) {
       const s = sensors[id];
       if (!s.enabled) return;
       if (data.count === 0) {
@@ -878,6 +879,7 @@ namespace crt
         }
       }
       const filteredDisplay = s.filteredValues;
+      if (quiet) return;   // alleen de filtertoestand bijwerken (warm-up bij pauze/seek, gridrecplay.js)
       const [mn, mx] = minMax(filteredDisplay);
       if (s.is3D && s.gl) {
         renderSurface(s, filteredDisplay, mn, mx);
@@ -899,10 +901,12 @@ namespace crt
       updateCircleBorders(s);
     }
 
-    function applyFrame(all) {
+    // quiet: alleen de filtertoestand (EMA) bijwerken, niets tekenen (warm-up bij pauze/seek).
+    function applyFrame(all, quiet) {
       let snapshotTriggered = false;
       for (const data of all.sensors) {
-        updateSensor(data.id, data);
+        updateSensor(data.id, data, quiet);
+        if (quiet) continue;
         updateLoadcell(data.id, data.hasLoadcell, data.loadcellRaw, data.loadcellGram);
         if (data.snapshotRequested) snapshotTriggered = true;
       }
@@ -919,7 +923,9 @@ namespace crt
           const filtered = {sensors: all.sensors.map(d => {
             const s = sensors[d.id];
             if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0, loadcellGram: 0};
-            const gram = (s && s.filteredWeight !== null) ? parseFloat(s.filteredWeight.toFixed(1)) : 0;
+            // loadcellGram ONgefilterd opslaan (meta recording.lcGramRaw); het Value Filter komt
+            // pas bij de weergave (gridrecchart.js / recApplyFrame). loadcellRaw blijft ruw.
+            const gram = (s && d.hasLoadcell) ? parseFloat(lcGramFromRaw(s, d.loadcellRaw).toFixed(1)) : 0;
             return {id: d.id, count: d.count, values: d.values, hasLoadcell: d.hasLoadcell, loadcellRaw: d.loadcellRaw, loadcellGram: gram};
           })};
           recFrames.push(filtered);
@@ -966,14 +972,14 @@ namespace crt
         applyFrame(snapFrames[snapIdx]);
       } else if (recState === 'playing') {
         if (playIdx < recFrames.length) {
-          applyFrame(recFrames[playIdx]);
+          recApplyFrame(playIdx);
           playIdx++;
           recUpdateInfo();
           updateRecChart();
         }
-        if (playIdx >= recFrames.length) { playIdx = 0; }
+        if (playIdx >= recFrames.length) { playIdx = 0; recResetFilters(); }
       } else if (recState === 'playpaused') {
-        if (playIdx > 0) applyFrame(recFrames[playIdx - 1]);
+        if (playIdx > 0) recShowFrame(playIdx - 1);
       } else {
         await fetchAll();
       }

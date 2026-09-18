@@ -14,8 +14,12 @@ namespace crt
     // {kind:'calibration', calibratedAt, tool, version} na "Herkalibreer druksensoren" of na
     // upload van zo'n bestand. Gaat mee in de download (metaAppendForExport).
     var recordingTag = null;
+    // loadcellGram in de frames: true = ongefilterd (opnames van deze versie; meta
+    // recording.lcGramRaw), false = oudere opname waarin loadcellGram al live gefilterd was.
+    var recLcGramRaw = false;
     function recExportTag() {
-      return recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
+      var t = recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
+      return {kind: t.kind, calibratedAt: t.calibratedAt, tool: t.tool, version: t.version, lcGramRaw: recLcGramRaw};
     }
     // Tijdstempel in LOKALE tijd (CEST) voor bestandsnamen: YYYY-MM-DDTHH-MM-SS.
     // (De datums in de data zelf, zoals calibDate, blijven ISO/UTC met 'Z'.)
@@ -43,6 +47,7 @@ namespace crt
       recFrames = [];
       playIdx = 0;
       recordingTag = null;
+      recLcGramRaw = true;
       if (typeof acOnRecordingLoaded === 'function') acPreview = null;
       recState = 'recording';
       document.getElementById('btnRecord').classList.add('rec-active');
@@ -97,6 +102,7 @@ namespace crt
       }
       recState = 'playing';
       playIdx = 0;
+      recResetFilters();
       document.getElementById('btnPlay').classList.add('play-active');
       document.getElementById('btnPlayPause').disabled = false;
       document.getElementById('btnRecord').classList.remove('rec-active');
@@ -145,6 +151,7 @@ namespace crt
           playIdx = 0;
           recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
             ? split.meta.recording : null;
+          recLcGramRaw = !!(split.meta && split.meta.recording && split.meta.recording.lcGramRaw);
           if (split.meta) applyMetaState(split.meta);
           if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
           recState = 'stopped';
@@ -186,6 +193,41 @@ namespace crt
       var show = (recState === 'playing' || recState === 'playpaused');
       document.getElementById('recSliderRow').style.display = show ? 'block' : 'none';
       if (show) { sl.max = Math.max(0, recFrames.length - 1); sl.value = playIdx; }
+    }
+
+    // ---- Afspelen: zelfde Value Filter als de cirkels, ook voor de loadcell ----
+    // Filtertoestand van de cellen wissen, zodat de EMA (updateSensor) op het volgende frame
+    // opnieuw begint - zoals de grafiek, die vanaf frame 0 filtert.
+    function recResetFilters() {
+      SENSOR_IDS.forEach(function(id) { sensors[id].filteredValues = null; sensors[id].emaRawValues = null; });
+    }
+    // Frame idx op het grid zetten: de sensorwaarden gaan door de EMA van updateSensor; de
+    // loadcell-gram wordt vervangen door de op dezelfde manier gefilterde reeks
+    // (recLcFilteredSeries, gridrecchart.js), zodat loadcell-venster en groene curve gelijk zijn.
+    function recApplyFrame(idx, quiet) {
+      const fr = recFrames[idx];
+      if (!fr) return;
+      const copy = { sensors: fr.sensors.map(function(sd) {
+        if (!sd.hasLoadcell || !sensors[sd.id]) return sd;
+        return Object.assign({}, sd, { loadcellGram: recLcFilteredSeries(sd.id)[idx] });
+      }) };
+      applyFrame(copy, quiet);
+    }
+    // Aantal frames waarna de EMA zijn startwaarde tot 0,1 % is vergeten (max 400).
+    function recWarmupFrames(vf) {
+      if (vf <= 0) return 0;
+      if (vf >= 1) return 400;
+      return Math.min(400, Math.ceil(Math.log(1e-3) / Math.log(vf)));
+    }
+    // Weergave in pauze of na een seek: de cel-EMA wordt stil opnieuw opgebouwd vanaf frame
+    // idx-K en eindigt op frame idx. De cellen tonen dan dezelfde gefilterde waarde als de
+    // grafiek, i.p.v. bij herhaald toepassen naar de ongefilterde framewaarde te convergeren.
+    function recShowFrame(idx) {
+      if (idx < 0 || idx >= recFrames.length) return;
+      const start = Math.max(0, idx - recWarmupFrames(getValueFilter()));
+      recResetFilters();
+      for (let f = start; f < idx; f++) recApplyFrame(f, true);
+      recApplyFrame(idx, false);
     }
 )rawliteral";
 
