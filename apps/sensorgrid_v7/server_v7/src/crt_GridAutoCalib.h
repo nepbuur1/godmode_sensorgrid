@@ -17,9 +17,13 @@ namespace crt
     // differences (tolerance 0.01). Change both sides together, or not at all.
     //
     // Pipeline per sensor index (see LLM_kalibratieDocs/StappenPlanAutoCalibratieIntegratie.md):
-    //   1. acDetectPressRange on the sensor track and loadcellGram, then acCropWithLead
+    //   0. raw force (gram) per frame = (loadcellRaw - lcTareOffset) / lcScale (params from the
+    //      meta; recordings carry no loadcellGram since 2026-09-18), smoothed with an EMA of
+    //      AC_LC_RANGE_EMA for the range detection only (= the loadcellGram the website used to
+    //      record, so crops and knots of existing recordings are unchanged)
+    //   1. acDetectPressRange on the sensor track and that smoothed force track, then acCropWithLead
     //      (AC_LEAD_FRAMES copies of the first and last frame)         [SensorExtractor]
-    //   2. raw force (gram) = (loadcellRaw - lcTareOffset) / lcScale
+    //   2. raw force of the cropped episode, untared
     //   3. tare = mean of the medians of the first and last zero tread [MeasurementViewer]
     //   4. treads: hamming-50 on the force, 40% flattest frames, new tread at >= 200 g
     //   5. hardening H2..H5, then acUpdownKnots + acFinalizeKnots, H6
@@ -34,6 +38,7 @@ namespace crt
     const AC_LC_REST_TOL = 50;           // SensorExtractor.LC_REST_TOL (gram)
     const AC_LC_RISE_TOL = 50;           // SensorExtractor.LC_RISE_TOL (gram)
     const AC_MIN_PEAK_ABS = 500;         // SensorExtractor.MIN_PEAK_ABS (raw)
+    const AC_LC_RANGE_EMA = 0.72;        // SensorExtractor.LC_RANGE_EMA (range detection track)
     const AC_LEAD_FRAMES = 50;           // SensorExtractor.LEAD_FRAMES
     const AC_SENSOR_EDGE_FRACTION = 0.02;// SensorExtractor.SENSOR_EDGE_FRACTION
     const AC_SENSOR_EDGE_MAX = 60;       // SensorExtractor.SENSOR_EDGE_MAX
@@ -176,13 +181,25 @@ namespace crt
           if (m.id === moduleId && Array.isArray(m.values) && m.values.length === AC_GRID_SIZE) {
             values.push(m.values);
             lcRaw.push(m.loadcellRaw || 0);
-            lcGram.push(m.loadcellGram || 0);
+            lcGram.push(m.loadcellGram || 0);   // legacy fallback only (files without lc params)
             if (m.hasLoadcell) hasLoadcell = true;
             break;
           }
         }
       }
       return { values: values, lcRaw: lcRaw, lcGram: lcGram, hasLoadcell: hasLoadcell };
+    }
+    // EMA over a series (acc = acc*f + v*(1-f), first value = start); same operations as
+    // SensorExtractor.ema_series.
+    function acEmaSeries(series, f) {
+      const out = new Array(series.length);
+      let acc = null;
+      for (let i = 0; i < series.length; i++) {
+        const v = series[i];
+        acc = (acc === null) ? v : acc * f + v * (1 - f);
+        out[i] = acc;
+      }
+      return out;
     }
     // Which module ids carry a 128-value grid, and whether they have a loadcell (any frame).
     function acGridModuleIds(frames) {
@@ -489,7 +506,7 @@ namespace crt
       }
       // 1. episode + lead frames (SensorExtractor)
       const sensorFull = tracks.values.map(function(v) { return v[idx]; });
-      const rng = acDetectPressRange(sensorFull, tracks.lcGram);
+      const rng = acDetectPressRange(sensorFull, tracks.lcRange);
       if (rng === null) {
         res.reason = AC_R_NOT_LOADED;
         res.violations = [res.reason];
@@ -577,6 +594,13 @@ namespace crt
           }
         } else {
           const tracks = acModuleTracks(meas, mod.id);
+          // Range-detection track (Python: SensorExtractor.crop_and_filter): EMA of the raw force
+          // per frame, or the legacy loadcellGram when the module has no loadcell parameters.
+          // Same IEEE operations as Python so the crop is identical.
+          const hasParams = p && isFinite(Number(p.lcScale)) && Number(p.lcScale) !== 0;
+          tracks.lcRange = hasParams
+            ? acEmaSeries(tracks.lcRaw.map(function(r) { return (r - lcTare) / lcScale; }), AC_LC_RANGE_EMA)
+            : tracks.lcGram;
           for (let i = 0; i < AC_GRID_SIZE; i++) modRes.sensors.push(acCalibrateSensor(tracks, i, lcScale, lcTare));
         }
         result.modules[String(mod.id)] = modRes;

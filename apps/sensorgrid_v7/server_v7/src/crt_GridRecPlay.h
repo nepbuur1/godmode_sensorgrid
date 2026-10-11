@@ -14,12 +14,8 @@ namespace crt
     // {kind:'calibration', calibratedAt, tool, version} na "Herkalibreer druksensoren" of na
     // upload van zo'n bestand. Gaat mee in de download (metaAppendForExport).
     var recordingTag = null;
-    // loadcellGram in de frames: true = ongefilterd (opnames van deze versie; meta
-    // recording.lcGramRaw), false = oudere opname waarin loadcellGram al live gefilterd was.
-    var recLcGramRaw = false;
     function recExportTag() {
-      var t = recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
-      return {kind: t.kind, calibratedAt: t.calibratedAt, tool: t.tool, version: t.version, lcGramRaw: recLcGramRaw};
+      return recordingTag || {kind: 'normal', calibratedAt: null, tool: 'web', version: 1};
     }
     // Tijdstempel in LOKALE tijd (CEST) voor bestandsnamen: YYYY-MM-DDTHH-MM-SS.
     // (De datums in de data zelf, zoals calibDate, blijven ISO/UTC met 'Z'.)
@@ -47,7 +43,6 @@ namespace crt
       recFrames = [];
       playIdx = 0;
       recordingTag = null;
-      recLcGramRaw = true;
       if (typeof acOnRecordingLoaded === 'function') acPreview = null;
       recState = 'recording';
       document.getElementById('btnRecord').classList.add('rec-active');
@@ -151,7 +146,6 @@ namespace crt
           playIdx = 0;
           recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
             ? split.meta.recording : null;
-          recLcGramRaw = !!(split.meta && split.meta.recording && split.meta.recording.lcGramRaw);
           if (split.meta) applyMetaState(split.meta);
           if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
           recState = 'stopped';

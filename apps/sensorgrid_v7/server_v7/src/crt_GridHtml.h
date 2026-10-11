@@ -922,11 +922,11 @@ namespace crt
         if (recState === 'recording') {
           const filtered = {sensors: all.sensors.map(d => {
             const s = sensors[d.id];
-            if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0, loadcellGram: 0};
-            // loadcellGram ONgefilterd opslaan (meta recording.lcGramRaw); het Value Filter komt
-            // pas bij de weergave (gridrecchart.js / recApplyFrame). loadcellRaw blijft ruw.
-            const gram = (s && d.hasLoadcell) ? parseFloat(lcGramFromRaw(s, d.loadcellRaw).toFixed(1)) : 0;
-            return {id: d.id, count: d.count, values: d.values, hasLoadcell: d.hasLoadcell, loadcellRaw: d.loadcellRaw, loadcellGram: gram};
+            if (s && !s.enabled) return {id: d.id, count: 0, values: [], hasLoadcell: false, loadcellRaw: 0};
+            // Alleen de ruwe loadcellwaarde wordt opgeslagen (sinds 2026-09-18 geen loadcellGram meer);
+            // de gram volgt bij weergave en kalibratie uit (loadcellRaw - lcTareOffset) / lcScale
+            // met de parameters in de meta.
+            return {id: d.id, count: d.count, values: d.values, hasLoadcell: d.hasLoadcell, loadcellRaw: d.loadcellRaw};
           })};
           recFrames.push(filtered);
           recUpdateInfo();

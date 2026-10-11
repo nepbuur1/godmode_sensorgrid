@@ -21,12 +21,13 @@ namespace crt
     function recInvalidateRange() { recRangeCache = null; }
 
     // ---- Loadcell-gram voor de weergave ----
-    // Ongefilterde gram van een frame: uit het bestand als loadcellGram daar ongefilterd in staat
-    // (recording.lcGramRaw), anders (oudere opname, loadcellGram al live gefilterd) herberekend
-    // uit loadcellRaw met de tarra/schaal van de module (bij upload uit de meta hersteld).
+    // Ongefilterde gram van een frame, gereconstrueerd uit loadcellRaw met de tarra/schaal van
+    // de module (bij upload uit de meta van het bestand hersteld). Recordings bevatten sinds
+    // 2026-09-18 geen loadcellGram meer; in oudere bestanden is dat veld alleen nog de terugval
+    // wanneer de module geen loadcell-parameters heeft.
     function recLcGramOfFrame(sd, s) {
-      if (recLcGramRaw || !sd.hasLoadcell || !s || !s.lcScale) return (typeof sd.loadcellGram === 'number') ? sd.loadcellGram : 0;
-      return (sd.loadcellRaw - s.lcTareOffset) / s.lcScale;
+      if (sd.hasLoadcell && s && s.lcScale) return (sd.loadcellRaw - s.lcTareOffset) / s.lcScale;
+      return (typeof sd.loadcellGram === 'number') ? sd.loadcellGram : 0;
     }
     // Zelfde Value Filter als de cirkels (updateSensor): EMA over de frames, gestart op frame 0.
     function recEmaSeries(arr, vf) {
@@ -44,7 +45,7 @@ namespace crt
     function recLcFilteredSeries(sensorId) {
       const s = sensors[sensorId];
       const vf = getValueFilter();
-      const key = recFrames.length + '|' + vf + '|' + (recLcGramRaw ? 1 : 0) + '|' + s.lcTareOffset + '|' + s.lcScale;
+      const key = recFrames.length + '|' + vf + '|' + s.lcTareOffset + '|' + s.lcScale;
       if (!recLcCache || recLcCache.frames !== recFrames) recLcCache = { frames: recFrames, keys: {}, series: {} };
       if (recLcCache.keys[sensorId] === key) return recLcCache.series[sensorId];
       const raw = new Array(recFrames.length);
@@ -95,7 +96,7 @@ namespace crt
       for (let f = 0; f < recFrames.length; f++) {
         for (const sd of recFrames[f].sensors) {
           if (sd.id !== sensorId) continue;
-          if (typeof sd.loadcellGram === 'number') {
+          if (sd.hasLoadcell || typeof sd.loadcellGram === 'number') {
             const lg = recLcGramOfFrame(sd, s);
             if (lg < lcMin) lcMin = lg;
             if (lg > lcMax) lcMax = lg;
