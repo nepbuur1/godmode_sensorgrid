@@ -23,11 +23,13 @@ namespace crt
   <script src="/gridloadcell.js"></script>
   <script src="/gridautocalib.js"></script>
   <script src="/gridautocalibui.js"></script>
+  <script src="/account.js"></script>
 </head>
 <body>
   <nav>
     <a href="/" style="color:#ccc;">Home</a>
     <a href="/grid" style="color:#fff;">Grid View</a>
+    <span id="userMenu"></span>
   </nav>
   <div class="page">
     <h1>Grid View</h1>
@@ -36,8 +38,12 @@ namespace crt
         <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
         <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
         <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
-        <button class="toggle-btn" id="btnNormSumCap" onclick="toggleNormSumCap()" style="margin-left:1rem;">Norm SumCap</button>
-        <button class="toggle-btn" id="btnNormIndivCap" onclick="toggleNormIndivCap()">Norm IndivCap</button>
+        <span class="cal-mode" title="Weergave van de cirkelwaarden">
+          <label><input type="radio" name="calMode" value="raw" onchange="setCalMode(this.value)" checked/> Raw</label>
+          <label><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
+          <label><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
+          <label><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
+        </span>
       </div>
       <div class="ctrl-fields">
         <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
@@ -247,8 +253,9 @@ namespace crt
     let normalized = false;
     let maxFixed = false;
     let colorized = false;
-    let normSumCap = false;
-    let normIndivCap = false;
+    // Weergave van de cirkelwaarden: 'raw' | 'sumcap' | 'indivcap' | 'autocal' (zie displayValueForCircle).
+    const CAL_MODES = ["raw", "sumcap", "indivcap", "autocal"];
+    let calMode = "raw";
     let selectedSensorId = null;
     let selectedCircleIdx = null;
     // Residual noise measurement state
@@ -327,8 +334,7 @@ namespace crt
     function saveToggleStates() {
       setCookie("gvNormalized", normalized ? "1" : "0", 365);
       setCookie("gvMaxFixed", maxFixed ? "1" : "0", 365);
-      setCookie("gvNormSumCap", normSumCap ? "1" : "0", 365);
-      setCookie("gvNormIndivCap", normIndivCap ? "1" : "0", 365);
+      setCookie("gvCalMode", calMode, 365);
     }
     function toggleNormalize() {
       normalized = !normalized;
@@ -451,8 +457,8 @@ namespace crt
 
     function doCapture() {
       if (selectedSensorId === null) return;
-      if (normSumCap || normIndivCap) {
-        var msg = "Please first disable " + (normSumCap ? "NormSumCap" : "NormIndivCap") + " mode and wait a few seconds.";
+      if (calMode !== "raw") {
+        var msg = "Please first select Raw mode and wait a few seconds.";
         var el = document.getElementById("captureError");
         el.textContent = msg; el.style.display = "inline";
         return;
@@ -471,26 +477,14 @@ namespace crt
       document.getElementById("captureError").style.display = "none";
       document.getElementById("captureIndivError").style.display = "none";
     }
-    function toggleNormSumCap() {
-      normSumCap = !normSumCap;
-      if (normSumCap) {
-        normIndivCap = false;
-        document.getElementById("btnNormIndivCap").classList.remove("active");
-      }
-      if (!normSumCap && !normIndivCap) clearCaptureErrors();
-      document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
-      saveToggleStates();
-      recolorAll();
-      updateRecChart();
+    // Zet de weergavemodus (radiobuttons Raw / Norm SumCap / Norm IndivCap / Norm AutoCal).
+    function syncCalModeRadios() {
+      document.querySelectorAll('input[name="calMode"]').forEach(r => { r.checked = (r.value === calMode); });
     }
-    function toggleNormIndivCap() {
-      normIndivCap = !normIndivCap;
-      if (normIndivCap) {
-        normSumCap = false;
-        document.getElementById("btnNormSumCap").classList.remove("active");
-      }
-      if (!normSumCap && !normIndivCap) clearCaptureErrors();
-      document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
+    function setCalMode(mode) {
+      calMode = CAL_MODES.includes(mode) ? mode : "raw";
+      if (calMode === "raw") clearCaptureErrors();
+      syncCalModeRadios();
       saveToggleStates();
       recolorAll();
       updateRecChart();
@@ -577,8 +571,8 @@ namespace crt
 
     function captureIndiv(tupleIdx) {
       if (selectedSensorId === null || selectedCircleIdx === null) return;
-      if (normSumCap || normIndivCap) {
-        var msg = "Please first disable " + (normSumCap ? "NormSumCap" : "NormIndivCap") + " mode and wait a few seconds.";
+      if (calMode !== "raw") {
+        var msg = "Please first select Raw mode and wait a few seconds.";
         var el = document.getElementById("captureIndivError");
         el.textContent = msg; el.style.display = "inline";
         return;
@@ -671,8 +665,11 @@ namespace crt
       if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
       if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
       if (getCookie("gvMaxFixed") === "1") { maxFixed = true; document.getElementById("btnMaxFixed").classList.add("active"); }
-      if (getCookie("gvNormSumCap") === "1") { normSumCap = true; document.getElementById("btnNormSumCap").classList.add("active"); }
-      if (getCookie("gvNormIndivCap") === "1") { normIndivCap = true; document.getElementById("btnNormIndivCap").classList.add("active"); }
+      const cm = getCookie("gvCalMode");
+      if (cm !== null) calMode = CAL_MODES.includes(cm) ? cm : "raw";
+      else if (getCookie("gvNormSumCap") === "1") calMode = "sumcap";       // cookies van voor de radiobuttons
+      else if (getCookie("gvNormIndivCap") === "1") calMode = "indivcap";
+      syncCalModeRadios();
     })();
 
     // ---- Page metadata (settings/calibrations) download & upload (phase 6w) ----
@@ -685,8 +682,7 @@ namespace crt
       meta.global.normalized = normalized;
       meta.global.maxFixed = maxFixed;
       meta.global.colorized = colorized;
-      meta.global.normSumCap = normSumCap;
-      meta.global.normIndivCap = normIndivCap;
+      meta.global.calMode = calMode;
       meta.global.fixedMax = document.getElementById("fldFixedMax").value;
       meta.global.statsFilter = document.getElementById("fldStatsFilter").value;
       meta.global.valueFilter = document.getElementById("fldValueFilter").value;
@@ -719,14 +715,14 @@ namespace crt
       if ("normalized" in g) normalized = !!g.normalized;
       if ("maxFixed" in g) maxFixed = !!g.maxFixed;
       if ("colorized" in g) colorized = !!g.colorized;
-      if ("normSumCap" in g) normSumCap = !!g.normSumCap;
-      if ("normIndivCap" in g) normIndivCap = !!g.normIndivCap;
+      if ("calMode" in g) calMode = CAL_MODES.includes(g.calMode) ? g.calMode : "raw";
+      else if ("normSumCap" in g || "normIndivCap" in g)   // meta van voor de radiobuttons
+        calMode = g.normSumCap ? "sumcap" : (g.normIndivCap ? "indivcap" : "raw");
       document.getElementById("btnNormalize").classList.toggle("active", normalized);
       document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
       document.getElementById("btnColorize").classList.toggle("active", colorized);
-      document.getElementById("btnNormSumCap").classList.toggle("active", normSumCap);
-      document.getElementById("btnNormIndivCap").classList.toggle("active", normIndivCap);
-      if (!normSumCap && !normIndivCap) clearCaptureErrors();
+      syncCalModeRadios();
+      if (calMode === "raw") clearCaptureErrors();
       if ("fixedMax" in g) document.getElementById("fldFixedMax").value = g.fixedMax;
       if ("statsFilter" in g) document.getElementById("fldStatsFilter").value = g.statsFilter;
       if ("valueFilter" in g) document.getElementById("fldValueFilter").value = g.valueFilter;

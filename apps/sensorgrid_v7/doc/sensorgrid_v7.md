@@ -231,6 +231,19 @@ At the bottom of the page:
 - **Download** button -- exports the current sensor values as a CSV file (`sensors.csv`). The CSV includes a timestamp, and one row per sensor with its ID and current value.
 - **Status text** -- shows the time of the last successful update, or an error message if the server is unreachable.
 
+#### Login and user accounts
+
+The Grid View page (`/grid`) requires a login; without one it redirects to **`/login`**. The Home page and the JSON API stay open.
+
+- **Accounts**: at most 20, stored in NVS (namespace `accounts`) as salted PBKDF2-SHA256 hashes. Usernames are 5-15 characters, passwords 5-20; both only `a-z 0-9 _ ! . ?`.
+- **Roles**: Admin > Onderzoeker > Gebruiker. Admin and Onderzoeker create accounts of their own or a lower role, and delete accounts or reset passwords of a lower role.
+- **Root admin** `admin`: always present and cannot be deleted. It is the only account that may delete or reset other Admins. Its factory password is `geheim`; at the first login a new password must be chosen, which is stored in flash.
+- **Root admin reset**: restart the device, then within 10 seconds hold the **BOOT** button for 2 seconds. The LED turns blue briefly and `geheim` applies again (with a forced change at the next login). Holding BOOT *while* the chip comes out of reset does not work: that starts the ROM download mode.
+- **Sessions**: a random token in the cookie `sgsess`, valid for 3 hours, kept in RAM. After a restart of the ESP32 everybody logs in again. A failed login blocks new attempts for 1 second.
+- **User menu** (top right, on Grid View and the account pages): Mijn Account (`/account`), Account aanmaken (`/account_aanmaken`), Accounts beheren (`/accounts_beheren`) and Uitloggen. The last two pages are only for Admin and Onderzoeker.
+- **Wachtwoord vergeten** (login page) shows whom to ask for a password reset, based on the role of the entered username.
+- **Test client**: client_v7 sends the header `X-Sensorgrid-Test` (see `sensorgrid_common/crt_SensorGridHttp.h`), which lets it fetch `/grid` without logging in.
+
 #### Grid View page
 
 The page titled **Grid View** shows all 128 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a hex-packed circle grid, histogram, and statistics table.
@@ -253,8 +266,14 @@ Above the sensor widgets, toggle buttons control display modes (applied to all f
 - **Norm Display** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-65535 range.
 - **MaxFixed Display** — normalizes color scale to a configurable "Fixed Max Display" value (default 2500). Mutually exclusive with Norm Display.
 - **Color Display** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
+
+Next to these, four radio buttons select how circle values are computed (one mode at a time):
+- **Raw** — the raw value minus the offset (if one was set with Remove Offset).
 - **Norm SumCap** — transforms displayed values using per-sensor captured sum: `calibrateSumGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Requires a sensor to be selected and captured.
-- **Norm IndivCap** — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle). Mutually exclusive with Norm SumCap.
+- **Norm IndivCap** — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle).
+- **Norm AutoCal** — grams from the auto-calibration knots of each circle (Herkalibreer druksensoren), applied to the absolute raw value without offset. Circles without an auto-calibration show 0.
+
+Capture Sum and Capture Indiv only work in Raw mode.
 
 Additional control fields: **Fixed Max Display**, **Stats Filter** (EMA factor for statistics, default 0.9), **Value Filter** (EMA factor for circle values, default 0.5).
 

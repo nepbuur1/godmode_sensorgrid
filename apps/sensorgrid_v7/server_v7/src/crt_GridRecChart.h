@@ -90,7 +90,7 @@ namespace crt
 
     function recModuleRange(sensorId) {
       const c = recRangeCache;
-      if (c && c.frames === recFrames && c.sensorId === sensorId && c.sumCap === normSumCap && c.indivCap === normIndivCap) return c;
+      if (c && c.frames === recFrames && c.sensorId === sensorId && c.calMode === calMode) return c;
       const s = sensors[sensorId];
       let sMin = Infinity, sMax = -Infinity, lcMin = Infinity, lcMax = -Infinity;
       for (let f = 0; f < recFrames.length; f++) {
@@ -114,7 +114,7 @@ namespace crt
       }
       if (sMin === Infinity) { sMin = 0; sMax = 0; }
       if (lcMin === Infinity) { lcMin = 0; lcMax = 0; }
-      recRangeCache = { frames: recFrames, sensorId: sensorId, sumCap: normSumCap, indivCap: normIndivCap,
+      recRangeCache = { frames: recFrames, sensorId: sensorId, calMode: calMode,
                         sMin: sMin, sMax: sMax, lcMin: lcMin, lcMax: lcMax };
       return recRangeCache;
     }
@@ -251,7 +251,7 @@ namespace crt
             if (sd.hasLoadcell) hasLc = true;
             const s = sensors[selectedSensorId];
             if (sd.values && selectedCircleIdx < sd.values.length) {
-              // zelfde omrekening als de grid (raw / Norm SumCap / Norm IndivCap incl. auto-PWL)
+              // zelfde omrekening als de grid (calMode: raw / sumcap / indivcap / autocal)
               v = displayValueForCircle(s, selectedSensorId, selectedCircleIdx, sd.values[selectedCircleIdx], sd.values.length);
             }
             break;
@@ -266,14 +266,15 @@ namespace crt
       let lcMax = 0;
       for (const lv of lcVals) if (lv > lcMax) lcMax = lv;
 
-      // Show current circle value.
+      // Show current circle value (white dot) and loadcell value (yellow dot).
       // The sensorgrid displays frame (playIdx - 1): during playback the frame is
       // applied to the grid and then playIdx is incremented before this redraw, and
       // in playpaused/seek the grid shows recFrames[playIdx - 1]. So the white dot
       // (and value label / zoom centre) must use playIdx - 1 to line up with the
       // value shown on the sensorgrid (phase 6y).
       const pi = Math.max(0, Math.min(playIdx - 1, vals.length - 1));
-      document.getElementById('recCircleVal').textContent = 'val=' + Math.round(vals[pi]);
+      document.getElementById('recCircleVal').textContent = 'sensor_val=' + Math.round(vals[pi]) +
+        (hasLc ? ' loadcell_val=' + Math.round(lcVals[pi]) : '');
 
       // Compute y range
       let yMin = vals[0], yMax = vals[0];

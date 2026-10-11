@@ -20,6 +20,7 @@
 #include "crt_GridLoadcell.h"
 #include "crt_GridAutoCalib.h"
 #include "crt_GridAutoCalibUi.h"
+#include "crt_AccountWeb.h"
 
 // Define USE_TIMED_DISCOVERY to use time-based discovery (10s window).
 // Undefine to revert to the v5 behaviour of waiting for a fixed sensor count.
@@ -36,6 +37,14 @@ namespace crt
 		static const unsigned long DATA_TIMEOUT_MS = 200;
 		static const unsigned long LED_FLASH_INTERVAL_MS = 500;
 		static const unsigned long DISCOVER_WINDOW_MS = 10000;
+
+		// Root admin password reset: hold BOOT for ROOT_RESET_HOLD_MS within the first
+		// ROOT_RESET_WINDOW_MS after start-up. (Holding BOOT while the chip comes out of reset
+		// would start the ROM download mode instead, since GPIO0 is a strapping pin.)
+		static const uint8_t BOOT_PIN = 0;
+		static const unsigned long ROOT_RESET_WINDOW_MS = 10000;
+		static const unsigned long ROOT_RESET_HOLD_MS = 2000;
+		static const unsigned long ROOT_RESET_LED_MS = 1500;
 
 		enum class State : uint8_t
 		{
@@ -64,6 +73,11 @@ namespace crt
 		int apChannel;
 		uint8_t expectedSensorCount;
 		WebServer server;
+		AccountWeb accounts;
+
+		unsigned long bootPressedMs;     // 0 = BOOT not pressed
+		bool rootResetDone;
+		unsigned long rootResetLedUntilMs;
 
 		State currentState;
 		uint8_t currentPollIndex;
@@ -231,8 +245,40 @@ namespace crt
 			return false;
 		}
 
+		void checkRootReset()
+		{
+			unsigned long now = millis();
+			if (rootResetDone || now - initMs >= ROOT_RESET_WINDOW_MS) return;
+			if (digitalRead(BOOT_PIN) == HIGH)
+			{
+				bootPressedMs = 0;
+				return;
+			}
+			if (bootPressedMs == 0)
+			{
+				bootPressedMs = now;
+			}
+			else if (now - bootPressedMs >= ROOT_RESET_HOLD_MS)
+			{
+				rootResetDone = true;
+				accounts.resetRootPassword();
+				rootResetLedUntilMs = now + ROOT_RESET_LED_MS;
+			}
+		}
+
 		void updateLed()
 		{
+			if (rootResetLedUntilMs != 0)
+			{
+				// Blue: root admin password was reset
+				if ((long)(millis() - rootResetLedUntilMs) < 0)
+				{
+					neopixelWrite(RGB_BUILTIN, 0, 0, 40);
+					ledOn = true;
+					return;
+				}
+				rootResetLedUntilMs = 0;
+			}
 			if (currentState == State::DISCOVERING)
 			{
 				unsigned long now = millis();
@@ -541,7 +587,8 @@ namespace crt
 		ServerNode(const char* ssid, const char* pass, int channel,
 				   uint8_t expectedSensors)
 			: apSsid(ssid), apPass(pass), apChannel(channel),
-			  expectedSensorCount(expectedSensors), server(80),
+			  expectedSensorCount(expectedSensors), server(80), accounts(server),
+			  bootPressedMs(0), rootResetDone(false), rootResetLedUntilMs(0),
 			  currentState(State::DISCOVERING), currentPollIndex(0),
 			  pollRetryCount(0), stateEnteredMs(0), lastDiscoverMs(0),
 			  lastLedToggleMs(0), ledOn(false), initMs(0), registeredCount(0)
@@ -554,6 +601,7 @@ namespace crt
 
 			initMs = millis();
 			neopixelWrite(RGB_BUILTIN, 0, 0, 0);
+			pinMode(BOOT_PIN, INPUT_PULLUP);
 
 			for (int i = 1; i <= MAX_SENSORS; i++)
 			{
@@ -568,7 +616,9 @@ namespace crt
 			server.on("/", HTTP_GET, [this]() {
 				server.send(200, "text/html", INDEX_HTML);
 			});
+			accounts.begin();
 			server.on("/grid", HTTP_GET, [this]() {
+				if (!accounts.allowPage()) return;   // not logged in: redirected to /login
 				server.send(200, "text/html", GRID_HTML);
 			});
 			server.on("/grid.css", HTTP_GET, [this]() {
@@ -654,6 +704,7 @@ namespace crt
 		void update()
 		{
 			server.handleClient();
+			checkRootReset();
 			updateLed();
 
 			switch (currentState)

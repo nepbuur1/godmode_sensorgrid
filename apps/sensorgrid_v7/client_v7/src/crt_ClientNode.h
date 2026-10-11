@@ -4,6 +4,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <HTTPClient.h>
+#include <crt_SensorGridHttp.h>
 
 namespace crt
 {
@@ -47,6 +48,8 @@ namespace crt
 				return false;
 			}
 
+			// lets the login-protected /grid through (see crt_SensorGridHttp.h)
+			http.addHeader(TEST_CLIENT_HEADER, TEST_CLIENT_TOKEN);
 			httpCode = http.GET();
 			if (httpCode > 0)
 			{

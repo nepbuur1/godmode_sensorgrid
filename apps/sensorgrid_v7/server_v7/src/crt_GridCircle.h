@@ -115,21 +115,24 @@ namespace crt
       return pB.y + slope * (rawVal - pB.x);
     }
 
-    // De weergavewaarde van een cirkel volgens de actieve modus. Gedeeld door de grid
+    // De weergavewaarde van een cirkel volgens de actieve modus (calMode). Gedeeld door de grid
     // (getDisplayValues) en de recording-grafiek (gridrecchart.js), zodat beide altijd dezelfde
     // omrekening tonen. count = aantal waarden in het frame (guard voor de handmatige tabel).
-    //   Norm IndivCap: auto-PWL (Herkalibreer druksensoren) op de absolute raw, zonder offset;
-    //                  anders de handmatige 3-punts kalibratie op de geoffsette waarde.
-    //   Norm SumCap:   schaling naar calGrams via maxSumCaptured.
-    //   anders:        de geoffsette ruwe waarde.
+    //   autocal:  auto-PWL (Herkalibreer druksensoren) op de absolute raw, zonder offset;
+    //             0 voor een cirkel zonder auto-kalibratie.
+    //   indivcap: de handmatige 3-punts kalibratie op de geoffsette waarde.
+    //   sumcap:   schaling naar calGrams via maxSumCaptured.
+    //   raw:      de geoffsette ruwe waarde.
     function displayValueForCircle(s, id, i, rawValue, count) {
       const offsetted = s.offsets ? rawValue - (s.offsets[i] || 0) : rawValue;
-      if (normIndivCap && s.indivCaps && s.indivCaps.length === count) {
+      if (calMode === "autocal") {
         const pw = s.pwl && s.pwl[i];
-        if (pw && pw.length >= 2) return pwlLookup(rawValue, pw);
+        return (pw && pw.length >= 2) ? pwlLookup(rawValue, pw) : 0;
+      }
+      if (calMode === "indivcap" && s.indivCaps && s.indivCaps.length === count) {
         return indivLookup(offsetted, s.indivCaps[i]);
       }
-      if (normSumCap && s.maxSumCaptured != null) {
+      if (calMode === "sumcap" && s.maxSumCaptured != null) {
         const denom = s.maxSumCaptured - s.avResidualNoiseSum;
         if (denom > 0) {
           const cg = getCalGrams(id);

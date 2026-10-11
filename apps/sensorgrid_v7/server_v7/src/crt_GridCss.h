@@ -78,6 +78,21 @@ namespace crt
       font-weight: 600;
       color: #666;
     }
+    .cal-mode {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      margin-left: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .cal-mode label {
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+      cursor: pointer;
+    }
     .toggle-btn.active {
       background: #333;
       color: #fff;
