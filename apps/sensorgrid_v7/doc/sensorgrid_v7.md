@@ -262,20 +262,23 @@ Below each diamond, a **histogram** shows the distribution of the current measur
 
 Below each histogram, a **statistics table** shows three computed values for the current measurements: **max** (maximum value), **average**, and **sqrt(var)** (standard deviation).
 
-Above the sensor widgets, toggle buttons control display modes (applied to all four sensors simultaneously):
-- **Norm Display** — maps the gray/color range to each sensor's current min-max of measurements instead of the full 0-65535 range.
-- **MaxFixed Display** — normalizes color scale to a configurable "Fixed Max Display" value (default 2500). Mutually exclusive with Norm Display.
-- **Color Display** — switches from gray-scale to a color gradient (black → blue → green → yellow → red).
+Above the sensor widgets, three framed radio groups control the display (applied to all four sensors simultaneously). Hovering 1.5 s over a radio button or a group title shows a short explanation.
 
-Next to these, four radio buttons select how circle values are computed (one mode at a time):
+**Sensor Value** — selects how circle values are computed (one mode at a time):
 - **Raw** — the raw value minus the offset (if one was set with Remove Offset).
 - **Norm SumCap** — transforms displayed values using per-sensor captured sum: `calibrateSumGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Requires a sensor to be selected and captured.
 - **Norm IndivCap** — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle).
 - **Norm AutoCal** — grams from the auto-calibration knots of each circle (Herkalibreer druksensoren), applied to the absolute raw value without offset. Circles without an auto-calibration show 0.
 
+**Kleurnormalisatie** — which value range maps onto the full gray/color scale:
+- **Normalised** — each sensor's current min-max of the frame.
+- **MaxFixed** — 0 up to a fixed maximum, set with the slider or the field below it (both grayed out under Normalised). There are two separate maxima: in raw units (1..65535, default 65535) while Sensor Value is Raw, and in grams (1..3500, default 3500) for the three gram modes. The slider and field always show the one belonging to the active Sensor Value mode. MaxFixed with 65535 equals the former "no normalization" view.
+
+**Display** — **Grays** (mid-gray → white) or **Colors** (gray → blue → green → yellow → red).
+
 Capture Sum and Capture Indiv only work in Raw mode.
 
-Additional control fields: **Fixed Max Display**, **Stats Filter** (EMA factor for statistics, default 0.9), **Value Filter** (EMA factor for circle values, default 0.5).
+Additional control fields: **Stats Filter** (EMA factor for statistics, default 0.9), **Value Filter** (EMA factor for circle values, default 0.5).
 
 #### Selected sensor info panel
 Clicking a sensor widget selects it (green border). A green-bordered info panel appears with:

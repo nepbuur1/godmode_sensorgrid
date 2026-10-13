@@ -39,10 +39,86 @@ namespace crt
       justify-content: center;
       align-items: flex-start;
     }
-    .ctrl-buttons {
+    .ctrl-group {
       display: flex;
-      flex-wrap: wrap;
-      gap: 0.4rem;
+      flex-direction: column;
+      gap: 0.25rem;
+      margin: 0;
+      padding: 0.3rem 0.7rem 0.5rem;
+      border: 1px solid #bbb;
+      border-radius: 6px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .ctrl-group legend {
+      padding: 0 0.3rem;
+      font-size: 0.8rem;
+      color: #333;
+      cursor: help;
+    }
+    .ctrl-group label {
+      display: flex;
+      align-items: center;
+      gap: 0.2rem;
+      cursor: pointer;
+    }
+    .ctrl-group input[type="range"] {
+      width: 130px;
+      margin: 0.2rem 0 0;
+    }
+    .ctrl-group input[type="text"] {
+      font-size: 0.75rem;
+      padding: 0.15rem 0.3rem;
+      border: 1px solid #999;
+      border-radius: 3px;
+      width: 70px;
+    }
+    .ctrl-group input:disabled {
+      background: #eee;
+      color: #aaa;
+      border-color: #ccc;
+    }
+    .ctrl-group .fixed-max-field {
+      cursor: default;
+      font-size: 0.75rem;
+      font-weight: 400;
+    }
+    .ctrl-group .fixed-max-field.disabled {
+      color: #aaa;
+    }
+    body:not(.is-admin) .admin-only {
+      display: none !important;
+    }
+    .tip-box {
+      position: fixed;
+      z-index: 1000;
+      max-width: 280px;
+      padding: 0.4rem 0.6rem;
+      background: #333;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 400;
+      line-height: 1.3;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      pointer-events: none;
+      display: none;
+    }
+    .tip-box.visible {
+      display: block;
+    }
+    .flash-popup {
+      position: fixed;
+      z-index: 1000;
+      padding: 0.3rem 0.6rem;
+      background: #2a7a2a;
+      color: #fff;
+      font-size: 0.75rem;
+      font-weight: 600;
+      border-radius: 4px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+      pointer-events: none;
     }
     .ctrl-fields {
       display: flex;
@@ -77,21 +153,6 @@ namespace crt
       font-size: 0.85rem;
       font-weight: 600;
       color: #666;
-    }
-    .cal-mode {
-      display: flex;
-      align-items: center;
-      gap: 0.6rem;
-      margin-left: 1rem;
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: #666;
-    }
-    .cal-mode label {
-      display: flex;
-      align-items: center;
-      gap: 0.2rem;
-      cursor: pointer;
     }
     .toggle-btn.active {
       background: #333;
@@ -368,6 +429,17 @@ namespace crt
       background: #2e7d32;
       color: #fff;
       border-color: #1b5e20;
+    }
+    .rec-play-panel .rec-vals {
+      flex-direction: column;
+      gap: 0.1rem;
+      padding: 0.2rem 0.5rem;
+      border: 1px solid #bbb;
+      border-radius: 4px;
+      background: #fff;
+      font-size: 0.8rem;
+      color: #666;
+      white-space: nowrap;
     }
     .rec-play-panel .rec-info {
       font-size: 0.75rem;

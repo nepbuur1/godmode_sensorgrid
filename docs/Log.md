@@ -847,3 +847,337 @@ proven hardware rather than a stepping stone. That decision is for a following p
 #### Status
 - Card proven, 5/5 on both cards at 20 MHz, LED green. The device is left with the working 20 MHz build.
 
+### Phase 7c: unlocking the flash beyond the 1MB app partition
+
+#### Summary
+The app partition went from **2% free to 76% free** without a single line of application code changing —
+it was purely configuration. The phase was asked as "use the full 16MB of the N16R8", but ended at an
+**8MB** layout on purpose, because at that time the project built every app from one shared `sdkconfig`
+and one partition table, and the sensor boards only have 8MB. That constraint has since been removed: the
+project now has per-board builds (see "Superseded by per-board builds" at the end of this chapter), so the
+server does run a 16MB layout today. The measurements and the two root causes below are what still matter.
+
+#### Why the flash was unused
+Two independent causes, both configuration:
+- `CONFIG_ESPTOOLPY_FLASHSIZE_2MB=y` — the binary image header claimed 2MB, which is what produced the
+  boot warning `Detected size(16384k) larger than the size in the binary image header(2048k)`. The chip
+  itself was correctly detected all along.
+- `CONFIG_PARTITION_TABLE_SINGLE_APP=y` — the build used the **built-in** `partitions_singleapp.csv`
+  (nvs + phy_init + a 1MB factory app), not the `partitions.csv` in the project root. That file was
+  configured as `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` but never *selected*, so it had no effect at all.
+  It describes a 4MB OTA layout (app0/app1/spiffs) that does not match this project's factory-only setup.
+
+The second cause is the nastier one: a custom filename that is set but not selected looks configured and
+does nothing. Both `sdkconfig.server.defaults` and `sdkconfig.sensor.defaults` therefore set
+`CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` *and* rely on `CONFIG_PARTITION_TABLE_CUSTOM=y` from the shared
+`sdkconfig.defaults`.
+
+#### Key finding: the boards do not have the same flash
+Measured with `esptool.py flash_id` (read-only, flashes nothing):
+
+| Board | Port | Module | Flash | PSRAM |
+|-------|------|--------|-------|-------|
+| server devkit | ACM0 | ESP32-S3-N16R8 | 16MB external | 8MB embedded |
+| sensor 3 | USB0 | ESP32-S3-MINI-1-N8 | **8MB embedded (XMC)** | none |
+
+This is a durable hardware fact and it is why a single flash-size setting cannot be right for both. The
+old 2MB/1MB setup was accidentally safe: a 2MB header with a 1MB app fits any board of 2MB or more. A
+16MB table on a shared config would *not* have been safe, and it would have failed **silently** — the
+sensor's app is only ~1MB and sits at 0x10000, so it boots happily while the table claims flash above
+0x800000 that does not physically exist. That only surfaces once something actually touches the data
+partition.
+
+Hence the choice at the time: one 8MB table, the common denominator. `factory` became 4MB, which was what
+the phase was really after, and the server's upper 8MB was simply left unused.
+
+#### Verification (phase 7c, on the then-current 8MB layout)
+- Build: `app-template.bin 0xf9a40 bytes. Smallest app partition is 0x400000 bytes. 0x3065c0 bytes (76%) free.`
+  (was 0x100000 and 2% free)
+- Boot log reported `SPI Flash Size : 8MB` with `factory 00010000 00400000` and `spiffs 00410000 003f0000`
+- `W spi_flash: Detected size(16384k) larger than the size in the binary image header(8192k)` reappeared on
+  the server — now correct rather than a symptom: the chip is 16MB and we deliberately used 8. On the
+  sensor board the 8MB header matched the chip exactly, so no warning there.
+- server_v7 ran: AP `SCOLIOSE` on 192.168.4.1, WebServer on port 80
+- End-to-end over ESP-NOW with a sensor_v6 board (identical to sensor_v7 at that point):
+  `REGISTER from sensor 3`, `DATA from sensor 3, pkt 1/2 (245 bytes)` + `pkt 2/2 (17 bytes)`,
+  `Sensor 3 -> 128 measurements`. The repeated `Broadcast DISCOVER (1/3 registered)` is designed
+  behaviour: `EXPECTED_SENSOR_COUNT` is 3 and only one sensor was powered.
+- Also verified on the real 8MB sensor board (USB0): `Sensor node v7 starting, id=3`,
+  `MCP23017 detected, using real measurement`, `ESP-NOW ready`,
+  `Received POLL, sent 2 pkt(s) id=3 val=6 lc=1 (128 measurements)`
+
+#### `nvs` and `phy_init` must keep their offsets
+Both tables written in this phase kept `nvs` at 0x9000 (24K) and `phy_init` at 0xf000 (4K) — the exact
+offsets and sizes of the built-in table they replace — so existing NVS contents survive a repartition.
+Confirmed on target: WiFi came up with `config NVS flash: enabled` and the phy calibration loaded
+normally. The current `partitions_server_16mb.csv` and `partitions_sensor_8mb.csv` keep the same two
+entries, so that property still holds.
+
+#### Two settings were silently living on one machine only
+`sdkconfig` is in `.gitignore` (line 13), so every setting in it existed only locally. A partition table
+in git does not help if nothing selects it: a fresh clone would silently revert to a 2MB header and the
+built-in 1MB app partition, undoing this phase without a trace. That is why this phase introduced an
+`sdkconfig.defaults` — and generating a config from scratch in an isolated build directory to test it
+turned up two settings that were being lost beyond the two the phase was about:
+
+| Setting | Why it matters |
+|---------|----------------|
+| `CONFIG_IDF_TARGET="esp32s3"` | Without it a fresh checkout builds for the **plain ESP32** — the IDF default — and every `SOC_*` setting comes out wrong. |
+| `CONFIG_FREERTOS_HZ=1000` | CleanRTOS requires 1 tick == 1ms; the IDF default is 100Hz, i.e. 10ms per tick. `libs/CleanRTOS/src/crt_Handler.h` names this exact setting in a comment: *"This Handler class assumes that 1 tick equals 1ms ... update in sdkconfig: CONFIG_FREERTOS_HZ=1000"*. Losing it does not fail the build — it silently makes every delay and timer ten times coarser. |
+
+Both now live in the shared `sdkconfig.defaults`, so this finding survived the rework. Note that
+`sdkconfig.defaults` is a *seed*, not a mirror: settings changed later via `menuconfig` do not flow back
+into it, and an existing `sdkconfig` takes precedence over it. Only deliberate choices belong there.
+
+#### Consequence for phases 7a/7b
+The premise of 7a — a 98% full app partition — is gone: the same binary leaves 76% free, with a multi-MB
+data partition on top of that. Moving server_v7's static files to the microSD card is therefore no longer
+necessary to relieve memory. The `hello_simcard` app remains valid as proven hardware, and the card stays
+an option for data that should outlive a reflash or be swapped between machines, but it is no longer on
+the critical path.
+
+#### PSRAM deliberately left disabled
+The server's N16R8 carries 8MB of embedded PSRAM (`flash_id` reports `Features: WiFi, BLE, Embedded PSRAM
+8MB`), which is separate from the flash this phase is about, and nothing asks for it. The sensor's
+MINI-1-N8 has none. Beyond that, octal PSRAM commits GPIO35/36/37, and `crt_SensorNode.h:53` uses GPIO35
+as `SNAPSHOT_PIN`, which the sensor boards really do use (`Snapshot button configured on GPIO35`). So
+enabling PSRAM is a server-only setting with a pin clash on the sensors — now cheap to do per board, but
+still unmotivated.
+
+#### Superseded by per-board builds
+This chapter's one-config-for-every-board premise no longer holds, and the "revisit with per-board configs
+if server storage ever exceeds ~4MB" note it ended on is exactly what happened: the autocalibration work
+grew server_v7's web content. The project now builds per board type:
+
+| | server | sensor |
+|---|---|---|
+| script | `build_server.sh` / `.bat` | `build_sensor.sh` / `.bat` |
+| build dir | `build_server` | `build_sensor` |
+| config | `sdkconfig.server` | `sdkconfig.sensor` |
+| seeds | `sdkconfig.defaults` + `sdkconfig.server.defaults` | `sdkconfig.defaults` + `sdkconfig.sensor.defaults` |
+| flash size | 16MB | 8MB |
+| table | `partitions_server_16mb.csv` (app 6M) | `partitions_sensor_8mb.csv` (app 3M) |
+
+App selection and sensor id moved out of the sources too: `idf.py -D SENSORGRID_APP=server_v7|sensor_v7|client_v7`
+and `-D SENSORGRID_SENSOR_ID=<n>` become `#define`s via `main/CMakeLists.txt`, with the manual `#include`
+in `main.cpp` and the `SENSOR_ID` in `sensor_v7_ino.h` as fallback. So the server now gets its 16MB after
+all — the literal request of this phase — and the silent-failure risk that forced 8MB is gone, because the
+sensors no longer share the server's table.
+
+The files this phase created (`partitions_8MB.csv`, and its single-table `sdkconfig.defaults`) were dropped
+in favour of that setup and no longer exist.
+
+#### Status
+- Done and verified at the time on both board types, from one shared 8MB layout. Since replaced by the
+  per-board builds above; this chapter is kept for the two root causes, the `flash_id` measurements, and
+  the two settings that were being lost.
+
+### Per-board builds: server 16MB, sensor 8MB (post-7c rework)
+
+*This chapter is reconstructed from the committed files (commits `715e5ef`..`df3515d`), not from a
+working session — the rework was done on another machine. The decisions below are read out of the code
+and the comments in it; the verification at the end is the one thing measured here.*
+
+#### Why
+Phase 7c ended on an explicit escape hatch: *"If server-side storage ever genuinely exceeds ~4MB,
+revisit with per-board configs then."* The autocalibration work (`crt_GridAutoCalib.h`,
+`crt_GridAutoCalibUi.h`) and the recording views grew server_v7's embedded web content, and the account
+system (`crt_AccountHtml.h` alone is ~500 lines of embedded HTML/CSS) added more. The shared-config
+premise — one `sdkconfig`, one partition table, sized for the smallest board — was what kept the server
+at a 4MB app partition on a 16MB chip. So the hatch was taken.
+
+#### What replaced it
+Two parallel builds that share nothing but the sources and the common seed. `README.md` documents the
+usage; this is the shape and the reasoning:
+
+| | server | sensor |
+|---|---|---|
+| script | `build_server.sh` / `build_server.bat` | `build_sensor.sh` / `build_sensor.bat` |
+| build dir | `build_server/` | `build_sensor/` |
+| generated config | `sdkconfig.server` | `sdkconfig.sensor` |
+| seeds | `sdkconfig.defaults` + `sdkconfig.server.defaults` | `sdkconfig.defaults` + `sdkconfig.sensor.defaults` |
+| flash size | 16MB | 8MB |
+| table | `partitions_server_16mb.csv` | `partitions_sensor_8mb.csv` |
+| factory app | 6M at 0x10000 | 3M at 0x10000 |
+| spiffs | 0x610000, 0x9F0000 (~9.9M) | 0x310000, 0x4F0000 (~5M) |
+| default port | `/dev/ttyACM0` (COM5) | `/dev/ttyACM1` (COM6) |
+
+Both tables total their chip exactly: 0x610000 + 0x9F0000 = 0x1000000 (16MB), and
+0x310000 + 0x4F0000 = 0x800000 (8MB). Separate build directories and separate `sdkconfig`s mean the two
+never overwrite each other's configuration, which is what made the shared setup fragile — switching board
+type previously meant a reconfigure plus a full rebuild.
+
+The server's app partition goes 1M (pre-7c) -> 4M (7c, shared) -> **6M**. The sensor goes 1M -> 4M -> 3M;
+that is a reduction on paper but irrelevant in practice, since sensor_v7's binary is around 1MB and the
+space it gives back goes to its spiffs partition.
+
+#### What carried over from 7c
+- **`nvs` at 0x9000 (24K) and `phy_init` at 0xf000 (4K)** in both tables — the offsets of the built-in
+  table they replace, so existing NVS contents (WiFi calibration among others) survive a repartition.
+- **`CONFIG_IDF_TARGET="esp32s3"` and `CONFIG_FREERTOS_HZ=1000`** are in the shared `sdkconfig.defaults`.
+  These are the two settings 7c found were living on one machine only; both are silent failures when
+  lost (wrong target, or every delay ten times coarser).
+- **`CONFIG_PARTITION_TABLE_CUSTOM=y`** sits in the shared seed, and each per-board seed sets
+  `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME` *and* `CONFIG_PARTITION_TABLE_FILENAME`. That belt-and-braces
+  is the direct lesson of 7c, where a custom filename was set while `PARTITION_TABLE_SINGLE_APP` was
+  still selected — so the setting looked configured and did nothing.
+
+The shared seed also carries what the Arduino-as-component setup needs: `CONFIG_AUTOSTART_ARDUINO` off
+(`setup()`/`loop()` are called from `app_main`), the five mbedTLS PSK options, `CONFIG_COMPILER_CXX_EXCEPTIONS=y`,
+and `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y` so `idf.py monitor` shows `ESP_LOG` output over the built-in
+USB port the devkits hang on.
+
+#### App selection moved out of the sources
+Previously the active app was chosen by commenting an `#include` in `main.cpp`, and the sensor id by
+editing `SENSOR_ID` in `sensor_v7_ino.h` — both source edits, both easy to forget before a flash, and
+`main.cpp` is shared with every older app generation.
+
+Now `main/CMakeLists.txt` turns two CMake cache variables into defines:
+- `idf.py -D SENSORGRID_APP=server_v7|sensor_v7|client_v7` -> `#define SENSORGRID_APP_<UPPER> 1`
+- `idf.py -D SENSORGRID_SENSOR_ID=<n>` -> `#define SENSORGRID_SENSOR_ID <n>`
+
+`main.cpp` selects on `SENSORGRID_APP_SERVER_V7` / `_SENSOR_V7` / `_CLIENT_V7`, and `sensor_v7_ino.h`
+guards its id with `#ifndef SENSORGRID_SENSOR_ID`. Both keep the old manual choice in the `#else` /
+`#ifndef` branch, so editing `main.cpp` by hand still works and nothing in the older app generations
+changed behaviour. The build scripts set `SENSORGRID_APP` always and `SENSORGRID_SENSOR_ID` only when the
+third argument is given.
+
+#### Also gitignored
+`sdkconfig.server`, `sdkconfig.sensor` and their `.old` siblings, plus `build_*.log` and `flash_*.log`.
+The two build directories were already covered by the existing `build_*/` pattern. So the committed
+truth is the five defaults files and the two tables; everything generated stays out.
+
+#### Finding: the .sh scripts were not executable
+Both `build_server.sh` and `build_sensor.sh` were committed with mode `100644`, while `README.md`
+prescribes `./build_server.sh [actie] [poort]`. On a fresh clone (and in WSL) that fails with
+`/bin/bash: ./build_server.sh: Permission denied`, exit 126 — the `.bat` variants are unaffected since
+Windows does not use a mode bit. Fixed by setting the bit (mode `100755`); `bash build_server.sh ...`
+was the workaround.
+
+#### Verification of the server build (WSL, 2026-10-12)
+`./build_server.sh build` from a clean state — no `build_server/`, no `sdkconfig.server` — so the script
+took its first-run path (`idf.py set-target esp32s3` seeded from `sdkconfig.defaults` +
+`sdkconfig.server.defaults`) and then built all 1839 targets. Exit 0.
+
+- `app-template.bin binary size 0x11f460 bytes. Smallest app partition is 0x600000 bytes.
+  0x4e0ba0 bytes (81%) free.`
+- The generated partition table matches the csv exactly: `nvs` 24K at 0x9000, `phy_init` 4K at 0xf000,
+  `factory` 6M at 0x10000, `spiffs` 10176K at 0x610000.
+- `sdkconfig.server` came out with everything the two seeds prescribe:
+  `CONFIG_IDF_TARGET="esp32s3"`, `CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y` / `="16MB"`,
+  `CONFIG_PARTITION_TABLE_CUSTOM=y` with both filename settings on `partitions_server_16mb.csv`,
+  `CONFIG_FREERTOS_HZ=1000`, `CONFIG_ESP_CONSOLE_USB_SERIAL_JTAG=y`,
+  `CONFIG_COMPILER_CXX_EXCEPTIONS=y`, and `# CONFIG_AUTOSTART_ARDUINO is not set`.
+- The flash command the build prints carries `--flash_size 16MB`, i.e. the image header now matches the
+  chip — the mismatch warning 7c lived with is gone on the server.
+- `git status` stays clean apart from intended edits: `build_server/` and `sdkconfig.server` are both
+  ignored as designed.
+
+Only pre-existing warnings, all from `libs/TFT_eSPI` and unrelated to sensorgrid: the
+`DMA is not supported on the ESP32 S3` `#warning`, and `-Wmissing-field-initializers` on a few
+`spi_bus_config_t` / `spi_device_interface_config_t` initialisers.
+
+Not flashed — this was a build check only.
+
+**Size in perspective.** server_v7 is now 0x11f460, up from 0xf9a40 measured in 7c: about 154KB (+15%)
+of autocalibration, recording views and account pages. That still fits 7c's 4M partition at 71% free, so
+the 6M is headroom rather than a binary that had outgrown the previous layout. The partition that was
+genuinely too small is the original built-in 1M one, which this binary exceeds outright.
+
+
+#### Flashed and verified on target (ACM0, 2026-10-12)
+`./build_server.sh flash /dev/ttyACM0` — exit 0, all three images written with `Hash of data verified`
+(bootloader at 0x0, partition table 3072 bytes at 0x8000, app 1176672 bytes at 0x10000, 9.8s at
+~957 kbit/s), then `Hard resetting via RTS pin`.
+
+The boot log confirms the repartition took effect:
+```
+I (28) boot.esp32s3: SPI Flash Size : 16MB
+I (28) boot: Partition Table:
+I (28) boot: ## Label            Usage          Type ST Offset   Length
+I (29) boot:  0 nvs              WiFi data        01 02 00009000 00006000
+I (29) boot:  1 phy_init         RF data          01 01 0000f000 00001000
+I (29) boot:  2 factory          factory app      00 00 00010000 00600000
+I (30) boot:  3 spiffs           Unknown data     01 82 00610000 009f0000
+I (254) boot: Loaded app from partition at offset 0x10000
+```
+- **No `Detected size(16384k) larger than the size in the binary image header` warning.** 7c had to live
+  with it (8MB header on a 16MB chip); the server's header now matches its flash exactly.
+- **NVS survived the repartition**, as the kept offsets intended: `wifi:config NVS flash: enabled` and
+  `phy_init: phy_version 701` both load normally.
+- server_v7 runs: `AP SSID: SCOLIOSE`, `AP IP: 192.168.4.1`, `WebServer started on port 80`,
+  `ESP-NOW init OK`, STA MAC `10:20:BA:4B:DF:94` / AP MAC `10:20:BA:4B:DF:95`, `Expecting 3 sensors`.
+- `Broadcast DISCOVER (0/3 registered)` repeating is the designed behaviour with no sensors powered —
+  none were attached to WSL for this check.
+
+So the server half of the per-board setup is proven end to end: seeds -> config -> table -> flash -> boot.
+The sensor half is still only proven by inspection of its files.
+
+#### Status
+- **Server: proven end to end.** Built from scratch, flashed to ACM0, boots on the 16MB header with the
+  6M factory partition, NVS intact, server_v7 serving on 192.168.4.1.
+- **Sensor: not exercised.** `./build_sensor.sh` needs a sensor module on a port, and only
+  `/dev/ttyACM0` (the server devkit) was attached to WSL. The sensor half rests on file inspection only.
+- The `.sh` executable-bit fix is in the working tree, not yet committed.
+
+### Grid View: display controls as radio groups
+The toggle buttons above the grid became three framed radio groups:
+- **Sensor Value**: Raw / Norm SumCap / Norm IndivCap / Norm AutoCal, now stacked vertically.
+- **Kleurnormalisatie**: Normalised / MaxFixed. These replace Norm Display and MaxFixed Display. Under
+  MaxFixed there is a slider with the Fixed Max field beneath it; both are grayed out under Normalised.
+- **Display**: Grays / Colors, replacing Color Display.
+
+The fixed maximum now exists twice: `fixedMaxRaw` (1..65535, used while Sensor Value is Raw) and
+`fixedMaxGrams` (1..3500, used in the three gram modes). Slider and field show the one belonging to the
+active mode, and `getFixedMax()` returns it, so circles, 3D surface and plot follow without other changes.
+Out-of-range input is clamped; unparseable input restores the previous value.
+
+The radio buttons have no "neither" state, while the old buttons did (range 0..65535). Old cookies and old
+meta files map onto the new model: "neither" becomes MaxFixed with raw 65535 (identical view), and old
+MaxFixed with value X becomes raw X and grams min(X, 3500). New cookies: `gvColorNorm`, `gvFixedMaxRaw`,
+`gvFixedMaxGrams`; meta gains `fixedMaxRaw`/`fixedMaxGrams`.
+
+Hovering 1.5 s over a radio button or a group title shows a short explanation. This uses a custom tooltip
+(`data-tip`, `#tipBox`), because the delay of the browser's own `title` tooltip cannot be set. After a
+recording or snapshot download, a "download completed" popup shows under the button for 1 s. It appears
+when the download is handed to the browser; a page cannot observe when the file has actually been written.
+
+client_v7's grid-page check now looks for "Kleurnormalisatie" and the `colorized` radio group instead of
+the old button labels.
+
+Verification: the page was run in headless Chrome with an injected test script (25 checks covering
+ranges, clamping, raw/gram switching, graying out, cookies, old and new meta, tooltip timing, popup
+lifetime), and screenshots confirmed the layout. server_v7 was built and flashed to ACM0. client_v7 was
+not rebuilt.
+
+Follow-up in the recording player:
+- `sensor_val` and `loadcell_val` sit stacked in a small framed box. `sensor_val` carries `(raw)` under
+  Raw and `g` otherwise. `loadcell_val` is always `g`, because the loadcell curve is grams in every mode
+  (`recLcGramOfFrame`).
+- The single y-axis checkbox, and the y-clip fields that come with it, are hidden under Raw. Comparing
+  raw counts with grams on one axis means nothing, so `singleY` is also ignored there while the checkbox
+  keeps its state for the gram modes.
+
+Verified headless with a synthetic recording (10 checks, plus screenshots in Raw and SumCap), then built
+and flashed to ACM0.
+
+### Grid View: calibration controls only for Admin
+For roles other than Admin (Gebruiker, Onderzoeker), the grid page hides:
+- Stats Filter and Value Filter. Their getters return the defaults 0.9 and 0.5 regardless of the field,
+  and the fields are reset to those values. Cookies are left alone, since they hold what an Admin set in
+  this browser.
+- In the green sensor panel: Capture Sum, maxSumCaptured, avResidualNoiseSum and Calibrate Sum Grams.
+- In the red circle panel: the three Capture Indiv rows (button, cap, grams, Calibrate Grams Indiv).
+- Both capture-error spans; they only report capture errors.
+
+The Auto-PWL line stays visible, now capitalised. Without knots, a non-admin sees "Nog geen Auto-PWL
+knopen beschikbaar. (Her-)calibratie is nodig!"; an Admin keeps "Auto-PWL: geen (<reason>)".
+
+Mechanism: the grid page defines `window.accPage`, which account.js already calls with the `/api/me`
+result. It sets `isAdmin` and the body class `is-admin`; CSS hides `.admin-only` without it. Until the
+role is known the page behaves as non-admin, so nothing flashes into view. This is presentation only: the
+server does not enforce it. Calibration lives in the browser (cookies/localStorage) and can still arrive
+through Upload Meta.
+
+Verified headless against a mock `/api/me` returning role 2 and role 0 (9 checks each, including a
+pre-set filter cookie of 0.7 that an Admin sees and a non-admin does not). Built and flashed to ACM0.
