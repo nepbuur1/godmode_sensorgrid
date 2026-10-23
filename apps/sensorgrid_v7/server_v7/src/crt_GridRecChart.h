@@ -59,7 +59,13 @@ namespace crt
       return recLcCache.series[sensorId];
     }
 
+    // single y-axis heeft alleen zin als beide curves grammen zijn, dus niet bij Sensor Value = Raw.
+    function recSingleYAvailable() {
+      return calMode !== 'raw';
+    }
     function recShowClipRow() {
+      const yRow = document.getElementById('recSingleYRow');
+      if (yRow) yRow.style.display = recSingleYAvailable() ? 'inline-flex' : 'none';
       const row = document.getElementById('recClipRow');
       if (row) row.style.display = recSingleY ? 'inline-flex' : 'none';
     }
@@ -226,7 +232,8 @@ namespace crt
       const chartVisible = recFrames.length > 0 && selectedSensorId !== null && selectedCircleIdx !== null &&
           (recState === 'playing' || recState === 'playpaused');
       document.getElementById('recZoomRow').style.display = chartVisible ? 'inline-flex' : 'none';
-      document.getElementById('recCircleVal').style.display = chartVisible ? 'inline' : 'none';
+      document.getElementById('recCircleVal').style.display = chartVisible ? 'inline-flex' : 'none';
+      recShowClipRow();
       if (!chartVisible) {
         canvas.style.display = 'none';
         recChartLayout = null;
@@ -273,8 +280,12 @@ namespace crt
       // (and value label / zoom centre) must use playIdx - 1 to line up with the
       // value shown on the sensorgrid (phase 6y).
       const pi = Math.max(0, Math.min(playIdx - 1, vals.length - 1));
-      document.getElementById('recCircleVal').textContent = 'sensor_val=' + Math.round(vals[pi]) +
-        (hasLc ? ' loadcell_val=' + Math.round(lcVals[pi]) : '');
+      // De loadcell-curve is altijd in grammen; de cirkelwaarde alleen buiten Raw.
+      document.getElementById('recSensorVal').textContent = 'sensor_val=' + Math.round(vals[pi]) +
+        (calMode === 'raw' ? ' (raw)' : ' g');
+      const lcEl = document.getElementById('recLcVal');
+      lcEl.textContent = hasLc ? 'loadcell_val=' + Math.round(lcVals[pi]) + ' g' : '';
+      lcEl.style.display = hasLc ? '' : 'none';
 
       // Compute y range
       let yMin = vals[0], yMax = vals[0];
@@ -285,7 +296,7 @@ namespace crt
       // single y-axis: het grootste bereik van de module (alle cirkels en de loadcell over de
       // hele opname), zodat gelijke hoogte gelijke waarde betekent en de as niet verspringt
       // bij het kiezen van een andere cirkel.
-      const singleY = recSingleY && hasLc && lcMax > 0;
+      const singleY = recSingleY && recSingleYAvailable() && hasLc && lcMax > 0;
       if (singleY) {
         const r = recModuleRange(selectedSensorId);
         yMin = Math.min(yMin, r.sMin, r.lcMin);

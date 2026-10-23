@@ -127,6 +127,7 @@ namespace crt
       a.download = 'recording_' + recLocalStamp() + '.json';
       a.click();
       URL.revokeObjectURL(url);
+      flashPopup('btnDownload', 'download completed', 1000);
     }
 
     function recUpload(event) {

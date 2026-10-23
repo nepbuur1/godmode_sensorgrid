@@ -33,6 +33,7 @@ namespace crt
     }
 
     function getStatsFilter() {
+      if (!isAdmin) return STATS_FILTER_DEFAULT;
       const v = parseFloat(document.getElementById("fldStatsFilter").value);
       if (isNaN(v) || v < 0) return 0;
       if (v > 1) return 1;
@@ -40,6 +41,7 @@ namespace crt
     }
 
     function getValueFilter() {
+      if (!isAdmin) return VALUE_FILTER_DEFAULT;
       const v = parseFloat(document.getElementById("fldValueFilter").value);
       if (isNaN(v) || v < 0) return 0;
       if (v > 1) return 1;

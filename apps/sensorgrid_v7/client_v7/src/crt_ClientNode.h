@@ -280,8 +280,8 @@ namespace crt
 			bool hasAllApi = body.indexOf("allmeasurements") >= 0;
 			bool hasHistogram = body.indexOf("histogram") >= 0;
 			bool hasStatsTable = body.indexOf("stats-table") >= 0;
-			bool hasNormalize = body.indexOf("Norm Display") >= 0;
-			bool hasColorize = body.indexOf("Color Display") >= 0;
+			bool hasNormalize = body.indexOf("Kleurnormalisatie") >= 0;
+			bool hasColorize = body.indexOf("name=\"colorized\"") >= 0;
 			bool hasLayout = body.indexOf("sensor-layout") >= 0;
 			bool hasLoadcell = body.indexOf("loadcell-section") >= 0;
 			bool hasTare = body.indexOf("Tare") >= 0;

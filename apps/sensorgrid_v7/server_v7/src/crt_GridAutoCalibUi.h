@@ -147,10 +147,12 @@ namespace crt
       const ver = (s.calVer && s.calVer[circleIdx]) | 0;
       const log = (s.calLog && s.calLog[circleIdx]) || null;
       if (pw.length >= 2) {
-        el.textContent = "auto-PWL: " + pw.length + " knopen, versie " + ver + " (globaal " + calibVersion + "): " +
+        el.textContent = "Auto-PWL: " + pw.length + " knopen, versie " + ver + " (globaal " + calibVersion + "): " +
           pw.map(function(k) { return Math.round(k.raw) + "\u2192" + Math.round(k.gram) + " g"; }).join("  ");
       } else {
-        el.textContent = "auto-PWL: geen" + (log && log.reason ? " (" + log.reason + ")" : "");
+        el.textContent = isAdmin
+          ? "Auto-PWL: geen" + (log && log.reason ? " (" + log.reason + ")" : "")
+          : "Nog geen Auto-PWL knopen beschikbaar. (Her-)calibratie is nodig!";
       }
     }
 

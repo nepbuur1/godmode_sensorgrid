@@ -687,3 +687,44 @@ Let's reconfig server_v7, such that it can use the full 16MB of memory of the es
 and flash it to the attached devkit. I have also plugged in an already programmed sensor_v6 board (which should be 
 identical to the current sensor_v7, at this point), but not attached to WSL yet. Just let me know if you need that 
 for your tests.
+
+#### Phase 7c outcome
+Done, and no application code had to change - it was purely configuration. The app partition went from
+2% free to **76% free**. Two separate causes kept the flash out of reach: the image header claimed 2MB
+(`CONFIG_ESPTOOLPY_FLASHSIZE_2MB`), and the build used the *built-in* single-app table with its 1MB
+factory partition - the `partitions.csv` in the project root was configured as the custom filename but
+never selected, so it never did anything. A custom filename that is set but not selected looks
+configured and does nothing; that is the trap to remember.
+
+It first landed at **8MB, not 16MB**, on purpose. Measuring the boards with `esptool.py flash_id` showed
+they differ: the server devkit is an N16R8 with 16MB, but the sensor board is an ESP32-S3-MINI-1-N8 with
+only **8MB**. At that time the project built every app from one sdkconfig and one partition table
+(main.cpp only picked the app), so a 16MB table would have gone onto the sensors too - and it would have
+failed silently, because their ~1MB app sits at 0x10000 and boots fine while the table claims flash that
+does not exist above 0x800000. 8MB relieved the app partition just as well: `factory` was 4MB either way.
+
+Verified on both board types at the time: ACM0 ran server_v7 (AP on 192.168.4.1, `0x3065c0 bytes (76%)
+free`), USB0 ran sensor_v7 (id=3, MCP23017 detected, real measurement), both from the one shared 8MB
+config and exchanging data over ESP-NOW. `nvs` and `phy_init` kept their old offsets, so the existing
+NVS survived.
+
+Also added an `sdkconfig.defaults`, because `sdkconfig` is gitignored and the settings would otherwise
+live only on one machine - a fresh clone would silently revert to 2MB and the 1MB table. Testing that
+from scratch turned up two more settings that were being lost: `CONFIG_IDF_TARGET="esp32s3"` (without it
+a fresh checkout builds for the plain ESP32) and `CONFIG_FREERTOS_HZ=1000` (CleanRTOS needs 1 tick ==
+1ms; crt_Handler.h names this exact setting - losing it does not fail the build, it just makes every
+delay ten times coarser). Both are in the shared `sdkconfig.defaults` today.
+
+This removed the reason for phases 7a/7b: relieving memory no longer requires the microSD card. The card
+remains proven hardware and an option for data that should survive a reflash, but it is off the critical
+path.
+
+**Since superseded, in the intended direction.** The phase ended on "if server-side storage ever exceeds
+~4MB, that is the moment for per-board configs", and the autocalibration work made that happen. The
+project now builds per board type - `build_server.sh`/`.bat` with `sdkconfig.server.defaults` and
+`partitions_server_16mb.csv` (app 6M), `build_sensor.sh`/`.bat` with `sdkconfig.sensor.defaults` and
+`partitions_sensor_8mb.csv` (app 3M) - with app selection and sensor id via `idf.py -D SENSORGRID_APP=...`
+and `-D SENSORGRID_SENSOR_ID=...` through `main/CMakeLists.txt`. So the server does get its full 16MB
+after all, which was the literal request of this phase, and the silent-failure risk that forced 8MB is
+gone because the sensors no longer share the server's table. `partitions_8MB.csv` and the single-table
+`sdkconfig.defaults` from this phase were dropped in favour of that setup. See Log.md, Phase 7c.

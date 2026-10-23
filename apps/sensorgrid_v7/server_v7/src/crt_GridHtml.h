@@ -34,19 +34,26 @@ namespace crt
   <div class="page">
     <h1>Grid View</h1>
     <div class="controls">
-      <div class="ctrl-buttons">
-        <button class="toggle-btn" id="btnNormalize" onclick="toggleNormalize()">Norm Display</button>
-        <button class="toggle-btn" id="btnMaxFixed" onclick="toggleMaxFixed()">MaxFixed Display</button>
-        <button class="toggle-btn" id="btnColorize" onclick="toggleColorize()">Color Display</button>
-        <span class="cal-mode" title="Weergave van de cirkelwaarden">
-          <label><input type="radio" name="calMode" value="raw" onchange="setCalMode(this.value)" checked/> Raw</label>
-          <label><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
-          <label><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
-          <label><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
-        </span>
-      </div>
-      <div class="ctrl-fields">
-        <label>Fixed Max Display <input type="text" id="fldFixedMax" value="2500" size="8" onchange="setCookie('gvFixedMax',this.value,365)"/></label>
+      <fieldset class="ctrl-group">
+        <legend data-tip="Welke waarde de cirkels tonen: ruwe sensorwaarde of omgerekend naar grammen.">Sensor Value</legend>
+        <label data-tip="Ruwe sensorwaarde (0..65535), min de offset als die met Remove Offset is gezet."><input type="radio" name="calMode" value="raw" onchange="setCalMode(this.value)" checked/> Raw</label>
+        <label data-tip="Grammen via de som-kalibratie per sensor (Capture Sum): één schaalfactor voor alle cirkels."><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
+        <label data-tip="Grammen via de handmatige kalibratie per cirkel (tot 3 capture-punten, stuksgewijs lineair)."><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
+        <label data-tip="Grammen via de automatische kalibratie (Herkalibreer druksensoren). Cirkels zonder kalibratie tonen 0."><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
+      </fieldset>
+      <fieldset class="ctrl-group">
+        <legend data-tip="Welk waardebereik op de volle grijs- of kleurschaal wordt afgebeeld.">Kleurnormalisatie</legend>
+        <label data-tip="Per sensor van de laagste tot de hoogste waarde in het huidige frame. Laat altijd contrast zien, maar geen absolute niveaus."><input type="radio" name="colorNorm" value="norm" onchange="setColorNorm(this.value)"/> Normalised</label>
+        <label data-tip="Van 0 tot een vaste maximumwaarde (slider/veld hieronder). Bij Raw in ruwe eenheden (1..65535), anders in grammen (1..3500)."><input type="radio" name="colorNorm" value="fixed" onchange="setColorNorm(this.value)" checked/> MaxFixed</label>
+        <input type="range" id="sldFixedMax" min="1" max="65535" step="1" value="65535" oninput="fixedMaxSliderInput(this.value)"/>
+        <label class="fixed-max-field"><input type="text" id="fldFixedMax" value="65535" size="8" onchange="fixedMaxFieldChange(this.value)"/> <span id="fixedMaxUnit">raw</span></label>
+      </fieldset>
+      <fieldset class="ctrl-group">
+        <legend data-tip="Hoe een waarde in de cirkels en het 3D-oppervlak wordt getoond.">Display</legend>
+        <label data-tip="Grijstinten: van middengrijs (laag) naar wit (hoog)."><input type="radio" name="colorized" value="0" onchange="setColorized(false)" checked/> Grays</label>
+        <label data-tip="Kleurverloop: grijs, blauw, groen, geel naar rood (hoog)."><input type="radio" name="colorized" value="1" onchange="setColorized(true)"/> Colors</label>
+      </fieldset>
+      <div class="ctrl-fields admin-only">
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
         <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365);updateRecChart()"/></label>
       </div>
@@ -67,17 +74,19 @@ namespace crt
       <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
       <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
       <span class="rec-info" id="recInfo">Ready</span>
-      <span id="recCircleVal" style="display:none;font-size:0.8rem;color:#666;margin-left:0.5rem;"></span>
+      <span id="recCircleVal" class="rec-vals" style="display:none;"><span id="recSensorVal"></span><span id="recLcVal"></span></span>
       <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
         <label style="font-size:0.75rem;color:#666;">Zoom</label>
         <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>
         <span id="recZoomVal" style="font-size:0.75rem;color:#666;min-width:2.5rem;">10x</span>
-        <label style="font-size:0.75rem;color:#666;margin-left:0.6rem;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
-        <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
-          <label style="font-size:0.75rem;color:#666;">y-clip</label>
-          <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
-          <label style="font-size:0.75rem;color:#666;">..</label>
-          <input type="text" id="fldClipHi" value="3000" size="5" onchange="recClipChange()" title="upper bound"/>
+        <span id="recSingleYRow" style="display:inline-flex;align-items:center;gap:0.3rem;">
+          <label style="font-size:0.75rem;color:#666;margin-left:0.6rem;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
+          <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
+            <label style="font-size:0.75rem;color:#666;">y-clip</label>
+            <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
+            <label style="font-size:0.75rem;color:#666;">..</label>
+            <input type="text" id="fldClipHi" value="3000" size="5" onchange="recClipChange()" title="upper bound"/>
+          </span>
         </span>
       </span>
     </div>
@@ -210,39 +219,40 @@ namespace crt
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
       <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
-      <button class="toggle-btn" onclick="doCapture()">Capture Sum</button>
-      <label>maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
-      <label>avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
-      <label>Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
+      <button class="toggle-btn admin-only" onclick="doCapture()">Capture Sum</button>
+      <label class="admin-only">maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
+      <label class="admin-only">avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
+      <label class="admin-only">Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
       <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
       <button class="toggle-btn" id="btnCalibCheck" onmousedown="acCheckStart(event)" onmouseup="acCheckStop()" onmouseleave="acCheckStop()" ontouchstart="acCheckStart(event)" ontouchend="acCheckStop()" title="Ingedrukt houden: per cirkel de kalibratie-versie. zwart = nooit, groen = actueel, oranje = 1 ronde gemist, rood = 2 of meer">kalibratie_check</button>
       <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
-      <span id="captureError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
+      <span id="captureError" class="admin-only" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
     <div class="circle-info-panel" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
-      <div class="circle-info-row">
+      <div class="circle-info-row admin-only">
         <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
         <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
         <label>grams <input type="text" id="ciGrams0" readonly value="-" size="6"/></label>
         <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams0" value="0" size="6"/></label>
       </div>
-      <div class="circle-info-row">
+      <div class="circle-info-row admin-only">
         <button class="toggle-btn" onclick="captureIndiv(1)">Capture Indiv 2</button>
         <label>cap <input type="text" id="ciCap1" readonly value="-" size="6"/></label>
         <label>grams <input type="text" id="ciGrams1" readonly value="-" size="6"/></label>
         <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams1" value="0" size="6"/></label>
       </div>
-      <div class="circle-info-row">
+      <div class="circle-info-row admin-only">
         <button class="toggle-btn" onclick="captureIndiv(2)">Capture Indiv 3</button>
         <label>cap <input type="text" id="ciCap2" readonly value="-" size="6"/></label>
         <label>grams <input type="text" id="ciGrams2" readonly value="-" size="6"/></label>
         <label>Calibrate Grams Indiv <input type="text" id="ciCalGrams2" value="0" size="6"/></label>
       </div>
-      <span id="captureIndivError" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
+      <span id="captureIndivError" class="admin-only" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
       <div class="circle-info-row"><span id="ciAuto" style="font-size:0.75rem;color:#555;"></span></div>
     </div>
     <div id="status">...</div>
   </div>
+  <div id="tipBox" class="tip-box"></div>
 
   <script>
     const MAX_VALUE = 65535;
@@ -251,7 +261,7 @@ namespace crt
     const SENSOR_IDS = [1, 2, 3, 4];
 
     let normalized = false;
-    let maxFixed = false;
+    let maxFixed = true;
     let colorized = false;
     // Weergave van de cirkelwaarden: 'raw' | 'sumcap' | 'indivcap' | 'autocal' (zie displayValueForCircle).
     const CAL_MODES = ["raw", "sumcap", "indivcap", "autocal"];
@@ -331,42 +341,110 @@ namespace crt
       } catch (e) {}
     }
 
+    // Rol van de ingelogde gebruiker (via account.js -> window.accPage). Tot die bekend is geldt
+    // "geen Admin": de admin-only elementen blijven verborgen en de filters staan op hun default.
+    const ROLE_ADMIN = 2;
+    const STATS_FILTER_DEFAULT = 0.9;
+    const VALUE_FILTER_DEFAULT = 0.5;
+    let isAdmin = false;
+    window.accPage = function(me) {
+      isAdmin = !!me && me.role === ROLE_ADMIN;
+      document.body.classList.toggle("is-admin", isAdmin);
+      if (!isAdmin) {
+        // niet in de cookies: die horen bij wat een Admin in deze browser heeft ingesteld
+        document.getElementById("fldStatsFilter").value = STATS_FILTER_DEFAULT;
+        document.getElementById("fldValueFilter").value = VALUE_FILTER_DEFAULT;
+      }
+      if (selectedSensorId !== null && selectedCircleIdx !== null) acUpdateCircleInfo(selectedSensorId, selectedCircleIdx);
+      updateRecChart();
+    };
+
+    // Kleurnormalisatie: precies een van normalized/maxFixed staat aan (radiobuttons Normalised /
+    // MaxFixed). Bij MaxFixed is het bereik 0..getFixedMax(); die maximumwaarde bestaat twee keer:
+    // in ruwe eenheden (Sensor Value = Raw) en in grammen (alle andere Sensor Value-modi).
+    const FIXED_MAX_RAW_LIMIT = MAX_VALUE;
+    const FIXED_MAX_GRAMS_LIMIT = 3500;
+    let fixedMaxRaw = MAX_VALUE;
+    let fixedMaxGrams = FIXED_MAX_GRAMS_LIMIT;
+
     function saveToggleStates() {
-      setCookie("gvNormalized", normalized ? "1" : "0", 365);
-      setCookie("gvMaxFixed", maxFixed ? "1" : "0", 365);
-      setCookie("gvCalMode", calMode, 365);
-    }
-    function toggleNormalize() {
-      normalized = !normalized;
-      if (normalized && maxFixed) {
-        maxFixed = false;
-        document.getElementById("btnMaxFixed").classList.remove("active");
-      }
-      document.getElementById("btnNormalize").classList.toggle("active", normalized);
-      saveToggleStates();
-      recolorAll();
-    }
-    function toggleMaxFixed() {
-      maxFixed = !maxFixed;
-      if (maxFixed && normalized) {
-        normalized = false;
-        document.getElementById("btnNormalize").classList.remove("active");
-      }
-      document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
-      saveToggleStates();
-      recolorAll();
-    }
-    function toggleColorize() {
-      colorized = !colorized;
-      document.getElementById("btnColorize").classList.toggle("active", colorized);
+      setCookie("gvColorNorm", normalized ? "norm" : "fixed", 365);
       setCookie("gvColorized", colorized ? "1" : "0", 365);
+      setCookie("gvCalMode", calMode, 365);
+      setCookie("gvFixedMaxRaw", fixedMaxRaw, 365);
+      setCookie("gvFixedMaxGrams", fixedMaxGrams, 365);
+    }
+    function fixedMaxIsGrams() {
+      return calMode !== "raw";
+    }
+    function fixedMaxLimit() {
+      return fixedMaxIsGrams() ? FIXED_MAX_GRAMS_LIMIT : FIXED_MAX_RAW_LIMIT;
+    }
+    function clampFixedMax(v, limit) {
+      const n = Math.round(parseFloat(v));
+      return isNaN(n) ? null : Math.max(1, Math.min(limit, n));
+    }
+    // Zet radiobuttons, slider en veld gelijk aan de toestand.
+    function syncDisplayControls() {
+      document.querySelectorAll('input[name="colorNorm"]').forEach(r => { r.checked = (r.value === (normalized ? "norm" : "fixed")); });
+      document.querySelectorAll('input[name="colorized"]').forEach(r => { r.checked = (r.value === (colorized ? "1" : "0")); });
+      const sld = document.getElementById("sldFixedMax");
+      const fld = document.getElementById("fldFixedMax");
+      sld.max = fixedMaxLimit();
+      sld.value = getFixedMax();
+      fld.value = getFixedMax();
+      sld.disabled = normalized;
+      fld.disabled = normalized;
+      document.getElementById("fixedMaxUnit").textContent = fixedMaxIsGrams() ? "g" : "raw";
+      document.querySelector(".fixed-max-field").classList.toggle("disabled", normalized);
+    }
+    function setColorNorm(mode) {
+      normalized = (mode === "norm");
+      maxFixed = !normalized;
+      syncDisplayControls();
+      saveToggleStates();
       recolorAll();
+    }
+    function setColorized(on) {
+      colorized = !!on;
+      syncDisplayControls();
+      saveToggleStates();
+      recolorAll();
+    }
+    function setFixedMax(v) {
+      const c = clampFixedMax(v, fixedMaxLimit());
+      if (c !== null) {
+        if (fixedMaxIsGrams()) fixedMaxGrams = c; else fixedMaxRaw = c;
+        saveToggleStates();
+        recolorAll();
+      }
+      syncDisplayControls();
+    }
+    function fixedMaxSliderInput(v) {
+      setFixedMax(v);
+    }
+    function fixedMaxFieldChange(v) {
+      setFixedMax(v);
+    }
+    // Neemt de oude toestand over (knoppen Norm Display / MaxFixed Display, een enkele Fixed Max
+    // Display-waarde). "Beide knoppen uit" was het bereik 0..65535: dat wordt MaxFixed met 65535.
+    function adoptOldColorNorm(oldNorm, oldMaxFixed, oldFixedMax) {
+      normalized = !!oldNorm;
+      maxFixed = !normalized;
+      const old = clampFixedMax(oldFixedMax, MAX_VALUE);
+      if (oldMaxFixed && old !== null) {
+        fixedMaxRaw = old;
+        fixedMaxGrams = Math.min(old, FIXED_MAX_GRAMS_LIMIT);
+      } else {
+        fixedMaxRaw = MAX_VALUE;
+        fixedMaxGrams = FIXED_MAX_GRAMS_LIMIT;
+      }
     }
     function getCalGrams(id) {
       return sensors[id].calGrams || 1000;
     }
     function getFixedMax() {
-      return parseFloat(document.getElementById("fldFixedMax").value) || 2500;
+      return fixedMaxIsGrams() ? fixedMaxGrams : fixedMaxRaw;
     }
 
     function deselectCircle() {
@@ -485,6 +563,7 @@ namespace crt
       calMode = CAL_MODES.includes(mode) ? mode : "raw";
       if (calMode === "raw") clearCaptureErrors();
       syncCalModeRadios();
+      syncDisplayControls();
       saveToggleStates();
       recolorAll();
       updateRecChart();
@@ -606,6 +685,50 @@ namespace crt
       updateCircleBorders(s);
     }
 
+    // Uitleg bij elementen met data-tip: verschijnt pas na 1,5 s stilhangen met de muis
+    // (de browser-title laat zich niet vertragen, vandaar een eigen tooltip).
+    const TIP_DELAY_MS = 1500;
+    (function initTips() {
+      const box = document.getElementById("tipBox");
+      let timer = null, current = null;
+      function hide() {
+        clearTimeout(timer);
+        timer = null;
+        current = null;
+        box.classList.remove("visible");
+      }
+      document.addEventListener("mouseover", ev => {
+        const el = ev.target.closest("[data-tip]");
+        if (el === current) return;
+        hide();
+        if (!el) return;
+        current = el;
+        timer = setTimeout(() => {
+          const r = el.getBoundingClientRect();
+          box.textContent = el.dataset.tip;
+          box.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 284)) + "px";
+          box.style.top = (r.bottom + 4) + "px";
+          box.classList.add("visible");
+        }, TIP_DELAY_MS);
+      });
+      document.addEventListener("mousedown", hide);
+      document.addEventListener("scroll", hide, true);
+    })();
+
+    // Korte melding vlak onder een knop, bv. na een download.
+    function flashPopup(anchorId, text, ms) {
+      const anchor = document.getElementById(anchorId);
+      if (!anchor) return;
+      const r = anchor.getBoundingClientRect();
+      const pop = document.createElement("div");
+      pop.className = "flash-popup";
+      pop.textContent = text;
+      pop.style.left = r.left + "px";
+      pop.style.top = (r.bottom + 4) + "px";
+      document.body.appendChild(pop);
+      setTimeout(() => pop.remove(), ms || 1000);
+    }
+
     function setCookie(name, value, days) {
       const d = new Date();
       d.setTime(d.getTime() + days * 86400000);
@@ -636,7 +759,6 @@ namespace crt
         const v = getCookie(key);
         if (v !== null) document.getElementById(elId).value = v;
       };
-      sv("gvFixedMax", "fldFixedMax");
       sv("gvStatsFilter", "fldStatsFilter");
       sv("gvValueFilter", "fldValueFilter");
 
@@ -662,14 +784,24 @@ namespace crt
         const cv = localStorage.getItem("gvCalibVersion"); if (cv !== null) calibVersion = parseInt(cv) || 0;
       } catch(e) {}
 
-      if (getCookie("gvColorized") === "1") { colorized = true; document.getElementById("btnColorize").classList.add("active"); }
-      if (getCookie("gvNormalized") === "1") { normalized = true; document.getElementById("btnNormalize").classList.add("active"); }
-      if (getCookie("gvMaxFixed") === "1") { maxFixed = true; document.getElementById("btnMaxFixed").classList.add("active"); }
+      colorized = getCookie("gvColorized") === "1";
+      const cn = getCookie("gvColorNorm");
+      if (cn !== null) {
+        normalized = (cn === "norm");
+        maxFixed = !normalized;
+        const fr = clampFixedMax(getCookie("gvFixedMaxRaw"), FIXED_MAX_RAW_LIMIT);
+        if (fr !== null) fixedMaxRaw = fr;
+        const fg = clampFixedMax(getCookie("gvFixedMaxGrams"), FIXED_MAX_GRAMS_LIMIT);
+        if (fg !== null) fixedMaxGrams = fg;
+      } else {   // cookies van voor de radiobuttons Normalised / MaxFixed
+        adoptOldColorNorm(getCookie("gvNormalized") === "1", getCookie("gvMaxFixed") === "1", getCookie("gvFixedMax"));
+      }
       const cm = getCookie("gvCalMode");
       if (cm !== null) calMode = CAL_MODES.includes(cm) ? cm : "raw";
       else if (getCookie("gvNormSumCap") === "1") calMode = "sumcap";       // cookies van voor de radiobuttons
       else if (getCookie("gvNormIndivCap") === "1") calMode = "indivcap";
       syncCalModeRadios();
+      syncDisplayControls();
     })();
 
     // ---- Page metadata (settings/calibrations) download & upload (phase 6w) ----
@@ -683,7 +815,8 @@ namespace crt
       meta.global.maxFixed = maxFixed;
       meta.global.colorized = colorized;
       meta.global.calMode = calMode;
-      meta.global.fixedMax = document.getElementById("fldFixedMax").value;
+      meta.global.fixedMaxRaw = fixedMaxRaw;
+      meta.global.fixedMaxGrams = fixedMaxGrams;
       meta.global.statsFilter = document.getElementById("fldStatsFilter").value;
       meta.global.valueFilter = document.getElementById("fldValueFilter").value;
       if (typeof recZoomFactor !== "undefined") meta.global.recZoomFactor = recZoomFactor;
@@ -712,23 +845,25 @@ namespace crt
     function applyMetaState(meta) {
       if (!meta || typeof meta !== "object") throw new Error("expected a JSON object");
       const g = meta.global || {};
-      if ("normalized" in g) normalized = !!g.normalized;
-      if ("maxFixed" in g) maxFixed = !!g.maxFixed;
+      if ("fixedMaxRaw" in g || "fixedMaxGrams" in g) {
+        if ("normalized" in g) { normalized = !!g.normalized; maxFixed = !normalized; }
+        const fr = clampFixedMax(g.fixedMaxRaw, FIXED_MAX_RAW_LIMIT);
+        if (fr !== null) fixedMaxRaw = fr;
+        const fg = clampFixedMax(g.fixedMaxGrams, FIXED_MAX_GRAMS_LIMIT);
+        if (fg !== null) fixedMaxGrams = fg;
+      } else if ("normalized" in g || "maxFixed" in g) {   // meta van voor de radiobuttons Normalised / MaxFixed
+        adoptOldColorNorm(g.normalized, g.maxFixed, g.fixedMax);
+      }
       if ("colorized" in g) colorized = !!g.colorized;
       if ("calMode" in g) calMode = CAL_MODES.includes(g.calMode) ? g.calMode : "raw";
       else if ("normSumCap" in g || "normIndivCap" in g)   // meta van voor de radiobuttons
         calMode = g.normSumCap ? "sumcap" : (g.normIndivCap ? "indivcap" : "raw");
-      document.getElementById("btnNormalize").classList.toggle("active", normalized);
-      document.getElementById("btnMaxFixed").classList.toggle("active", maxFixed);
-      document.getElementById("btnColorize").classList.toggle("active", colorized);
       syncCalModeRadios();
+      syncDisplayControls();
       if (calMode === "raw") clearCaptureErrors();
-      if ("fixedMax" in g) document.getElementById("fldFixedMax").value = g.fixedMax;
       if ("statsFilter" in g) document.getElementById("fldStatsFilter").value = g.statsFilter;
       if ("valueFilter" in g) document.getElementById("fldValueFilter").value = g.valueFilter;
       saveToggleStates();
-      setCookie("gvColorized", colorized ? "1" : "0", 365);
-      setCookie("gvFixedMax", document.getElementById("fldFixedMax").value, 365);
       setCookie("gvStatsFilter", document.getElementById("fldStatsFilter").value, 365);
       setCookie("gvValueFilter", document.getElementById("fldValueFilter").value, 365);
       if ("recZoomFactor" in g && typeof recZoomFactor !== "undefined") {

@@ -43,6 +43,7 @@ namespace crt
       a.download = 'snapshots_' + recLocalStamp() + '.json';
       a.click();
       URL.revokeObjectURL(url);
+      flashPopup('btnSnapDownload', 'download completed', 1000);
     }
 
     function snapUpload(event) {
