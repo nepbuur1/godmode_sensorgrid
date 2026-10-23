@@ -315,6 +315,13 @@ Below the display control buttons, a grey-bordered panel provides record and pla
 - **_org**: only the first download of fresh content (after Record) gets `_org` (original) before `.json`, e.g. `recording_P-12_<datetime>_org.json` or `recording_kalibratie_<datetime>_org.json`. Later downloads of the same recording, and downloads of uploaded content, do not.
 - Escape closes any of these dialogs, like Afbreken.
 
+**Recording and snapshots exclude each other on upload:** a recording upload removes the current snapshot series, and a snapshots upload removes the current recording (back to Ready with live data). If the other one exists, the Upload button first asks "Weet u het zeker?" with the explanation (plus "Die is nog niet gedownload." when that is the case), and **Ja** / **Afbreken**. Only Ja opens the file dialog. The other one is removed only when the upload succeeds, so cancelling the file dialog leaves it in place.
+
+**File type check on upload:** recording and snapshot downloads carry `fileType: 'recording' | 'snapshots'` in their meta. After the file choice, an Upload first checks the type (`miFileKind`, `miCheckUpload`):
+- A file of the wrong kind is refused with "Dit is geen recording" or "Dit is geen snapshot-serie". The message says what the file is and which button to use: the other Upload, or Upload Meta for a meta file. Unreadable files, or files without frames, are reported as "geen recording, snapshot-serie of meta-bestand". Nothing is loaded or removed.
+- Older files without `fileType`: a meta with a `recording` block (recordings since 2026-09-17) counts as a recording for sure. A meta without that block is probably a snapshot series, but can also be a recording from before 2026-09-17. So as a snapshot upload it loads directly; as a recording upload it first asks "Is dit een recording?" (Ja / Afbreken).
+- Files without any meta (before July 2026) cannot be typed and are accepted by both.
+
 **Recording capacity estimate:** Each frame stores the parsed JSON response as a JavaScript object. With 4 sensors × 128 values (JS floats at 8 bytes each), plus object/array overhead in the V8 engine, each frame occupies roughly 10-15 KB of browser heap memory. At 10 fps (POLL_MS=100), this amounts to ~100-150 KB/sec or ~6-9 MB/min. With modern browsers allowing 1-4 GB of JS heap, recordings of **55-80+ minutes** are comfortably achievable. If longer recordings are needed in the future, the storage could be switched to typed arrays for ~5x reduction in memory usage.
 
 #### Snapshot panel

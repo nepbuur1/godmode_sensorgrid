@@ -138,7 +138,7 @@ namespace crt
         <form onsubmit="doLogin(event)">
           <div class="field">
             <label for="name">Gebruikersnaam</label>
-            <input id="name" maxlength="15" autocomplete="username" autocapitalize="none" oninput="accLower(this);updLogin()"/>
+            <input id="name" maxlength="15" autofocus autocomplete="username" autocapitalize="none" oninput="accLower(this);updLogin()"/>
             <div class="err" id="nameErr"></div>
           </div>
           <div class="field">
@@ -206,6 +206,7 @@ namespace crt
       document.getElementById('loginPanel').style.display = 'none';
       document.getElementById('forcePanel').style.display = 'block';
       document.getElementById('title').textContent = 'Wachtwoord wijzigen';
+      document.getElementById('fNew').focus();
     }
     function updForce() {
       document.getElementById('btnForce').disabled = !accPwPair('fNew', 'fRep', 'fNewErr', 'fRepErr');

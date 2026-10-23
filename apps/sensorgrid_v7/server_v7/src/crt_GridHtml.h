@@ -72,7 +72,7 @@ namespace crt
         <button id="btnPlay" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
         <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
         <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
-        <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
+        <button id="btnRecUpload" onclick="miUploadClick(MI_REC)">Upload</button>
         <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
         <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
         <span class="rec-info" id="recInfo">Ready</span>
@@ -106,7 +106,7 @@ namespace crt
         <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
         <button id="btnSnapClear" onclick="snapClear()">Clear Snapshots</button>
         <button id="btnSnapDownload" onclick="snapDownload()" disabled>Download</button>
-        <button id="btnSnapUpload" onclick="document.getElementById('snapFileInput').click()">Upload</button>
+        <button id="btnSnapUpload" onclick="miUploadClick(MI_SNAP)">Upload</button>
         <input type="file" id="snapFileInput" accept=".json" style="display:none" onchange="snapUpload(event)"/>
         <span class="snap-info" id="snapInfo">Snapshots: 0</span>
         <button id="btnSnapInfo" onclick="miShowInfo(MI_SNAP)" style="display:none;" title="Patient-id en aantekening van deze snapshots">Snapshots Info</button>
@@ -1003,8 +1003,10 @@ namespace crt
     // version}; snapshots en losse meta-bestanden krijgen geen recording-blok.
     // 'measurement' (optioneel): soort meting, patient-id en aantekening (gridmeasinfo.js);
     // alleen in recording- en snapshot-downloads, niet in Download Meta.
-    function metaAppendForExport(frames, recording, measurement) {
+    // 'fileType' (optioneel): 'recording' | 'snapshots', voor de controle bij upload (miFileKind).
+    function metaAppendForExport(frames, recording, measurement, fileType) {
       const meta = buildMetaState();
+      if (fileType) meta.fileType = fileType;
       if (recording) meta.recording = recording;
       if (measurement) meta.measurement = measurement;
       return frames.concat([{ __meta__: meta }]);
@@ -1192,7 +1194,7 @@ namespace crt
     // Onschadelijk op de ESP. loadRecordingText() vervangt de upload-dialoog.
     window.__ac = {
       meta: function() { return buildMetaState(); },
-      exportRecordingJson: function() { return JSON.stringify(metaAppendForExport(recFrames, recExportTag())); },
+      exportRecordingJson: function() { return JSON.stringify(metaAppendForExport(recFrames, recExportTag(), null, 'recording')); },
       recordingTag: function() { return recordingTag; },
       lastRun: function() { return acLastRun; },
       checkMode: function() { return acCheckMode; },

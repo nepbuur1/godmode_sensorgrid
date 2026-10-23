@@ -1282,3 +1282,37 @@ Verified in headless Edge (73 checks, plus 46 role and 9 snapshot checks). Built
 
 Grid HTML literal now 59.2 KB. Verified by screenshot (alignment: right edges of "?" and Calibrate equal)
 and the 73 + 46 + 9 headless checks. Built and flashed to COM5.
+
+### Upload of a recording removes the snapshots, and vice versa (after a warning)
+- Both Upload buttons go through `miUploadClick`. If the other series exists (snapshots for a recording
+  upload, a recording for a snapshots upload), a dialog "Weet u het zeker?" explains that it will be removed,
+  adds "Die is nog niet gedownload." if that applies, and offers Ja / Afbreken. Ja opens the file dialog.
+- The removal happens in `recUpload` / `snapUpload` after a successful parse: `snapClear()`, or the new
+  `recClear()`, which brings the record panel back to Ready (live data, buttons and Info reset, Herkalibreer
+  disabled). Cancelling the file dialog therefore removes nothing.
+
+Verified in headless Edge (87 checks, plus 46 role and 9 snapshot checks). Built and flashed to COM5.
+
+### Upload checks the file type (recording / snapshots / meta / other)
+- Recording and snapshot downloads now carry `meta.fileType` ('recording' / 'snapshots'), as a fourth
+  argument of `metaAppendForExport`.
+- After the file choice, `recUpload` / `snapUpload` first call `miCheckUpload`. It determines the type with
+  `miFileKind`:
+  - `fileType` when present;
+  - otherwise a `recording` block in the meta means recording (since 2026-09-17);
+  - meta without that block probably means snapshots (not certain);
+  - no meta means unknown;
+  - a meta object (global + sensors) means meta;
+  - anything else is other.
+- A certain mismatch gives a dialog "Dit is geen recording" / "Dit is geen snapshot-serie", naming what the
+  file is and which upload to use. Nothing is loaded and the other series is not removed. Uncertain (meta
+  without recording block, as a recording) asks "Is dit een recording?" (Ja / Afbreken). Unknown is accepted.
+- JSON parse errors now also end in the "other" message instead of an alert.
+
+Verified in headless Edge (104 checks incl. 17 new ones for all type combinations, old files and files
+without meta, plus 46 role and 9 snapshot checks). Built and flashed to COM5.
+
+### Login: focus on the user name field
+The user name field of /login has `autofocus`, so you can type at once. When the forced password change
+appears (first login of the root admin), the focus moves to the new-password field. Verified in headless
+Edge (focus on load, typing lands in the name field, focus after showForce). Built and flashed to COM5.

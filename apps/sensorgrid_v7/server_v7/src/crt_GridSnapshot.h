@@ -65,23 +65,22 @@ namespace crt
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        try {
-          const parsed = JSON.parse(e.target.result);
+        let parsed;
+        try { parsed = JSON.parse(e.target.result); } catch (err) { parsed = undefined; }
+        // eerst de soort van het bestand controleren (gridmeasinfo.js)
+        miCheckUpload(MI_SNAP, file.name, parsed, () => { try {
           const split = metaSplitFromImport(parsed);
           const data = split.frames;
-          if (!Array.isArray(data) || data.length === 0) {
-            alert('Invalid snapshot file: expected a non-empty JSON array.');
-            return;
-          }
           if (snapReplaying) snapReplayStop();
+          if (recFrames.length > 0) recClear();   // na de vraag in miUploadClick
           snapFrames = data;
           snapIdx = 0;
           if (split.meta) applyMetaState(split.meta);
           miLoaded(MI_SNAP, split.meta, file.name);
           snapUpdateUI();
         } catch (err) {
-          alert('Failed to parse snapshot file: ' + err.message);
-        }
+          alert('Failed to load snapshot file: ' + err.message);
+        } });
       };
       reader.readAsText(file);
       event.target.value = '';

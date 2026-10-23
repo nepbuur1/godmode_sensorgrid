@@ -58,6 +58,21 @@ namespace crt
       recUpdateInfo();
     }
 
+    // Recording verwijderen (bij een snapshots-upload): terug naar de begintoestand met live data.
+    function recClear() {
+      recFrames = [];
+      playIdx = 0;
+      recordingTag = null;
+      miReset(MI_REC);
+      recState = 'idle';
+      ['btnRecord', 'btnPlay'].forEach(function(b) { document.getElementById(b).classList.remove('rec-active', 'play-active'); });
+      ['btnPause', 'btnPlayPause'].forEach(function(b) { document.getElementById(b).classList.remove('pause-active'); });
+      ['btnPause', 'btnStop', 'btnPlay', 'btnPlayPause', 'btnDownload'].forEach(function(b) { document.getElementById(b).disabled = true; });
+      if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
+      recUpdateInfo();
+      updateRecChart();
+    }
+
     function recPause() {
       if (recState === 'recording') {
         recState = 'paused';
@@ -157,14 +172,13 @@ namespace crt
       if (!file) return;
       const reader = new FileReader();
       reader.onload = function(e) {
-        try {
-          const parsed = JSON.parse(e.target.result);
+        let parsed;
+        try { parsed = JSON.parse(e.target.result); } catch (err) { parsed = undefined; }
+        // eerst de soort van het bestand controleren (gridmeasinfo.js)
+        miCheckUpload(MI_REC, file.name, parsed, function() { try {
           const split = metaSplitFromImport(parsed);
           const data = split.frames;
-          if (!Array.isArray(data) || data.length === 0) {
-            alert('Invalid recording file: expected a non-empty JSON array.');
-            return;
-          }
+          if (snapFrames.length > 0) snapClear();   // na de vraag in miUploadClick
           recFrames = data;
           playIdx = 0;
           recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
@@ -185,8 +199,8 @@ namespace crt
           recUpdateInfo();
           updateRecChart();
         } catch (err) {
-          alert('Failed to parse recording file: ' + err.message);
-        }
+          alert('Failed to load recording file: ' + err.message);
+        } });
       };
       reader.readAsText(file);
       event.target.value = '';

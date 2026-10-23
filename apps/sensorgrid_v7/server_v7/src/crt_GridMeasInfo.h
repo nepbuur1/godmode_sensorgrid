@@ -20,14 +20,14 @@ namespace crt
       word: 'recording', title: 'Recording downloaden', infoTitle: 'Recording info',
       anchor: 'btnDownload', info: null, downloaded: false, source: null, orgDone: false,
       fileName: info => 'recording_' + miNamePart(info) + recLocalStamp() + '.json',
-      data: info => metaAppendForExport(recFrames, recExportTag(), info),
+      data: info => metaAppendForExport(recFrames, recExportTag(), info, 'recording'),
       ask: () => miAskRecKind()
     };
     const MI_SNAP = {
       word: 'snapshots', title: 'Snapshots downloaden', infoTitle: 'Snapshots info',
       anchor: 'btnSnapDownload', info: null, downloaded: false, source: null, orgDone: false,
       fileName: info => 'snapshots_' + miNamePart(info) + recLocalStamp() + '.json',
-      data: info => metaAppendForExport(snapFrames, null, info),
+      data: info => metaAppendForExport(snapFrames, null, info, 'snapshots'),
       ask: () => miAskSnapKind()
     };
     function miNamePart(info) {
@@ -198,6 +198,65 @@ namespace crt
         else miDownloadDialog(m, m.info.type === 'patient');
       });
       miButton(row, 'Nee, afbreken', miClose);
+    }
+
+    // Upload-knoppen: een recording-upload verwijdert de huidige snapshots en een snapshots-upload
+    // de huidige recording. Is die andere er, dan eerst vragen; pas bij een geslaagde upload wordt
+    // hij verwijderd (recUpload / snapUpload), dus Afbreken in de bestandskeuze laat hem staan.
+    function miUploadClick(m) {
+      const isRec = m === MI_REC;
+      const other = isRec ? MI_SNAP : MI_REC;
+      const pick = () => document.getElementById(isRec ? 'recFileInput' : 'snapFileInput').click();
+      if ((isRec ? snapFrames : recFrames).length === 0) { pick(); return; }
+      const box = miOpen('Weet u het zeker?');
+      box.appendChild(miEl('p', '', 'Een ' + (isRec ? 'recording' : 'snapshots') + '-upload verwijdert ' +
+        (isRec ? 'de huidige serie snapshots.' : 'de huidige recording.') +
+        (other.downloaded ? '' : ' Die is nog niet gedownload.')));
+      const row = box.appendChild(miEl('div', 'mi-buttons'));
+      miButton(row, 'Ja', () => { miClose(); pick(); });
+      miButton(row, 'Afbreken', miClose);
+    }
+
+    // Soort van een geüpload bestand: {kind: 'recording' | 'snapshots' | 'meta' | 'other' | null, sure}.
+    // Sinds 2026-10-24 staat de soort in meta.fileType. Daarvoor had een recording (sinds 2026-09-17)
+    // een recording-blok in de meta en een snapshot-serie niet; meta zonder dat blok is dus
+    // waarschijnlijk een snapshot-serie, maar kan ook een oudere recording zijn (sure = false).
+    // Zonder meta (bestanden van voor juli 2026) is de soort onbekend (null).
+    function miFileKind(parsed) {
+      if (parsed && typeof parsed === 'object' && !Array.isArray(parsed) && parsed.global && parsed.sensors) return {kind: 'meta', sure: true};
+      if (!Array.isArray(parsed)) return {kind: 'other', sure: true};
+      const split = metaSplitFromImport(parsed);
+      if (split.frames.length === 0 || !split.frames.every(f => f && Array.isArray(f.sensors))) return {kind: 'other', sure: true};
+      const meta = split.meta;
+      if (!meta) return {kind: null, sure: false};
+      if (meta.fileType === 'recording' || meta.fileType === 'snapshots') return {kind: meta.fileType, sure: true};
+      if (meta.recording) return {kind: 'recording', sure: true};
+      return {kind: 'snapshots', sure: false};
+    }
+    // Na de bestandskeuze van een Upload: load() alleen als het bestand van de gevraagde soort is (of
+    // de soort onbekend). Anders een foutmelding, of bij twijfel eerst de vraag of het toch moet.
+    function miCheckUpload(m, name, parsed, load) {
+      const want = m === MI_REC ? 'recording' : 'snapshots';
+      const k = miFileKind(parsed);
+      if (k.kind === want || k.kind === null) { load(); return; }
+      if (!k.sure) {
+        const box = miOpen('Is dit een recording?');
+        box.appendChild(miEl('p', '', '"' + name + '" lijkt een snapshot-serie: de meta bevat geen recording-gegevens. ' +
+          'Het kan ook een recording van voor 17-09-2026 zijn. Toch als recording laden?'));
+        const row = box.appendChild(miEl('div', 'mi-buttons'));
+        miButton(row, 'Ja', () => { miClose(); load(); });
+        miButton(row, 'Afbreken', miClose);
+        return;
+      }
+      const what = {
+        recording: 'een recording. Gebruik daarvoor Upload in het record-paneel.',
+        snapshots: 'een snapshot-serie. Gebruik daarvoor Upload in het snapshot-paneel.',
+        meta: 'een meta-bestand. Gebruik daarvoor Upload Meta.',
+        other: 'geen recording, snapshot-serie of meta-bestand van deze pagina.'
+      }[k.kind];
+      const box = miOpen(want === 'recording' ? 'Dit is geen recording' : 'Dit is geen snapshot-serie');
+      box.appendChild(miEl('p', '', '"' + name + '" is ' + what + ' Er is niets geladen of verwijderd.'));
+      miButton(box.appendChild(miEl('div', 'mi-buttons')), 'OK', miClose);
     }
 
     function miShowInfo(m) {
