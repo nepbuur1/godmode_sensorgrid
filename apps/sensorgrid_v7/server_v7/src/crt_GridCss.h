@@ -90,6 +90,22 @@ namespace crt
     body:not(.is-admin) .admin-only {
       display: none !important;
     }
+    body.cal-autocal .hide-in-autocal {
+      display: none !important;
+    }
+    .note-popup {
+      position: fixed;
+      z-index: 1000;
+      max-width: 320px;
+      padding: 0.5rem 0.7rem;
+      background: #fff8e1;
+      color: #333;
+      border: 1px solid #e0b040;
+      font-size: 0.8rem;
+      line-height: 1.35;
+      border-radius: 4px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
     .tip-box {
       position: fixed;
       z-index: 1000;
@@ -311,10 +327,30 @@ namespace crt
       width: 60px;
     }
     .lc-row button {
-      font-size: 0.65rem;
-      padding: 0.15rem 0.4rem;
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border: 2px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      color: #666;
+      font-weight: 600;
       cursor: pointer;
     }
+    /* breedte = de Calibrate-regel; Tare in het midden, "?" rechts boven de Calibrate-knop */
+    .lc-ctrl {
+      display: table;
+      margin: 0 auto;
+    }
+    .lc-tare-row {
+      position: relative;
+    }
+    .lc-tare-row .lc-help {
+      position: absolute;
+      right: 0;
+    }
+    .mi-box ol { margin: 0.2rem 0; padding-left: 1.3rem; line-height: 1.4; }
+    .mi-box ol li { margin-bottom: 0.3rem; }
+    .mi-box p { margin: 0.2rem 0; line-height: 1.4; }
     .sensor-widget.selected {
       border-color: #2a2;
       border-width: 2px;
@@ -395,11 +431,17 @@ namespace crt
       border-radius: 6px;
       background: #f5f5f5;
       display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    /* links uitgelijnd, zodat de Info-knop op de tweede regel onder Record staat */
+    .rec-play-row {
+      display: flex;
       flex-wrap: wrap;
       gap: 0.5rem;
       row-gap: 0.4rem;
       align-items: center;
-      justify-content: center;
+      justify-content: flex-start;
     }
     .rec-play-panel button {
       padding: 0.4rem 1rem;
@@ -501,6 +543,64 @@ namespace crt
     .snapshot-panel .snap-info {
       font-size: 0.75rem;
       color: #666;
+    }
+    /* download-dialogen en Info (gridmeasinfo.js) */
+    .mi-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      background: rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .mi-box {
+      background: #fff;
+      border: 2px solid #aaa;
+      border-radius: 6px;
+      padding: 1rem 1.2rem;
+      width: 420px;
+      max-width: calc(100vw - 2rem);
+      box-sizing: border-box;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
+      font-size: 0.85rem;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .mi-box h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+    .mi-box label { font-weight: 600; color: #555; margin-top: 0.3rem; }
+    .mi-box input[type=text], .mi-box textarea {
+      width: 100%;
+      box-sizing: border-box;
+      font: inherit;
+      padding: 0.3rem;
+    }
+    .mi-box textarea { resize: vertical; }
+    .mi-box button {
+      padding: 0.4rem 1rem;
+      border: 2px solid #999;
+      border-radius: 4px;
+      background: #fff;
+      cursor: pointer;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #666;
+    }
+    .mi-box button:disabled { opacity: 0.4; cursor: default; }
+    .mi-buttons { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 0.5rem; }
+    .mi-choices { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
+    .mi-choice-row { display: flex; gap: 0.5rem; align-items: center; color: #666; }
+    .mi-err { color: #c00; font-weight: 600; font-size: 0.8rem; }
+    .mi-text {
+      white-space: pre-wrap;
+      background: #f5f5f5;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 0.4rem;
+      max-height: 16rem;
+      overflow-y: auto;
     }
 )rawliteral";
 

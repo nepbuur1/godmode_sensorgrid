@@ -17,6 +17,7 @@ namespace crt
   <script src="/gridrecplay.js"></script>
   <script src="/gridrecchart.js"></script>
   <script src="/gridsnapshot.js"></script>
+  <script src="/gridmeasinfo.js"></script>
   <script src="/gridhistogram.js"></script>
   <script src="/gridplot.js"></script>
   <script src="/gridcircle.js"></script>
@@ -37,9 +38,9 @@ namespace crt
       <fieldset class="ctrl-group">
         <legend data-tip="Welke waarde de cirkels tonen: ruwe sensorwaarde of omgerekend naar grammen.">Sensor Value</legend>
         <label data-tip="Ruwe sensorwaarde (0..65535), min de offset als die met Remove Offset is gezet."><input type="radio" name="calMode" value="raw" onchange="setCalMode(this.value)" checked/> Raw</label>
-        <label data-tip="Grammen via de som-kalibratie per sensor (Capture Sum): één schaalfactor voor alle cirkels."><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
-        <label data-tip="Grammen via de handmatige kalibratie per cirkel (tot 3 capture-punten, stuksgewijs lineair)."><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
-        <label data-tip="Grammen via de automatische kalibratie (Herkalibreer druksensoren). Cirkels zonder kalibratie tonen 0."><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
+        <label class="admin-only" data-tip="Grammen via de som-kalibratie per sensor (Capture Sum): één schaalfactor voor alle cirkels."><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
+        <label class="admin-only" data-tip="Grammen via de handmatige kalibratie per cirkel (tot 3 capture-punten, stuksgewijs lineair)."><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
+        <label id="lblAutoCal" data-tip="Grammen via de automatische kalibratie (Herkalibreer druksensoren). Cirkels zonder kalibratie tonen 0."><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
       </fieldset>
       <fieldset class="ctrl-group">
         <legend data-tip="Welk waardebereik op de volle grijs- of kleurschaal wordt afgebeeld.">Kleurnormalisatie</legend>
@@ -64,31 +65,36 @@ namespace crt
       </div>
     </div>
     <div class="rec-play-panel">
-      <button id="btnRecord" onclick="recRecord()">Record</button>
-      <button id="btnPause" onclick="recPause()" disabled>Pause</button>
-      <button id="btnStop" onclick="recStop()" disabled>Stop</button>
-      <button id="btnPlay" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
-      <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
-      <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
-      <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
-      <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
-      <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
-      <span class="rec-info" id="recInfo">Ready</span>
-      <span id="recCircleVal" class="rec-vals" style="display:none;"><span id="recSensorVal"></span><span id="recLcVal"></span></span>
-      <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
-        <label style="font-size:0.75rem;color:#666;">Zoom</label>
-        <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>
-        <span id="recZoomVal" style="font-size:0.75rem;color:#666;min-width:2.5rem;">10x</span>
-        <span id="recSingleYRow" style="display:inline-flex;align-items:center;gap:0.3rem;">
-          <label style="font-size:0.75rem;color:#666;margin-left:0.6rem;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
-          <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
-            <label style="font-size:0.75rem;color:#666;">y-clip</label>
-            <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
-            <label style="font-size:0.75rem;color:#666;">..</label>
-            <input type="text" id="fldClipHi" value="3000" size="5" onchange="recClipChange()" title="upper bound"/>
+      <div class="rec-play-row">
+        <button id="btnRecord" onclick="recRecord()">Record</button>
+        <button id="btnPause" onclick="recPause()" disabled>Pause</button>
+        <button id="btnStop" onclick="recStop()" disabled>Stop</button>
+        <button id="btnPlay" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
+        <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
+        <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
+        <button id="btnRecUpload" onclick="document.getElementById('recFileInput').click()">Upload</button>
+        <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
+        <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
+        <span class="rec-info" id="recInfo">Ready</span>
+        <span id="recCircleVal" class="rec-vals" style="display:none;"><span id="recSensorVal"></span><span id="recLcVal"></span></span>
+        <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
+          <span id="recSingleYRow" style="display:inline-flex;align-items:center;gap:0.3rem;">
+            <label style="font-size:0.75rem;color:#666;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
+            <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
+              <label style="font-size:0.75rem;color:#666;">y-clip</label>
+              <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
+              <label style="font-size:0.75rem;color:#666;">..</label>
+              <input type="text" id="fldClipHi" value="3000" size="5" onchange="recClipChange()" title="upper bound"/>
+            </span>
           </span>
+          <label style="font-size:0.75rem;color:#666;margin-left:0.6rem;">Zoom</label>
+          <input type="range" id="recZoomSlider" min="0" max="100" value="0" style="width:80px;" oninput="recZoomChange(this.value)"/>
+          <span id="recZoomVal" style="font-size:0.75rem;color:#666;min-width:2.5rem;">10x</span>
         </span>
-      </span>
+      </div>
+      <div class="rec-play-row" id="recRow2" style="display:none;">
+        <button id="btnRecInfo" onclick="miShowInfo(MI_REC)" title="Patient-id en aantekening van deze recording">Info</button>
+      </div>
     </div>
     <div id="recSliderRow" style="display:none;padding:0 0.5rem;">
       <input type="range" id="recSlider" min="0" max="0" value="0" style="width:100%;" oninput="recSliderChange(this.value)"/>
@@ -103,6 +109,7 @@ namespace crt
         <button id="btnSnapUpload" onclick="document.getElementById('snapFileInput').click()">Upload</button>
         <input type="file" id="snapFileInput" accept=".json" style="display:none" onchange="snapUpload(event)"/>
         <span class="snap-info" id="snapInfo">Snapshots: 0</span>
+        <button id="btnSnapInfo" onclick="miShowInfo(MI_SNAP)" style="display:none;" title="Patient-id en aantekening van deze snapshots">Snapshots Info</button>
       </div>
       <div class="snapshot-row" id="snapReplayRow">
         <button id="btnSnapReplay" onclick="snapReplayStart()" disabled>Snapshot Replay</button>
@@ -134,13 +141,16 @@ namespace crt
         <div class="loadcell-section" id="lc1">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight1">- g</div>
-          <div class="lc-row">
-            <button onclick="lcTare(1)">Tare</button>
-          </div>
-          <div class="lc-row">
-            <label>Known weight (g):</label>
-            <input type="text" id="lcKnown1" value="500"/>
-            <button onclick="lcCalibrate(1)">Calibrate</button>
+          <div class="lc-ctrl">
+            <div class="lc-row lc-tare-row">
+              <button onclick="lcTare(1)">Tare</button>
+              <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
+            </div>
+            <div class="lc-row">
+              <label>Known weight (g):</label>
+              <input type="text" id="lcKnown1" value="500"/>
+              <button onclick="lcCalibrate(1)">Calibrate</button>
+            </div>
           </div>
         </div>
       </div>
@@ -158,13 +168,16 @@ namespace crt
         <div class="loadcell-section" id="lc2">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight2">- g</div>
-          <div class="lc-row">
-            <button onclick="lcTare(2)">Tare</button>
-          </div>
-          <div class="lc-row">
-            <label>Known weight (g):</label>
-            <input type="text" id="lcKnown2" value="500"/>
-            <button onclick="lcCalibrate(2)">Calibrate</button>
+          <div class="lc-ctrl">
+            <div class="lc-row lc-tare-row">
+              <button onclick="lcTare(2)">Tare</button>
+              <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
+            </div>
+            <div class="lc-row">
+              <label>Known weight (g):</label>
+              <input type="text" id="lcKnown2" value="500"/>
+              <button onclick="lcCalibrate(2)">Calibrate</button>
+            </div>
           </div>
         </div>
       </div>
@@ -182,13 +195,16 @@ namespace crt
         <div class="loadcell-section" id="lc3">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight3">- g</div>
-          <div class="lc-row">
-            <button onclick="lcTare(3)">Tare</button>
-          </div>
-          <div class="lc-row">
-            <label>Known weight (g):</label>
-            <input type="text" id="lcKnown3" value="500"/>
-            <button onclick="lcCalibrate(3)">Calibrate</button>
+          <div class="lc-ctrl">
+            <div class="lc-row lc-tare-row">
+              <button onclick="lcTare(3)">Tare</button>
+              <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
+            </div>
+            <div class="lc-row">
+              <label>Known weight (g):</label>
+              <input type="text" id="lcKnown3" value="500"/>
+              <button onclick="lcCalibrate(3)">Calibrate</button>
+            </div>
           </div>
         </div>
       </div>
@@ -206,24 +222,27 @@ namespace crt
         <div class="loadcell-section" id="lc4">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight4">- g</div>
-          <div class="lc-row">
-            <button onclick="lcTare(4)">Tare</button>
-          </div>
-          <div class="lc-row">
-            <label>Known weight (g):</label>
-            <input type="text" id="lcKnown4" value="500"/>
-            <button onclick="lcCalibrate(4)">Calibrate</button>
+          <div class="lc-ctrl">
+            <div class="lc-row lc-tare-row">
+              <button onclick="lcTare(4)">Tare</button>
+              <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
+            </div>
+            <div class="lc-row">
+              <label>Known weight (g):</label>
+              <input type="text" id="lcKnown4" value="500"/>
+              <button onclick="lcCalibrate(4)">Calibrate</button>
+            </div>
           </div>
         </div>
       </div>
     </div>
     <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
-      <button class="toggle-btn" onclick="doRemoveOffset()">Remove Offset</button>
+      <button class="toggle-btn hide-in-autocal" onclick="doRemoveOffset()">Remove Offset</button>
       <button class="toggle-btn admin-only" onclick="doCapture()">Capture Sum</button>
       <label class="admin-only">maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
       <label class="admin-only">avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
       <label class="admin-only">Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
-      <button class="toggle-btn" onclick="resetIndivCaps()">Reset Indiv Caps</button>
+      <button class="toggle-btn admin-only" onclick="resetIndivCaps()">Reset Indiv Caps</button>
       <button class="toggle-btn" id="btnCalibCheck" onmousedown="acCheckStart(event)" onmouseup="acCheckStop()" onmouseleave="acCheckStop()" ontouchstart="acCheckStart(event)" ontouchend="acCheckStop()" title="Ingedrukt houden: per cirkel de kalibratie-versie. zwart = nooit, groen = actueel, oranje = 1 ronde gemist, rood = 2 of meer">kalibratie_check</button>
       <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
       <span id="captureError" class="admin-only" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
@@ -354,6 +373,13 @@ namespace crt
         // niet in de cookies: die horen bij wat een Admin in deze browser heeft ingesteld
         document.getElementById("fldStatsFilter").value = STATS_FILTER_DEFAULT;
         document.getElementById("fldValueFilter").value = VALUE_FILTER_DEFAULT;
+        if (!calModeAllowed(calMode)) {
+          calMode = "raw";
+          clearCaptureErrors();
+          syncCalModeRadios();
+          syncDisplayControls();
+          recolorAll();
+        }
       }
       if (selectedSensorId !== null && selectedCircleIdx !== null) acUpdateCircleInfo(selectedSensorId, selectedCircleIdx);
       updateRecChart();
@@ -397,6 +423,7 @@ namespace crt
       fld.disabled = normalized;
       document.getElementById("fixedMaxUnit").textContent = fixedMaxIsGrams() ? "g" : "raw";
       document.querySelector(".fixed-max-field").classList.toggle("disabled", normalized);
+      document.body.classList.toggle("cal-autocal", calMode === "autocal");   // verbergt .hide-in-autocal
     }
     function setColorNorm(mode) {
       normalized = (mode === "norm");
@@ -559,8 +586,25 @@ namespace crt
     function syncCalModeRadios() {
       document.querySelectorAll('input[name="calMode"]').forEach(r => { r.checked = (r.value === calMode); });
     }
+    // Norm SumCap en Norm IndivCap zijn alleen voor een Admin.
+    function calModeAllowed(mode) {
+      return isAdmin || (mode !== "sumcap" && mode !== "indivcap");
+    }
+    // Auto-PWL-knopen aanwezig, uit een (gedeeltelijk) geslaagde herkalibratie of een upload?
+    function hasAutoCalData() {
+      return SENSOR_IDS.some(id => (sensors[id].pwl || []).some(k => Array.isArray(k) && k.length >= 2));
+    }
+    const AUTOCAL_NO_DATA_MSG = "Norm AutoCal kan pas worden gekozen als er kalibratiedata is. " +
+      "Voer eerst een (her-)kalibratie van de druksensoren uit (Herkalibreer druksensoren), " +
+      "of laad kalibratiedata via Upload van een eerdere recording of via Upload Meta.";
     function setCalMode(mode) {
-      calMode = CAL_MODES.includes(mode) ? mode : "raw";
+      mode = CAL_MODES.includes(mode) && calModeAllowed(mode) ? mode : "raw";
+      if (mode === "autocal" && !hasAutoCalData()) {
+        syncCalModeRadios();   // de vorige modus blijft geselecteerd
+        notePopup("lblAutoCal", AUTOCAL_NO_DATA_MSG);
+        return;
+      }
+      calMode = mode;
       if (calMode === "raw") clearCaptureErrors();
       syncCalModeRadios();
       syncDisplayControls();
@@ -728,6 +772,27 @@ namespace crt
       document.body.appendChild(pop);
       setTimeout(() => pop.remove(), ms || 1000);
     }
+    // Melding onder een element die blijft staan tot de volgende muisklik (of na 8 s).
+    function notePopup(anchorId, text) {
+      const anchor = document.getElementById(anchorId);
+      if (!anchor) return;
+      document.querySelectorAll(".note-popup").forEach(p => p.remove());
+      const r = anchor.getBoundingClientRect();
+      const pop = document.createElement("div");
+      pop.className = "note-popup";
+      pop.textContent = text;
+      pop.style.left = Math.max(4, Math.min(r.left, window.innerWidth - 334)) + "px";
+      pop.style.top = (r.bottom + 4) + "px";
+      document.body.appendChild(pop);
+      let timer = null;
+      const close = () => {
+        clearTimeout(timer);
+        pop.remove();
+        document.removeEventListener("mousedown", close);
+      };
+      timer = setTimeout(close, 8000);
+      setTimeout(() => document.addEventListener("mousedown", close), 0);
+    }
 
     function setCookie(name, value, days) {
       const d = new Date();
@@ -858,6 +923,7 @@ namespace crt
       if ("calMode" in g) calMode = CAL_MODES.includes(g.calMode) ? g.calMode : "raw";
       else if ("normSumCap" in g || "normIndivCap" in g)   // meta van voor de radiobuttons
         calMode = g.normSumCap ? "sumcap" : (g.normIndivCap ? "indivcap" : "raw");
+      if (!calModeAllowed(calMode)) calMode = "raw";
       syncCalModeRadios();
       syncDisplayControls();
       if (calMode === "raw") clearCaptureErrors();
@@ -935,9 +1001,12 @@ namespace crt
     // older files simply lack the trailing {__meta__:...} element.
     // 'recording' (optioneel): het tag-blok van een recording (B8): {kind, calibratedAt, tool,
     // version}; snapshots en losse meta-bestanden krijgen geen recording-blok.
-    function metaAppendForExport(frames, recording) {
+    // 'measurement' (optioneel): soort meting, patient-id en aantekening (gridmeasinfo.js);
+    // alleen in recording- en snapshot-downloads, niet in Download Meta.
+    function metaAppendForExport(frames, recording, measurement) {
       const meta = buildMetaState();
       if (recording) meta.recording = recording;
+      if (measurement) meta.measurement = measurement;
       return frames.concat([{ __meta__: meta }]);
     }
     // Split an imported array into {frames, meta}, stripping a trailing
@@ -1100,7 +1169,7 @@ namespace crt
     async function pollLoop() {
       const start = Date.now();
       if (snapReplaying && snapFrames.length > 0) {
-        applyFrame(snapFrames[snapIdx]);
+        snapApplyFrame(snapIdx);
       } else if (recState === 'playing') {
         if (playIdx < recFrames.length) {
           recApplyFrame(playIdx);

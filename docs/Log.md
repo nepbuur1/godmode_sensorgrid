@@ -1181,3 +1181,104 @@ through Upload Meta.
 
 Verified headless against a mock `/api/me` returning role 2 and role 0 (9 checks each, including a
 pre-set filter cookie of 0.7 that an Admin sees and a non-admin does not). Built and flashed to ACM0.
+
+### Grid View: Sensor Value options per role, AutoCal only with calibration data
+- **Remove Offset** is hidden while Sensor Value is Norm AutoCal. That mode maps the absolute raw value
+  through the knots and ignores the offset. Mechanism: `syncDisplayControls()` toggles the body class
+  `cal-autocal`, and CSS hides `.hide-in-autocal`.
+- **Reset Indiv Caps** is `admin-only` now, like the rest of the manual calibration controls.
+- **Norm SumCap and Norm IndivCap** are `admin-only`. For other roles only Raw and Norm AutoCal remain.
+  `calModeAllowed()` guards `setCalMode()` and `applyMetaState()`, so a cookie or an uploaded meta or
+  recording cannot select them either. A mode restored from the cookie before the role is known falls
+  back to Raw in `accPage` once the role turns out not to be Admin. The cookie itself is left alone.
+- **Norm AutoCal without knots**: as long as no circle of any sensor has at least 2 Auto-PWL knots,
+  clicking AutoCal keeps the previous mode and shows a popup (`notePopup`, under the radio button). It
+  says a (re-)calibration of the pressure sensors is needed first, or calibration data from an earlier
+  recording or a meta upload. The popup closes at the next mouse click, or after 8 s. A meta or
+  recording upload may still set AutoCal without knots: the check is only for the click.
+
+Verified in headless Edge (playwright-core) against a mock `/api/me` for roles 0, 1 and 2 and mock
+measurements: 46 checks (visibility per role, refusal plus popup without knots, selection with knots,
+Remove Offset hidden and back, role downgrade, meta with a forbidden mode), no page errors. Built and
+flashed to COM5 (ESP32-S3, USB-Serial/JTAG 303A:1001).
+
+### Snapshots: loadcell as raw only, like recordings
+A snapshot frame no longer stores `loadcellGram`, only `loadcellRaw`. The gram follows on replay from the
+loadcell parameters (`lcTareOffset`, `lcScale`) that already travel in the meta of a snapshot download.
+
+- `loadcellRaw` is the raw value belonging to the filtered gram shown at the moment of the snapshot:
+  `round(filteredWeight * lcScale + lcTareOffset)`. The circle values in a snapshot are the filtered
+  `emaRawValues` too, so circles and loadcell stay consistent and a replay shows the same gram (within
+  rounding, ~0.005 g). Without a filtered weight yet, the last raw sample is stored.
+- Replay goes through `snapApplyFrame()`, which passes `lcGramFromRaw(s, loadcellRaw)` to
+  `updateLoadcell` like `recApplyFrame` does for recordings. Older snapshot files still carry
+  `loadcellGram`; that value is shown as is, so they look as before.
+
+Verified in headless Edge (9 checks: no loadcellGram stored, raw/gram round trip, label, round trip
+through download + upload with other loadcell parameters on the page, old file, fallback, disabled
+sensor), plus the earlier Sensor Value checks again without failures. Built and flashed to COM5.
+
+
+### Grid View: download dialogs with patient-id/note, auto-select on Play, zoom on the right
+- **Zoom slider** moved to the far right of the record row, right of the single y-axis checkbox and y-clip.
+- **Play** (and resume from Pause): with no sensor selected, the first enabled sensor with data in the
+  recording is selected; with no circle selected, circle 0 of the selected sensor (`recAutoSelect`, same
+  effect as a mouse click). If the grid has no cells yet, it is built from the recording's count first.
+- **Download dialogs** in a new `crt_GridMeasInfo.h` (`/gridmeasinfo.js`), so the 67 KB limit of the grid
+  HTML literal is not touched. After Stop and on Download: "Wat voor recording is dit?" with patient
+  meting, kalibratiemeting (met de 3D printer) and Afbreken. The patient dialog has a required patient-id
+  (`[A-Za-z0-9_-]+`) and an optional note. File names: `recording_<id>_<datetime>.json` and
+  `recording_kalibratie_<datetime>.json`. Snapshots ask "Is dit een patient-meting?" (Ja/Nee/Afbreken);
+  their names are `snapshots_<id>_<datetime>.json` or `snapshots_<datetime>.json`.
+- Kind, patient-id and note go into the meta of the file as `measurement` (third argument of
+  `metaAppendForExport`), not into Download Meta. An upload restores them. **Info** (record panel, second
+  row under Record) and **Snapshots Info** show them.
+- **Download again** of content already downloaded this session first asks for confirmation, then repeats
+  the previous handling, prefilled. New frames, a new snapshot and a successful recalibration reset that.
+  An uploaded file counts as not downloaded.
+- The record panel now has two rows (`.rec-play-row`), left-aligned so that Info sits under Record. The
+  first row used to be centred.
+
+Verified in headless Edge: 58 checks (layout order, auto-select incl. disabled sensor and existing
+selection, all dialog paths, file names, meta contents, prefill, re-download warning, pause/resume, upload
+restore, Info contents, Escape), plus the earlier role (46) and snapshot (9) checks without failures.
+Built and flashed to COM5 (ESP32-S3, USB-Serial/JTAG 303A:1001).
+
+### Uploaded recordings and snapshots count as downloaded, versioned file names
+- An upload now sets `downloaded` and remembers the file name (`source`). The first Download of uploaded
+  content therefore asks "U heeft deze recording/snapshots al eens (ooit) gedownload, weet u het zeker?".
+  The question now has "(ooit)" in all cases. After Ja, the previous handling follows (prefilled patient
+  dialog, or a calibration download at once). An older file without `measurement` gets the kind question.
+- Content from an upload is downloaded under the upload's name plus `_vN` (`miNextVersion`): `x.json` gives
+  `x_v1.json`, `x_v1.json` gives `x_v2.json`, and each next download in the session counts up. A browser
+  suffix " (1)" is dropped first. The browser cannot check the download folder itself. Record and Clear
+  Snapshots end this and give normal names again; new frames or snapshots keep the versioned name.
+
+Verified in headless Edge: 72 checks (the 58 earlier ones adapted, plus upload naming `_v1`/`_v2`/`_v3`,
+" (1)" handling, old upload without measurement, normal names after Record/Clear), plus 46 role checks and
+9 snapshot checks. Built and flashed to COM5 (ESP32-S3).
+
+### Upload names: no version suffix after all
+The `_vN` suffix is dropped again (`miNextVersion` replaced by `miUploadName`). Content from an upload is
+downloaded under the same name as the upload; the browser itself numbers a name that already exists in the
+download folder ("x (1).json"). A " (1)" in the uploaded name is dropped, so the browser numbers from the
+original name. Tests adapted (72 checks pass, plus 46 role and 9 snapshot checks). Built and flashed to COM5.
+
+### First download of fresh content gets _org
+Only the first download of a fresh recording (after Record) or snapshot series (after Clear Snapshots or
+page load) gets `_org` (original) before `.json`, via the `orgDone` flag in `MI_REC` / `MI_SNAP`. Later
+downloads of the same content and downloads of uploaded content do not. An uploaded `x_org.json` (also with
+a browser suffix like " (2)") is downloaded again as `x.json`; the browser numbers it if the name exists.
+Verified in headless Edge (73 checks, plus 46 role and 9 snapshot checks). Built and flashed to COM5.
+
+### Loadcell: "?" help and button style
+- The loadcell section of each sensor gets a **?** button on the Tare row, right-aligned above the right edge
+  of Calibrate. The two rows sit in a shrink-to-fit `.lc-ctrl` block, so its width is that of the
+  Calibrate row. The "?" opens a dialog (`lcHelp`, using the dialog helpers of `gridmeasinfo.js`) with the
+  calibration steps, when Tare alone suffices, the link with "Herkalibreer druksensoren", and where tare and
+  scale are kept.
+- Tare/Calibrate/? now have the same style as the other small buttons (like "3D Surface"): 2px grey border,
+  rounded, white, bold grey text.
+
+Grid HTML literal now 59.2 KB. Verified by screenshot (alignment: right edges of "?" and Calibrate equal)
+and the 73 + 46 + 9 headless checks. Built and flashed to COM5.

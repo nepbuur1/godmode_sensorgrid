@@ -43,6 +43,7 @@ namespace crt
       recFrames = [];
       playIdx = 0;
       recordingTag = null;
+      miReset(MI_REC);
       if (typeof acOnRecordingLoaded === 'function') acPreview = null;
       recState = 'recording';
       document.getElementById('btnRecord').classList.add('rec-active');
@@ -64,6 +65,7 @@ namespace crt
         document.getElementById('btnDownload').disabled = (recFrames.length === 0);
       } else if (recState === 'paused') {
         recState = 'recording';
+        miContentChanged(MI_REC);
         document.getElementById('btnPause').classList.remove('pause-active');
         document.getElementById('btnDownload').disabled = true;
       }
@@ -82,6 +84,31 @@ namespace crt
       if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
       recUpdateInfo();
       updateRecChart();
+      miAfterStop();
+    }
+
+    // Bij Play: als er nog geen sensor geselecteerd is, de eerste ingeschakelde sensor met data
+    // in de recording selecteren, en daarvan (als er nog geen cirkel geselecteerd is) de cirkel
+    // met de laagste index - met hetzelfde effect als een muisklik.
+    function recSensorCount(id) {
+      for (const fr of recFrames) {
+        const sd = fr.sensors.find(function(x) { return x.id === id; });
+        if (sd && sd.count > 0) return sd.count;
+      }
+      return 0;
+    }
+    function recAutoSelect() {
+      if (selectedSensorId === null) {
+        const first = SENSOR_IDS.find(function(id) { return sensors[id].enabled && recSensorCount(id) > 0; });
+        if (first === undefined) return;
+        selectSensor(first);
+      }
+      if (selectedCircleIdx !== null) return;
+      const s = sensors[selectedSensorId];
+      const count = recSensorCount(selectedSensorId);
+      if (!s.enabled || count === 0) return;
+      if (s.cells.length === 0) createGrid(s, count, selectedSensorId);
+      selectCircle(selectedSensorId, 0, { stopPropagation: function() {} });
     }
 
     function recPlay() {
@@ -98,6 +125,7 @@ namespace crt
       recState = 'playing';
       playIdx = 0;
       recResetFilters();
+      recAutoSelect();
       document.getElementById('btnPlay').classList.add('play-active');
       document.getElementById('btnPlayPause').disabled = false;
       document.getElementById('btnRecord').classList.remove('rec-active');
@@ -111,23 +139,17 @@ namespace crt
         document.getElementById('btnPlayPause').classList.add('pause-active');
       } else if (recState === 'playpaused') {
         recState = 'playing';
+        recAutoSelect();
         document.getElementById('btnPlayPause').classList.remove('pause-active');
       }
       recUpdateInfo();
       updateRecChart();
     }
 
+    // Download via de dialogen van gridmeasinfo.js (soort meting, patient-id, aantekening).
     function recDownload() {
       if (recFrames.length === 0) return;
-      const json = JSON.stringify(metaAppendForExport(recFrames, recExportTag()));
-      const blob = new Blob([json], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'recording_' + recLocalStamp() + '.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      flashPopup('btnDownload', 'download completed', 1000);
+      miDownloadClick(MI_REC);
     }
 
     function recUpload(event) {
@@ -148,6 +170,7 @@ namespace crt
           recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
             ? split.meta.recording : null;
           if (split.meta) applyMetaState(split.meta);
+          miLoaded(MI_REC, split.meta, file.name);
           if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
           recState = 'stopped';
           document.getElementById('btnRecord').classList.remove('rec-active');

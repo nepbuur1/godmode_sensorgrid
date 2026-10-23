@@ -14,6 +14,7 @@
 #include "crt_GridRecPlay.h"
 #include "crt_GridRecChart.h"
 #include "crt_GridSnapshot.h"
+#include "crt_GridMeasInfo.h"
 #include "crt_GridHistogram.h"
 #include "crt_GridPlot.h"
 #include "crt_GridCircle.h"
@@ -635,6 +636,9 @@ namespace crt
 			});
 			server.on("/gridsnapshot.js", HTTP_GET, [this]() {
 				server.send(200, "application/javascript", GRID_SNAPSHOT_JS);
+			});
+			server.on("/gridmeasinfo.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_MEASINFO_JS);
 			});
 			server.on("/gridhistogram.js", HTTP_GET, [this]() {
 				server.send(200, "application/javascript", GRID_HISTOGRAM_JS);

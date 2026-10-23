@@ -97,6 +97,7 @@ namespace crt
         calibVersion = run.global;
         calibDate = new Date().toISOString();
         recordingTag = { kind: 'calibration', calibratedAt: calibDate, tool: 'web-autocalib', version: 1 };
+        miContentChanged(MI_REC);   // de download bevat nu de nieuwe kalibratie: geen "al gedownload"
         saveCalibGlobals();
       }
       acLastRun = { result: result, run: run, ms: Date.now() - t0, at: new Date().toISOString() };

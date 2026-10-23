@@ -41,6 +41,24 @@ namespace crt
       setCookie("lcKnown" + id, knownGrams, 365);
     }
 
+    // "?" in het loadcell-venster: uitleg van Tare en Calibrate (dialoog van gridmeasinfo.js).
+    function lcHelp() {
+      const box = miOpen('Loadcell kalibreren');
+      const steps = box.appendChild(miEl('ol'));
+      [
+        'Gebruik live data: niet tijdens het afspelen van een recording of snapshot.',
+        'Haal alle belasting van de loadcell af en wacht tot het getoonde gewicht stil staat.',
+        'Klik Tare. Het nulpunt wordt de mediaan van de laatste seconde; het gewicht wordt nu ongeveer 0 g.',
+        'Plaats een bekend gewicht op de loadcell, bijvoorbeeld 500 g, en vul dat in grammen in bij "Known weight (g)".',
+        'Wacht een paar seconden tot de waarde stabiel is en klik Calibrate. Het getoonde gewicht wordt nu ongeveer het bekende gewicht.',
+        'Controle: haal het gewicht eraf; de loadcell hoort weer ongeveer 0 g te tonen. Wijkt dat af, herhaal dan vanaf stap 2.'
+      ].forEach(t => steps.appendChild(miEl('li', '', t)));
+      box.appendChild(miEl('p', '', 'Is alleen het nulpunt verschoven (bijvoorbeeld na een tijdje), dan is opnieuw Tare met een onbelaste loadcell genoeg; de schaal van Calibrate blijft gelden.'));
+      box.appendChild(miEl('p', '', 'Kalibreer de loadcell voordat je een kalibratiemeting opneemt voor "Herkalibreer druksensoren": die gebruikt de loadcell-grammen als referentie.'));
+      box.appendChild(miEl('p', '', 'Tarra en schaal worden in deze browser bewaard en gaan mee in de meta van recording-, snapshot- en meta-downloads.'));
+      miButton(box.appendChild(miEl('div', 'mi-buttons')), 'Sluiten', miClose);
+    }
+
     function updateLoadcell(id, hasLoadcell, rawValue, recordedGram) {
       const s = sensors[id];
       if (!s.enabled) return;

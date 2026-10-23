@@ -10,6 +10,15 @@ namespace crt
     var snapReplaying = false;
     var snapIdx = 0;
 
+    // Loadcell: net als bij recordings alleen een ruwe waarde, geen loadcellGram; de gram volgt
+    // bij het afspelen uit de tarra/schaal in de meta. Zoals de cirkelwaarden (emaRawValues) de
+    // gefilterde waarden zijn, is dit de ruwe waarde die bij de getoonde, gefilterde gram hoort.
+    function snapLoadcellRaw(s) {
+      if (!s.enabled) return 0;
+      if (s.filteredWeight === null) return s.lcLastRaw;
+      return Math.round(s.filteredWeight * s.lcScale + s.lcTareOffset);
+    }
+
     function snapTake() {
       const frame = {sensors: SENSOR_IDS.map(id => {
         const s = sensors[id];
@@ -18,32 +27,37 @@ namespace crt
           count: (s.enabled && s.emaRawValues) ? s.emaRawValues.length : 0,
           values: (s.enabled && s.emaRawValues) ? s.emaRawValues.map(v => Math.round(v)) : [],
           hasLoadcell: s.enabled ? s.lcVisible : false,
-          loadcellRaw: s.enabled ? s.lcLastRaw : 0,
-          loadcellGram: (s.enabled && s.filteredWeight !== null) ? parseFloat(s.filteredWeight.toFixed(1)) : 0
+          loadcellRaw: snapLoadcellRaw(s)
         };
       })};
       snapFrames.push(frame);
+      miContentChanged(MI_SNAP);
       snapUpdateUI();
+    }
+
+    // Een snapshot tonen: de loadcell-gram uit loadcellRaw (lcGramFromRaw). Oudere bestanden
+    // bevatten nog een loadcellGram (de toen getoonde waarde); die blijft daar gelden.
+    function snapApplyFrame(idx) {
+      const frame = snapFrames[idx];
+      applyFrame({sensors: frame.sensors.map(sd => {
+        const s = sensors[sd.id];
+        if (!s || !sd.hasLoadcell || typeof sd.loadcellGram === 'number') return sd;
+        return Object.assign({}, sd, { loadcellGram: lcGramFromRaw(s, sd.loadcellRaw) });
+      })});
     }
 
     function snapClear() {
       snapFrames = [];
       if (snapReplaying) snapReplayStop();
       snapIdx = 0;
+      miReset(MI_SNAP);
       snapUpdateUI();
     }
 
+    // Download via de dialogen van gridmeasinfo.js (patient-meting?, patient-id, aantekening).
     function snapDownload() {
       if (snapFrames.length === 0) return;
-      const json = JSON.stringify(metaAppendForExport(snapFrames));
-      const blob = new Blob([json], {type: 'application/json'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'snapshots_' + recLocalStamp() + '.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      flashPopup('btnSnapDownload', 'download completed', 1000);
+      miDownloadClick(MI_SNAP);
     }
 
     function snapUpload(event) {
@@ -63,6 +77,7 @@ namespace crt
           snapFrames = data;
           snapIdx = 0;
           if (split.meta) applyMetaState(split.meta);
+          miLoaded(MI_SNAP, split.meta, file.name);
           snapUpdateUI();
         } catch (err) {
           alert('Failed to parse snapshot file: ' + err.message);

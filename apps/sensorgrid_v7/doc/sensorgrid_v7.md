@@ -266,9 +266,11 @@ Above the sensor widgets, three framed radio groups control the display (applied
 
 **Sensor Value** — selects how circle values are computed (one mode at a time):
 - **Raw** — the raw value minus the offset (if one was set with Remove Offset).
-- **Norm SumCap** — transforms displayed values using per-sensor captured sum: `calibrateSumGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Requires a sensor to be selected and captured.
-- **Norm IndivCap** — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle).
-- **Norm AutoCal** — grams from the auto-calibration knots of each circle (Herkalibreer druksensoren), applied to the absolute raw value without offset. Circles without an auto-calibration show 0.
+- **Norm SumCap** (Admin only) — transforms displayed values using per-sensor captured sum: `calibrateSumGrams / (maxSumCaptured - avResidualNoiseSum) * (value - offset)`. Requires a sensor to be selected and captured.
+- **Norm IndivCap** (Admin only) — transforms each circle's value using per-circle piecewise linear calibration curves (up to 3 capture points per circle).
+- **Norm AutoCal** — grams from the auto-calibration knots of each circle (Herkalibreer druksensoren), applied to the absolute raw value without offset. Circles without an auto-calibration show 0. As long as no circle has knots (no (partly) successful recalibration, and none uploaded through a recording or Upload Meta), clicking it does not select it but shows a popup saying a calibration or an upload is needed first.
+
+For other roles than Admin, only Raw and Norm AutoCal are shown. A SumCap or IndivCap mode from a cookie or an uploaded meta falls back to Raw.
 
 **Kleurnormalisatie** — which value range maps onto the full gray/color scale:
 - **Normalised** — each sensor's current min-max of the frame.
@@ -282,10 +284,10 @@ Additional control fields: **Stats Filter** (EMA factor for statistics, default 
 
 #### Selected sensor info panel
 Clicking a sensor widget selects it (green border). A green-bordered info panel appears with:
-- **Remove Offset** — captures current values as baseline; subsequent readings show the difference
+- **Remove Offset** — captures current values as baseline; subsequent readings show the difference. Hidden under Norm AutoCal, which ignores the offset.
 - **Capture Sum** — captures the sum of displayed circle values and triggers residual noise measurement
 - **maxSumCaptured**, **avResidualNoiseSum** (read-only), **Calibrate Sum Grams** (editable) — per-sensor calibration fields
-- **Reset Indiv Caps** — resets all per-circle capture tuples for the selected sensor
+- **Reset Indiv Caps** (Admin only) — resets all per-circle capture tuples for the selected sensor
 - **Enable Sensor** (checkbox) — enabled by default. When unchecked, the sensor is treated as offline: its grid shows "Disabled", display updates and loadcell readings are skipped, and recorded frames store empty data for that sensor. State is persisted in a cookie.
 
 #### Selected circle info panel
@@ -296,10 +298,22 @@ Below the display control buttons, a grey-bordered panel provides record and pla
 
 - **Record** — turns red when active. Each frame received from `/api/allmeasurements` is stored in a JavaScript array, enriched with `loadcellGram` (the browser-computed calibrated weight in grams, using the current tare/scale settings) alongside the raw `loadcellRaw` value. Disabled sensors are recorded as empty data. Starting a new recording discards any previous recording.
 - **Pause** — toggles orange to pause/resume recording without discarding stored frames.
-- **Stop** — stops recording and un-presses the Record button. Enables the Play button.
-- **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data.
-- **Download** — downloads the recorded frames as a JSON file (timestamped filename). Enabled only when recording is paused or stopped with frames available.
+- **Stop** — stops recording and un-presses the Record button. Enables the Play button. Then asks "Wat voor recording is dit?" (see *Download dialogs* below), unless this content was already downloaded while paused.
+- **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data. On Play (and on resuming from Pause), if no sensor is selected, the first enabled sensor with data in the recording is selected; then, if no circle is selected, circle 0 of the selected sensor. This has the same effect as a mouse click, so the recording chart appears at once.
+- **Download** — downloads the recorded frames as a JSON file via the download dialogs below. Enabled only when recording is paused or stopped with frames available.
 - **Info label** — shows current state and frame count (e.g. "Recording: 47 frames", "Playing: 12/47").
+- **Zoom** — rightmost on the row, right of the single y-axis checkbox and y-clip fields (visible while a recording chart is shown).
+- **Info** (second row, under Record) — appears once the recording has a kind/patient-id/note (after a download, or after uploading a file that carries them). Shows the kind, patient-id and note. A new Record clears it.
+
+**Download dialogs** (`crt_GridMeasInfo.h`, `/gridmeasinfo.js`):
+- "Wat voor recording is dit?" with **Het is een patient meting**, **Het is een kalibratiemeting** (met de 3D printer) and **Afbreken**.
+  - Patient: dialog "Recording downloaden" with a required patient-id (letters, digits, `-`, `_`) and an optional multi-line note. **Downloaden** stays disabled until the patient-id is valid; hovering explains why, and invalid characters also give a red hint. **Afbreken** cancels. File: `recording_<patient-id>_<datetime>.json`.
+  - Calibration: downloaded at once as `recording_kalibratie_<datetime>.json`.
+- The kind, patient-id and note go into the file's meta as `measurement: {type: 'patient' | 'calibration' | 'other', patientId, note}`. They are not part of Download Meta, and Upload Meta ignores them. Uploading a recording restores them, so the Info button and the dialogs show them again.
+- **Download again** of content already downloaded first asks "U heeft deze recording al eens (ooit) gedownload, weet u het zeker?" (**Ja, downloaden** / **Nee, afbreken**). After Ja, the previous handling follows: the "Recording downloaden" dialog prefilled with the previous patient-id and note, or for a calibration recording the download at once. An uploaded file without these data (an older file) gets the kind question. New frames (resume after pause) and a successful "Herkalibreer druksensoren" count as new content, so they do not trigger this warning.
+- **Uploaded recordings** count as already downloaded, so the first Download already asks the question above. The download of content that came from an upload gets the same name as the uploaded file, without `_org` and without a " (1)" that the browser added earlier to a duplicate name. If the name already exists in the download folder, the browser numbers the new file itself ("x (1).json"). A new Record gives normal file names again.
+- **_org**: only the first download of fresh content (after Record) gets `_org` (original) before `.json`, e.g. `recording_P-12_<datetime>_org.json` or `recording_kalibratie_<datetime>_org.json`. Later downloads of the same recording, and downloads of uploaded content, do not.
+- Escape closes any of these dialogs, like Afbreken.
 
 **Recording capacity estimate:** Each frame stores the parsed JSON response as a JavaScript object. With 4 sensors × 128 values (JS floats at 8 bytes each), plus object/array overhead in the V8 engine, each frame occupies roughly 10-15 KB of browser heap memory. At 10 fps (POLL_MS=100), this amounts to ~100-150 KB/sec or ~6-9 MB/min. With modern browsers allowing 1-4 GB of JS heap, recordings of **55-80+ minutes** are comfortably achievable. If longer recordings are needed in the future, the storage could be switched to typed arrays for ~5x reduction in memory usage.
 
@@ -311,8 +325,9 @@ Below the recording panel, a lila-bordered panel provides snapshot capture and r
 **Capture row:**
 - **Snapshot** — captures the current EMA-raw values of all enabled sensors as a single frame (works with both live and recording-playback data)
 - **Clear Snapshots** — discards all snapshots and exits snapshot replay if active
-- **Download** — downloads snapshots as JSON (enabled when snapshots exist)
+- **Download** — downloads snapshots as JSON (enabled when snapshots exist), via dialogs like those of the recording: first "Is dit een patient-meting?" (**Ja** / **Nee** / **Afbreken**). Ja gives the dialog "Snapshots downloaden" with a required patient-id and an optional note (`snapshots_<patient-id>_<datetime>.json`); Nee gives the same dialog with only the note (`snapshots_<datetime>.json`). Downloading the same series again, or an uploaded series, asks "U heeft deze snapshots al eens (ooit) gedownload, weet u het zeker?", then shows the dialog prefilled. A new snapshot makes it new content for this check. A series that came from an upload is saved under the uploaded name (without `_org`), like recordings; Clear Snapshots ends that. The first download of a fresh series (after Clear Snapshots or page load) gets `_org`, like recordings.
 - **Info label** — shows snapshot count
+- **Snapshots Info** — appears after a download or an upload carrying the data; shows the patient-id (or "Geen patient-meting") and the note of the series. Clear Snapshots clears it.
 
 **Replay row:**
 - **Snapshot Replay** button (enabled when snapshots exist) — enters replay mode, revealing navigation controls:
@@ -323,8 +338,12 @@ Below the recording panel, a lila-bordered panel provides snapshot capture and r
 
 In snapshot replay mode, the selected snapshot's values are fed to the display pipeline at 10 fps, replacing live or recorded data.
 
+**Loadcell in snapshots:** like recordings, a snapshot frame holds only `loadcellRaw`, no `loadcellGram`. The gram follows on replay from `(loadcellRaw - lcTareOffset) / lcScale`, with the loadcell parameters from the meta that the downloaded file carries. Just as the circle values are the filtered (EMA-raw) values, `loadcellRaw` is the raw value belonging to the filtered gram shown at that moment, so a replay shows the same gram. Older snapshot files still contain `loadcellGram`; that value is shown as is.
+
+A snapshot download carries the same page meta as a recording (calibration included, but no `recording` block), and uploading a snapshot file applies that meta.
+
 #### Per-sensor features
-Each sensor widget includes: hex-packed circle grid (or 3D WebGL surface view via "3D Surface" toggle), histogram, statistics table (sum, max, average, sqrt(var) with EMA filtering), running plot (top 3 circle values over 20 time slots), and loadcell section (if HX711 detected).
+Each sensor widget includes: hex-packed circle grid (or 3D WebGL surface view via "3D Surface" toggle), histogram, statistics table (sum, max, average, sqrt(var) with EMA filtering), running plot (top 3 circle values over 20 time slots), and loadcell section (if HX711 detected). The loadcell section has **Tare**, **Known weight (g)** with **Calibrate**, and a **?** button (right-aligned above the right edge of Calibrate) that opens a dialog with the calibration steps: live data only, unloaded and stable, Tare, known weight on and filled in, wait, Calibrate, check at 0 g; plus when Tare alone is enough and that calibration should precede a calibration recording for "Herkalibreer druksensoren".
 
 ### Monitoring serial output
 
