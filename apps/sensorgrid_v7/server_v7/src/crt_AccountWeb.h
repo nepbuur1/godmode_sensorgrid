@@ -161,11 +161,18 @@ namespace crt
 			return s;
 		}
 
+		// Where a logged-in user lands: Admin and Onderzoeker go to the Grid View, a Gebruiker to the
+		// Home page with its choices (crt_HomeHtml.h).
+		const char* landingPage(Session* s)
+		{
+			return store.role(s->idx) >= Role::Onderzoeker ? "/grid" : "/";
+		}
+
 		void servePage(const char* html, Role minRole)
 		{
 			Session* s = currentSession();
 			if (!s || s->mustChange) { redirect("/login"); return; }
-			if (store.role(s->idx) < minRole) { redirect("/grid"); return; }
+			if (store.role(s->idx) < minRole) { redirect(landingPage(s)); return; }
 			server.send(200, "text/html", html);
 		}
 
@@ -191,7 +198,8 @@ namespace crt
 			bool mustChange = (idx == AccountStore::ROOT) && store.rootHasFactoryPassword();
 			Session& s = newSession(idx, mustChange);
 			setSessionCookie(s.token);
-			sendOk(String(",\"mustChange\":") + (mustChange ? "true" : "false"));
+			sendOk(String(",\"mustChange\":") + (mustChange ? "true" : "false") +
+				",\"role\":" + String((int)store.role(idx)));
 		}
 
 		void handleLogout()
@@ -427,7 +435,7 @@ namespace crt
 
 			server.on("/login", HTTP_GET, [this]() {
 				Session* s = currentSession();
-				if (s && !s->mustChange) { redirect("/grid"); return; }
+				if (s && !s->mustChange) { redirect(landingPage(s)); return; }
 				server.send(200, "text/html", LOGIN_HTML);
 			});
 			server.on("/account", HTTP_GET, [this]() {

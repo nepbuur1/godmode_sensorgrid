@@ -1316,3 +1316,93 @@ without meta, plus 46 role and 9 snapshot checks). Built and flashed to COM5.
 The user name field of /login has `autofocus`, so you can type at once. When the forced password change
 appears (first login of the root admin), the focus moves to the new-password field. Verified in headless
 Edge (focus on load, typing lands in the name field, focus after showForce). Built and flashed to COM5.
+
+### Home page per role, user modes for Gebruiker, test page at /test, Clear Snapshots grayed
+- **`/`** is now a Home page (`crt_HomeHtml.h`) that requires a login. The former home page "Sensormetingen"
+  moved to **`/test`** (open, not linked from any navigation bar). client_v7 now fetches `/test` for its
+  dashboard tests; the client has to be rebuilt for that.
+- **After login** (`accLandingPage` in account.js, `landingPage` in AccountWeb; `/api/login` now returns the
+  role): Admin and Onderzoeker go to `/grid`, a Gebruiker goes to `/`. `/login` redirects a logged-in user
+  the same way, and so does a page that needs a higher role.
+- **Home**: Admin and Onderzoeker see "U bent ingelogd als admin." (or onderzoeker) and an "Open Grid View"
+  button. A Gebruiker sees "Wat wilt u doen?" with Patientmeting maken / Patientmeting bekijken / Snapshots
+  bekijken, which open `/grid?mode=meten|bekijken|snapshots`.
+- **Navigation per role** (`navRender`, `<span id="navLinks">` on Home, Grid View and the account pages):
+  Home + Grid View, or for a Gebruiker Home + Patient Meten / Meting Bekijken / Snapshots Bekijken. The
+  current page is marked via `<body data-page>`.
+- **User modes** in the Grid View for a Gebruiker: body class `um-<mode>`, elements marked `hide-meten`,
+  `hide-bekijken` or `hide-snapshots`. The mode comes from `?mode=` or the last choice
+  (localStorage `sgUserMode`); without one the page goes back to `/`. Admin and Onderzoeker ignore the mode.
+- **Clear Snapshots** is disabled while there are no snapshots.
+
+Verified in headless Edge: 126 checks (visibility of all listed elements per mode and for Onderzoeker/Admin,
+navigation incl. active link, remembered choice, redirect without choice, Home page per role, Clear
+Snapshots state), plus 104 + 46 + 9 earlier checks. Built and flashed to COM5.
+
+### User modes refined: Meting Bekijken, leave warnings, Snapshots bekijken
+- Home buttons renamed: **Patient Meten** and **Meting Bekijken** (Snapshots bekijken unchanged).
+- **Meting Bekijken**:
+  - No live data: `pollLoop` only calls `fetchAll` when `pageReady` (role known, set in `accPage`) and the
+    mode is not `bekijken`.
+  - `enforceUserMode`: all sensors enabled and single y-axis on, without touching the cookies. It is also
+    called at the end of `applyMetaState`.
+  - Hidden (class `hide-bekijken`): Remove Offset, Enable Sensor, the red circle panel, the loadcell
+    controls (`.lc-ctrl`) and the single y-axis checkbox.
+- **Leave warning** (Patient Meten, Meting Bekijken): a capturing click handler on `<nav>` checks
+  `unsavedText()` (not downloaded: recording in Patient Meten, snapshots in both modes). It asks "... Weet u
+  zeker dat u de pagina wilt verlaten?" with Ja / Nee, afbreken; Ja clicks the same link again. A
+  `beforeunload` guard covers refresh and closing.
+- **Active nav link** does nothing (`navRender` sets a click handler that cancels it), on every page.
+- **Snapshots bekijken**: Snapshot Replay and Stop Snapshot Replay are hidden; a snapshots upload starts
+  the replay.
+
+Verified in headless Edge: 36 new checks (no live data in Meting Bekijken, enforced settings also after a
+recording with `enabled:false` / `recSingleY:false`, hidden controls, unsaved texts for all combinations,
+active link, warning + Nee/Ja, user menu guarded, no question when saved, auto replay, admin unaffected),
+plus 126 + 104 + 46 + 9 earlier checks (expectations adapted to the new Snapshots bekijken rule). Built and
+flashed to COM5.
+
+### Leave warning also for Admin and Onderzoeker
+`unsavedText()` now also applies when the role (`userRole`, set in `accPage`) is Onderzoeker or Admin, with
+the same texts as Patient Meten (recording and/or snapshots not downloaded). Without a login (test client)
+there is no warning. Verified in headless Edge (48 checks incl. Onderzoeker and Admin runs: texts, warning on
+Home, Nee keeps the page, active Grid View link does nothing), plus 126 + 104 + 46 + 9. Built and flashed to
+COM5.
+
+### Auto-play after upload, mode titles, fewer controls in the viewing modes
+- **Recording upload** starts playback at once (all roles): `recUpload` calls `recPlay()` after loading.
+- **Meting Bekijken**: the Snapshot button is grayed until a recording is loaded
+  (`snapUpdateSnapshotButton`, called from `recUpdateInfo` and `applyUserMode`; tooltip "Upload eerst een
+  recording.").
+- **Meting Bekijken and Snapshots Bekijken**: Upload Meta, Download Meta (`.ctrl-meta`) and the
+  "Laatste update" status line (`#status`) are hidden.
+- **Page title** in a user mode: the heading (`#pageTitle`) and the browser tab show the choice (Patient
+  Meten, Meting Bekijken, Snapshots Bekijken) instead of "Grid View".
+
+Verified in headless Edge: 64 mode checks (titles per mode, hidden or visible meta buttons and status,
+Snapshot grayed and enabled after an upload, auto-play; Admin/Onderzoeker unchanged), 105 dialog checks
+(incl. auto-play after upload), plus 126 + 46 + 9. Built and flashed to COM5.
+
+### Meting Bekijken and Snapshots Bekijken: fixed display, Snapshots Bekijken without live data
+- **Both modes**: Sensor Value is forced to Norm AutoCal and Kleurnormalisatie to MaxFixed
+  (`enforceUserMode`, not stored in the cookies, again after a file's meta is applied); both fieldsets
+  are hidden (`hide-bekijken hide-snapshots`).
+- **Snapshots Bekijken** now gets the Meting Bekijken rules: no live data (`pollLoop` skips `fetchAll`),
+  all sensors enabled, and hidden Remove Offset, Enable Sensor, the red circle panel and the loadcell
+  controls (Known weight, Tare, Calibrate, ?).
+
+Verified in headless Edge: 83 mode checks (forced AutoCal/MaxFixed also after a meta with Raw/Normalised,
+hidden fieldsets, no live data and all sensors enabled in Snapshots Bekijken, Patient Meten and
+Admin/Onderzoeker unchanged), 126 + 105 dialog checks + 46 role checks (now run in mode meten, since
+Snapshots Bekijken forces AutoCal) + 9. Built and flashed to COM5.
+
+### Download dialogs: title on the kind question, note dialog for a calibration recording
+- The kind question after Stop (or Download) now has the title "Recording downloaden", with "Wat voor
+  recording is dit?" as its question; the snapshots question likewise has the title "Snapshots downloaden".
+- **Kalibratiemeting** no longer downloads at once: it opens the "Recording downloaden" dialog with only the
+  optional note (no patient-id). Downloading it again (after "Ja, downloaden") shows that dialog prefilled.
+  `miDownloadDialog(m, type)` now takes the kind ('patient' | 'calibration' | 'other').
+
+Verified in headless Edge: 108 dialog checks per role (calibration note dialog, nothing downloaded before
+Downloaden, note in meta.measurement, prefilled on re-download), plus 83 + 126 + 46 + 9. Built and flashed
+to COM5.

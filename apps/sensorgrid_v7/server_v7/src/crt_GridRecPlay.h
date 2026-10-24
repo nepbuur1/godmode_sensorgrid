@@ -198,6 +198,7 @@ namespace crt
           document.getElementById('btnDownload').disabled = false;
           recUpdateInfo();
           updateRecChart();
+          recPlay();   // een geladen recording speelt meteen af
         } catch (err) {
           alert('Failed to load recording file: ' + err.message);
         } });
@@ -221,6 +222,7 @@ namespace crt
       else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length + recTagText();
       else el.textContent = 'Ready';
       if (typeof acUpdateRecalibButton === 'function') acUpdateRecalibButton();
+      snapUpdateSnapshotButton();
       var sl = document.getElementById('recSlider');
       var show = (recState === 'playing' || recState === 'playpaused');
       document.getElementById('recSliderRow').style.display = show ? 'block' : 'none';

@@ -46,6 +46,14 @@ namespace crt
       })});
     }
 
+    // Meting bekijken: Snapshot pas als er een recording is geladen (die bepaalt wat er te zien is).
+    function snapUpdateSnapshotButton() {
+      const b = document.getElementById('btnSnapshot');
+      const off = (userMode === 'bekijken' && recFrames.length === 0);
+      b.disabled = off;
+      b.title = off ? 'Upload eerst een recording.' : '';
+    }
+
     function snapClear() {
       snapFrames = [];
       if (snapReplaying) snapReplayStop();
@@ -78,6 +86,7 @@ namespace crt
           if (split.meta) applyMetaState(split.meta);
           miLoaded(MI_SNAP, split.meta, file.name);
           snapUpdateUI();
+          if (userMode === 'snapshots') snapReplayStart();   // Snapshots bekijken: replay-knoppen verborgen
         } catch (err) {
           alert('Failed to load snapshot file: ' + err.message);
         } });
@@ -131,6 +140,7 @@ namespace crt
       document.getElementById('snapInfo').textContent = 'Snapshots: ' + snapFrames.length;
       document.getElementById('snapIdxInfo').textContent = 'Index: ' + snapIdx;
       document.getElementById('btnSnapDownload').disabled = (snapFrames.length === 0);
+      document.getElementById('btnSnapClear').disabled = (snapFrames.length === 0);
       document.getElementById('btnSnapReplay').disabled = (snapFrames.length === 0);
       const slider = document.getElementById('snapSlider');
       slider.max = Math.max(0, snapFrames.length - 1);

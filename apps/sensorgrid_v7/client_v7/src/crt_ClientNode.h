@@ -65,11 +65,11 @@ namespace crt
 
 		void testDashboardPage()
 		{
-			const char* TEST_NAME = "GET / (dashboard)";
+			const char* TEST_NAME = "GET /test (dashboard)";
 			int code = 0;
 			String body;
 
-			if (!httpGet("/", code, body))
+			if (!httpGet("/test", code, body))
 			{
 				char msg[64];
 				snprintf(msg, sizeof(msg), "HTTP request failed: code=%d", code);
@@ -216,7 +216,7 @@ namespace crt
 			int code = 0;
 			String body;
 
-			if (!httpGet("/", code, body))
+			if (!httpGet("/test", code, body))
 			{
 				logResult(TEST_NAME, false, "HTTP request failed");
 				return;

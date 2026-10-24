@@ -93,6 +93,12 @@ namespace crt
     body.cal-autocal .hide-in-autocal {
       display: none !important;
     }
+    /* Gebruiker: per keuze op de Home-pagina verborgen delen (applyUserMode) */
+    body.um-meten .hide-meten,
+    body.um-bekijken .hide-bekijken,
+    body.um-snapshots .hide-snapshots {
+      display: none !important;
+    }
     .note-popup {
       position: fixed;
       z-index: 1000;

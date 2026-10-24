@@ -8,6 +8,7 @@
 #include <esp_wifi.h>
 #include <crt_SensorGridPacket.h>
 #include "crt_IndexHtml.h"
+#include "crt_HomeHtml.h"
 #include "crt_GridHtml.h"
 #include "crt_GridCss.h"
 #include "crt_Grid3D.h"
@@ -614,10 +615,15 @@ namespace crt
 			ESP_LOGI("ServerNode", "AP SSID: %s", apSsid);
 			ESP_LOGI("ServerNode", "AP IP: %s", WiFi.softAPIP().toString().c_str());
 
+			accounts.begin();
 			server.on("/", HTTP_GET, [this]() {
+				if (!accounts.allowPage()) return;   // not logged in: redirected to /login
+				server.send(200, "text/html", HOME_HTML);
+			});
+			// the former home page "Sensormetingen"; not in a navigation bar
+			server.on("/test", HTTP_GET, [this]() {
 				server.send(200, "text/html", INDEX_HTML);
 			});
-			accounts.begin();
 			server.on("/grid", HTTP_GET, [this]() {
 				if (!accounts.allowPage()) return;   // not logged in: redirected to /login
 				server.send(200, "text/html", GRID_HTML);

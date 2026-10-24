@@ -26,30 +26,29 @@ namespace crt
   <script src="/gridautocalibui.js"></script>
   <script src="/account.js"></script>
 </head>
-<body>
+<body data-page="grid">
   <nav>
-    <a href="/" style="color:#ccc;">Home</a>
-    <a href="/grid" style="color:#fff;">Grid View</a>
+    <span id="navLinks"><a href="/" style="color:#ccc;">Home</a></span>
     <span id="userMenu"></span>
   </nav>
   <div class="page">
-    <h1>Grid View</h1>
+    <h1 id="pageTitle">Grid View</h1>
     <div class="controls">
-      <fieldset class="ctrl-group">
+      <fieldset class="ctrl-group hide-meten hide-bekijken hide-snapshots">
         <legend data-tip="Welke waarde de cirkels tonen: ruwe sensorwaarde of omgerekend naar grammen.">Sensor Value</legend>
         <label data-tip="Ruwe sensorwaarde (0..65535), min de offset als die met Remove Offset is gezet."><input type="radio" name="calMode" value="raw" onchange="setCalMode(this.value)" checked/> Raw</label>
         <label class="admin-only" data-tip="Grammen via de som-kalibratie per sensor (Capture Sum): één schaalfactor voor alle cirkels."><input type="radio" name="calMode" value="sumcap" onchange="setCalMode(this.value)"/> Norm SumCap</label>
         <label class="admin-only" data-tip="Grammen via de handmatige kalibratie per cirkel (tot 3 capture-punten, stuksgewijs lineair)."><input type="radio" name="calMode" value="indivcap" onchange="setCalMode(this.value)"/> Norm IndivCap</label>
         <label id="lblAutoCal" data-tip="Grammen via de automatische kalibratie (Herkalibreer druksensoren). Cirkels zonder kalibratie tonen 0."><input type="radio" name="calMode" value="autocal" onchange="setCalMode(this.value)"/> Norm AutoCal</label>
       </fieldset>
-      <fieldset class="ctrl-group">
+      <fieldset class="ctrl-group hide-meten hide-bekijken hide-snapshots">
         <legend data-tip="Welk waardebereik op de volle grijs- of kleurschaal wordt afgebeeld.">Kleurnormalisatie</legend>
         <label data-tip="Per sensor van de laagste tot de hoogste waarde in het huidige frame. Laat altijd contrast zien, maar geen absolute niveaus."><input type="radio" name="colorNorm" value="norm" onchange="setColorNorm(this.value)"/> Normalised</label>
         <label data-tip="Van 0 tot een vaste maximumwaarde (slider/veld hieronder). Bij Raw in ruwe eenheden (1..65535), anders in grammen (1..3500)."><input type="radio" name="colorNorm" value="fixed" onchange="setColorNorm(this.value)" checked/> MaxFixed</label>
         <input type="range" id="sldFixedMax" min="1" max="65535" step="1" value="65535" oninput="fixedMaxSliderInput(this.value)"/>
         <label class="fixed-max-field"><input type="text" id="fldFixedMax" value="65535" size="8" onchange="fixedMaxFieldChange(this.value)"/> <span id="fixedMaxUnit">raw</span></label>
       </fieldset>
-      <fieldset class="ctrl-group">
+      <fieldset class="ctrl-group hide-meten">
         <legend data-tip="Hoe een waarde in de cirkels en het 3D-oppervlak wordt getoond.">Display</legend>
         <label data-tip="Grijstinten: van middengrijs (laag) naar wit (hoog)."><input type="radio" name="colorized" value="0" onchange="setColorized(false)" checked/> Grays</label>
         <label data-tip="Kleurverloop: grijs, blauw, groen, geel naar rood (hoog)."><input type="radio" name="colorized" value="1" onchange="setColorized(true)"/> Colors</label>
@@ -58,28 +57,28 @@ namespace crt
         <label>Stats Filter <input type="text" id="fldStatsFilter" value="0.9" size="8" onchange="setCookie('gvStatsFilter',this.value,365)"/></label>
         <label>Value Filter <input type="text" id="fldValueFilter" value="0.5" size="8" onchange="setCookie('gvValueFilter',this.value,365);updateRecChart()"/></label>
       </div>
-      <div class="ctrl-meta">
+      <div class="ctrl-meta hide-bekijken hide-snapshots">
         <button class="toggle-btn" id="btnUploadMeta" onclick="document.getElementById('metaFileInput').click()">Upload Meta</button>
         <button class="toggle-btn" id="btnDownloadMeta" onclick="metaDownload()">Download Meta</button>
         <input type="file" id="metaFileInput" accept=".json" style="display:none" onchange="metaUpload(event)"/>
       </div>
     </div>
-    <div class="rec-play-panel">
+    <div class="rec-play-panel hide-snapshots">
       <div class="rec-play-row">
-        <button id="btnRecord" onclick="recRecord()">Record</button>
-        <button id="btnPause" onclick="recPause()" disabled>Pause</button>
-        <button id="btnStop" onclick="recStop()" disabled>Stop</button>
-        <button id="btnPlay" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
-        <button id="btnPlayPause" onclick="recPlayPause()" disabled>Pause</button>
-        <button id="btnDownload" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
-        <button id="btnRecUpload" onclick="miUploadClick(MI_REC)">Upload</button>
+        <button id="btnRecord" class="hide-bekijken" onclick="recRecord()">Record</button>
+        <button id="btnPause" class="hide-bekijken" onclick="recPause()" disabled>Pause</button>
+        <button id="btnStop" class="hide-bekijken" onclick="recStop()" disabled>Stop</button>
+        <button id="btnPlay" class="hide-meten" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
+        <button id="btnPlayPause" class="hide-meten" onclick="recPlayPause()" disabled>Pause</button>
+        <button id="btnDownload" class="hide-bekijken" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
+        <button id="btnRecUpload" class="hide-meten" onclick="miUploadClick(MI_REC)">Upload</button>
         <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
-        <button id="btnRecalib" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
+        <button id="btnRecalib" class="hide-meten hide-bekijken" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
         <span class="rec-info" id="recInfo">Ready</span>
         <span id="recCircleVal" class="rec-vals" style="display:none;"><span id="recSensorVal"></span><span id="recLcVal"></span></span>
         <span id="recZoomRow" style="display:none;margin-left:auto;align-items:center;gap:0.3rem;">
           <span id="recSingleYRow" style="display:inline-flex;align-items:center;gap:0.3rem;">
-            <label style="font-size:0.75rem;color:#666;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
+            <label class="hide-bekijken" style="font-size:0.75rem;color:#666;" title="Beide curves op dezelfde y-as (bereik = grootste van loadcell en alle cirkels van de module)"><input type="checkbox" id="chkSingleY" onchange="recSingleYChange(this.checked)"/> single y-axis</label>
             <span id="recClipRow" style="display:none;align-items:center;gap:0.3rem;" title="y-clip: de getoonde y-range wordt tot deze grenzen beperkt; waarden erbuiten worden op de rand getekend">
               <label style="font-size:0.75rem;color:#666;">y-clip</label>
               <input type="text" id="fldClipLo" value="0" size="5" onchange="recClipChange()" title="lower bound"/>
@@ -103,15 +102,15 @@ namespace crt
     <div class="ac-panel" id="acResultPanel" style="display:none;"></div>
     <div class="snapshot-panel">
       <div class="snapshot-row">
-        <button id="btnSnapshot" onclick="snapTake()">Snapshot</button>
-        <button id="btnSnapClear" onclick="snapClear()">Clear Snapshots</button>
-        <button id="btnSnapDownload" onclick="snapDownload()" disabled>Download</button>
-        <button id="btnSnapUpload" onclick="miUploadClick(MI_SNAP)">Upload</button>
+        <button id="btnSnapshot" class="hide-snapshots" onclick="snapTake()">Snapshot</button>
+        <button id="btnSnapClear" class="hide-snapshots" onclick="snapClear()" disabled>Clear Snapshots</button>
+        <button id="btnSnapDownload" class="hide-snapshots" onclick="snapDownload()" disabled>Download</button>
+        <button id="btnSnapUpload" class="hide-meten hide-bekijken" onclick="miUploadClick(MI_SNAP)">Upload</button>
         <input type="file" id="snapFileInput" accept=".json" style="display:none" onchange="snapUpload(event)"/>
         <span class="snap-info" id="snapInfo">Snapshots: 0</span>
         <button id="btnSnapInfo" onclick="miShowInfo(MI_SNAP)" style="display:none;" title="Patient-id en aantekening van deze snapshots">Snapshots Info</button>
       </div>
-      <div class="snapshot-row" id="snapReplayRow">
+      <div class="snapshot-row hide-meten hide-bekijken hide-snapshots" id="snapReplayRow">
         <button id="btnSnapReplay" onclick="snapReplayStart()" disabled>Snapshot Replay</button>
       </div>
       <div class="snapshot-row" id="snapControlRow" style="display:none;">
@@ -119,14 +118,14 @@ namespace crt
         <button onclick="snapStepForward()">Step Forward</button>
         <button onclick="snapGotoFirst()">Goto First</button>
         <button onclick="snapGotoLast()">Goto Last</button>
-        <button onclick="snapReplayStop()">Stop Snapshot Replay</button>
+        <button class="hide-snapshots" onclick="snapReplayStop()">Stop Snapshot Replay</button>
         <span class="snap-info" id="snapIdxInfo">Index: 0</span>
       </div>
       <div class="snapshot-row" id="snapSliderRow" style="display:none;">
         <input type="range" id="snapSlider" min="0" max="0" value="0" style="flex:1;" oninput="snapSliderChange(this.value)"/>
       </div>
     </div>
-    <div class="sensor-layout">
+    <div class="sensor-layout hide-meten">
       <div class="sensor-widget" id="sw1" onclick="onSensorPanelClick(1, event)">
         <h3>Sensor 1</h3>
         <div class="panel-buttons">
@@ -141,7 +140,7 @@ namespace crt
         <div class="loadcell-section" id="lc1">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight1">- g</div>
-          <div class="lc-ctrl">
+          <div class="lc-ctrl hide-bekijken hide-snapshots">
             <div class="lc-row lc-tare-row">
               <button onclick="lcTare(1)">Tare</button>
               <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
@@ -168,7 +167,7 @@ namespace crt
         <div class="loadcell-section" id="lc2">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight2">- g</div>
-          <div class="lc-ctrl">
+          <div class="lc-ctrl hide-bekijken hide-snapshots">
             <div class="lc-row lc-tare-row">
               <button onclick="lcTare(2)">Tare</button>
               <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
@@ -195,7 +194,7 @@ namespace crt
         <div class="loadcell-section" id="lc3">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight3">- g</div>
-          <div class="lc-ctrl">
+          <div class="lc-ctrl hide-bekijken hide-snapshots">
             <div class="lc-row lc-tare-row">
               <button onclick="lcTare(3)">Tare</button>
               <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
@@ -222,7 +221,7 @@ namespace crt
         <div class="loadcell-section" id="lc4">
           <h4>Loadcell</h4>
           <div class="lc-weight" id="lcWeight4">- g</div>
-          <div class="lc-ctrl">
+          <div class="lc-ctrl hide-bekijken hide-snapshots">
             <div class="lc-row lc-tare-row">
               <button onclick="lcTare(4)">Tare</button>
               <button class="lc-help" onclick="lcHelp()" title="Hoe kalibreer ik de loadcell?">?</button>
@@ -236,18 +235,18 @@ namespace crt
         </div>
       </div>
     </div>
-    <div class="selected-info-panel" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
-      <button class="toggle-btn hide-in-autocal" onclick="doRemoveOffset()">Remove Offset</button>
+    <div class="selected-info-panel hide-meten" id="selectedInfoPanel" onclick="onInfoPanelClick(event)">
+      <button class="toggle-btn hide-in-autocal hide-bekijken hide-snapshots" onclick="doRemoveOffset()">Remove Offset</button>
       <button class="toggle-btn admin-only" onclick="doCapture()">Capture Sum</button>
       <label class="admin-only">maxSumCaptured <input type="text" id="fldSumCap" readonly value="-" size="8"/></label>
       <label class="admin-only">avResidualNoiseSum <input type="text" id="fldResNoise" readonly value="-" size="8"/></label>
       <label class="admin-only">Calibrate Sum Grams <input type="text" id="fldCalGrams" value="1000" size="8" onchange="onCalGramsChange()"/></label>
       <button class="toggle-btn admin-only" onclick="resetIndivCaps()">Reset Indiv Caps</button>
       <button class="toggle-btn" id="btnCalibCheck" onmousedown="acCheckStart(event)" onmouseup="acCheckStop()" onmouseleave="acCheckStop()" ontouchstart="acCheckStart(event)" ontouchend="acCheckStop()" title="Ingedrukt houden: per cirkel de kalibratie-versie. zwart = nooit, groen = actueel, oranje = 1 ronde gemist, rood = 2 of meer">kalibratie_check</button>
-      <label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
+      <label class="hide-bekijken hide-snapshots" style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;margin-left:0.5rem;"><input type="checkbox" id="chkEnableSensor" checked onchange="toggleEnableSensor()"/> Enable Sensor</label>
       <span id="captureError" class="admin-only" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
     </div>
-    <div class="circle-info-panel" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
+    <div class="circle-info-panel hide-meten hide-bekijken hide-snapshots" id="circleInfoPanel" onclick="onCircleInfoPanelClick(event)">
       <div class="circle-info-row admin-only">
         <button class="toggle-btn" onclick="captureIndiv(0)">Capture Indiv 1</button>
         <label>cap <input type="text" id="ciCap0" readonly value="-" size="6"/></label>
@@ -269,7 +268,7 @@ namespace crt
       <span id="captureIndivError" class="admin-only" style="color:#c00;font-weight:600;font-size:0.8rem;display:none;"></span>
       <div class="circle-info-row"><span id="ciAuto" style="font-size:0.75rem;color:#555;"></span></div>
     </div>
-    <div id="status">...</div>
+    <div id="status" class="hide-bekijken hide-snapshots">...</div>
   </div>
   <div id="tipBox" class="tip-box"></div>
 
@@ -366,6 +365,12 @@ namespace crt
     const STATS_FILTER_DEFAULT = 0.9;
     const VALUE_FILTER_DEFAULT = 0.5;
     let isAdmin = false;
+    // Gebruikersmodus van een Gebruiker ('meten' | 'bekijken' | 'snapshots'), anders null.
+    // pageReady: de rol is bekend (accPage); pas dan worden live metingen opgehaald, zodat in
+    // Meting bekijken en Snapshots bekijken nooit live data op de sensoren verschijnt.
+    let userMode = null;
+    let pageReady = false;
+    let userRole = null;   // rol van de ingelogde gebruiker (0..2), null zonder login (testclient)
     window.accPage = function(me) {
       isAdmin = !!me && me.role === ROLE_ADMIN;
       document.body.classList.toggle("is-admin", isAdmin);
@@ -381,9 +386,77 @@ namespace crt
           recolorAll();
         }
       }
+      if (me && me.role === 0) applyUserMode();
+      userRole = me ? me.role : null;
+      pageReady = true;
       if (selectedSensorId !== null && selectedCircleIdx !== null) acUpdateCircleInfo(selectedSensorId, selectedCircleIdx);
       updateRecChart();
     };
+    // Gebruiker: de keuze op de Home-pagina (account.js, USER_MODES) verfijnt wat zichtbaar is, via
+    // body-klasse um-<mode> en de klassen hide-<mode> (grid.css). Zonder keuze: terug naar Home.
+    function applyUserMode() {
+      const mode = accUserMode();
+      if (!mode) { location.replace("/"); return; }
+      userMode = mode;
+      USER_MODES.forEach(u => document.body.classList.toggle("um-" + u.mode, u.mode === mode));
+      // titel van de pagina = de keuze, zoals in de navigatiebalk
+      const label = USER_MODES.find(u => u.mode === mode).nav;
+      document.getElementById("pageTitle").textContent = label;
+      document.title = label;
+      enforceUserMode();
+      recolorAll();
+      snapUpdateSnapshotButton();
+    }
+    // Meting bekijken en Snapshots bekijken: alle sensoren aan, Sensor Value = Norm AutoCal en
+    // Kleurnormalisatie = MaxFixed; in Meting bekijken ook single y-axis aan. Zonder de cookies te
+    // wijzigen. Ook na applyMetaState, want de meta van een geladen bestand zou dit anders overschrijven.
+    function enforceUserMode() {
+      if (userMode !== "bekijken" && userMode !== "snapshots") return;
+      SENSOR_IDS.forEach(id => { sensors[id].enabled = true; });
+      document.getElementById("chkEnableSensor").checked = true;
+      calMode = "autocal";   // zonder kalibratiedata tonen de cirkels 0
+      normalized = false;
+      maxFixed = true;
+      syncCalModeRadios();
+      syncDisplayControls();
+      if (userMode !== "bekijken") return;
+      recSingleY = true;
+      document.getElementById("chkSingleY").checked = true;
+      recShowClipRow();
+    }
+    // Niet-opgeslagen (niet gedownloade) recording en/of snapshots: in Patient meten en voor Admin en
+    // Onderzoeker beide, in Meting bekijken alleen snapshots, in Snapshots bekijken niets.
+    function unsavedText() {
+      const snap = snapFrames.length > 0 && !MI_SNAP.downloaded;
+      if (userMode === "bekijken") return snap ? "U heeft nog niet-opgeslagen snapshots." : null;
+      if (userMode !== "meten" && !(userRole >= 1)) return null;
+      const rec = recFrames.length > 0 && !MI_REC.downloaded;
+      if (rec && snap) return "U heeft uw laatste recording en snapshots nog niet opgeslagen.";
+      if (rec) return "U heeft uw laatste recording nog niet opgeslagen.";
+      if (snap) return "U heeft uw laatste snapshots nog niet opgeslagen.";
+      return null;
+    }
+    // Een link in de navigatiebalk (ook het gebruikersmenu) met niet-opgeslagen data: eerst vragen.
+    // Na Ja wordt dezelfde link opnieuw geklikt. Verversen of sluiten geeft de vraag van de browser.
+    let leaveConfirmed = false;
+    document.querySelector("nav").addEventListener("click", ev => {
+      const a = ev.target.closest("a");
+      if (!a || leaveConfirmed || a.classList.contains("nav-active")) return;
+      const text = unsavedText();
+      if (!text) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      const box = miOpen("Pagina verlaten?");
+      box.appendChild(miEl("p", "", text + " Weet u zeker dat u de pagina wilt verlaten?"));
+      const row = box.appendChild(miEl("div", "mi-buttons"));
+      miButton(row, "Ja", () => { miClose(); leaveConfirmed = true; a.click(); });
+      miButton(row, "Nee, afbreken", miClose);
+    }, true);
+    window.addEventListener("beforeunload", ev => {
+      if (leaveConfirmed || !unsavedText()) return;
+      ev.preventDefault();
+      ev.returnValue = "";
+    });
 
     // Kleurnormalisatie: precies een van normalized/maxFixed staat aan (radiobuttons Normalised /
     // MaxFixed). Bij MaxFixed is het bereik 0..getFixedMax(); die maximumwaarde bestaat twee keer:
@@ -976,6 +1049,7 @@ namespace crt
         if ("lcScale" in m) { s.lcScale = parseFloat(m.lcScale) || 1; setCookie("lcScale" + id, s.lcScale, 365); }
         if ("lcKnown" in m) { s.lcKnownEl.value = m.lcKnown; setCookie("lcKnown" + id, m.lcKnown, 365); }
       });
+      enforceUserMode();
       // Refresh UI to reflect the restored state.
       SENSOR_IDS.forEach(id => updateCircleBorders(sensors[id]));
       recolorAll();
@@ -1183,7 +1257,7 @@ namespace crt
       } else if (recState === 'playpaused') {
         if (playIdx > 0) recShowFrame(playIdx - 1);
       } else {
-        await fetchAll();
+        if (pageReady && userMode !== "bekijken" && userMode !== "snapshots") await fetchAll();   // bekijken: geen live data
       }
       const remaining = Math.max(0, POLL_MS - (Date.now() - start));
       setTimeout(pollLoop, remaining);

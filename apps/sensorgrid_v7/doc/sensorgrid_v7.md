@@ -213,11 +213,21 @@ idf.py -p /dev/ttyACM2 monitor
 
 ### The web interface
 
-Both pages include a **navigation bar** at the top with links to **Home** (`/`) and **Grid View** (`/grid`).
+The **navigation bar** at the top depends on the role of the logged-in user (`navRender` in `account.js`; the link of the current page is white):
+- **Admin, Onderzoeker**: Home, Grid View.
+- **Gebruiker**: Home, Patient Meten, Meting Bekijken, Snapshots Bekijken.
 
-#### Dashboard (Home page)
+Before login (login page) it shows Home and Grid View; both lead to the login page.
 
-The page titled **Sensormetingen** shows real-time bar charts for up to 8 sensors, arranged in two columns (sensors 1-4 on the left, sensors 5-8 on the right).
+#### Home page (`/`)
+
+Requires a login (without one: redirect to `/login`). After the login, Admin and Onderzoeker go straight to the Grid View, a Gebruiker to this Home page (`/login` itself redirects a logged-in user the same way).
+- **Admin / Onderzoeker**: "U bent ingelogd als admin." (or onderzoeker) and a button **Open Grid View**.
+- **Gebruiker**: "Wat wilt u doen?" with the buttons **Patient Meten**, **Meting Bekijken** and **Snapshots bekijken**. Each opens the Grid View in that user mode (`/grid?mode=meten|bekijken|snapshots`, the same as the matching navigation links). See *User modes* under the Grid View.
+
+#### Test page (`/test`, formerly the home page)
+
+Not linked from any navigation bar, and no login needed. The page titled **Sensormetingen** shows real-time bar charts for up to 8 sensors, arranged in two columns (sensors 1-4 on the left, sensors 5-8 on the right).
 
 For each sensor:
 - A **horizontal bar** shows the current value (0-65535). The bar color transitions from yellow (low) to red (high).
@@ -233,7 +243,7 @@ At the bottom of the page:
 
 #### Login and user accounts
 
-The Grid View page (`/grid`) requires a login; without one it redirects to **`/login`**. The Home page and the JSON API stay open.
+The Home page (`/`) and the Grid View page (`/grid`) require a login; without one they redirect to **`/login`**. The test page `/test` and the JSON API stay open.
 
 - **Accounts**: at most 20, stored in NVS (namespace `accounts`) as salted PBKDF2-SHA256 hashes. Usernames are 5-15 characters, passwords 5-20; both only `a-z 0-9 _ ! . ?`.
 - **Roles**: Admin > Onderzoeker > Gebruiker. Admin and Onderzoeker create accounts of their own or a lower role, and delete accounts or reset passwords of a lower role.
@@ -242,9 +252,20 @@ The Grid View page (`/grid`) requires a login; without one it redirects to **`/l
 - **Sessions**: a random token in the cookie `sgsess`, valid for 3 hours, kept in RAM. After a restart of the ESP32 everybody logs in again. A failed login blocks new attempts for 1 second.
 - **User menu** (top right, on Grid View and the account pages): Mijn Account (`/account`), Account aanmaken (`/account_aanmaken`), Accounts beheren (`/accounts_beheren`) and Uitloggen. The last two pages are only for Admin and Onderzoeker.
 - **Wachtwoord vergeten** (login page) shows whom to ask for a password reset, based on the role of the entered username.
-- **Test client**: client_v7 sends the header `X-Sensorgrid-Test` (see `sensorgrid_common/crt_SensorGridHttp.h`), which lets it fetch `/grid` without logging in.
+- **Test client**: client_v7 sends the header `X-Sensorgrid-Test` (see `sensorgrid_common/crt_SensorGridHttp.h`), which lets it fetch `/` and `/grid` without logging in. Its dashboard tests fetch `/test`.
 
 #### Grid View page
+
+**User modes (Gebruiker only):** the choice on the Home page refines what the role already shows (body class `um-<mode>`, elements with class `hide-<mode>`, `applyUserMode`). The mode comes from `?mode=`, or else the last choice (localStorage `sgUserMode`). Without any choice, a Gebruiker is sent back to Home. The page title (heading and browser tab) is the choice: Patient Meten, Meting Bekijken or Snapshots Bekijken.
+- **Patient Meten** (`meten`): hidden are the sensor widgets (with the selected sensor/circle panels), the fieldsets Sensor Value, Kleurnormalisatie and Display, in the snapshot panel Snapshot Replay and Upload, and in the record panel Play, its Pause, Upload and Herkalibreer druksensoren.
+- **Meting Bekijken** (`bekijken`): hidden are in the snapshot panel Snapshot Replay and Upload, and in the record panel Record, its Pause, Stop, Download and Herkalibreer druksensoren. Display and the sensors are visible. In addition:
+  - Live measurements are never shown on the sensors: the page fetches no live data in this mode, so the sensors only show recordings. (On every page, live data is only fetched once the role is known.)
+  - All sensors are enabled, Sensor Value is Norm AutoCal (without calibration data the circles show 0), Kleurnormalisatie is MaxFixed, and single y-axis is on. This is not stored in the cookies, and it is enforced again after a recording's meta is applied (`enforceUserMode`). The fieldsets Sensor Value and Kleurnormalisatie are hidden.
+  - The Snapshot button is grayed until a recording is loaded ("Upload eerst een recording.").
+  - Hidden as well: Upload Meta, Download Meta, the "Laatste update" status line, Remove Offset and Enable Sensor in the green sensor panel, the red circle panel (a circle can still be selected for the chart), the loadcell controls (Known weight, Tare, Calibrate, ?; the weight stays visible) and the single y-axis checkbox.
+- **Snapshots bekijken** (`snapshots`): the record panel is hidden, Upload Meta, Download Meta and the "Laatste update" status line too, and in the snapshot panel Snapshot, Clear Snapshots and Download, and also Snapshot Replay and Stop Snapshot Replay. After a snapshots upload the replay starts automatically. As in Meting Bekijken: no live measurements on the sensors (only the uploaded snapshots), all sensors enabled, Sensor Value = Norm AutoCal and Kleurnormalisatie = MaxFixed with both fieldsets hidden (also after the snapshots' meta is applied), and hidden are Remove Offset, Enable Sensor, the red circle panel and the loadcell controls.
+- **Leaving the page** as Admin or Onderzoeker, or in Patient Meten or Meting Bekijken, via the navigation bar (including the user menu) with data not downloaded yet asks first, with Ja / Nee, afbreken. For Admin, Onderzoeker and Patient Meten the message is "U heeft uw laatste recording / snapshots / recording en snapshots nog niet opgeslagen. Weet u zeker dat u de pagina wilt verlaten?". In Meting Bekijken it is "U heeft nog niet-opgeslagen snapshots. Weet u zeker dat u de pagina wilt verlaten?". Refreshing or closing the tab then gives the browser's own question.
+- **Navigation bar** (all pages and roles): clicking the link of the current page does nothing, so there is no reload that would lose data.
 
 The page titled **Grid View** shows all 128 measurements from each of sensors 1-4 in a **single-row layout** (optimized for landscape viewing). Each sensor has its own widget containing a hex-packed circle grid, histogram, and statistics table.
 
@@ -300,17 +321,18 @@ Below the display control buttons, a grey-bordered panel provides record and pla
 - **Pause** — toggles orange to pause/resume recording without discarding stored frames.
 - **Stop** — stops recording and un-presses the Record button. Enables the Play button. Then asks "Wat voor recording is dit?" (see *Download dialogs* below), unless this content was already downloaded while paused.
 - **Play** — turns green. Replays stored frames at the same 100ms poll interval, feeding them to the grid/loadcell visualization instead of fetching live data. Loops back to the start when all frames have been played. Press again to stop playback and return to live data. On Play (and on resuming from Pause), if no sensor is selected, the first enabled sensor with data in the recording is selected; then, if no circle is selected, circle 0 of the selected sensor. This has the same effect as a mouse click, so the recording chart appears at once.
+- **Upload** — loads a recording file (after the checks below) and starts playing it at once.
 - **Download** — downloads the recorded frames as a JSON file via the download dialogs below. Enabled only when recording is paused or stopped with frames available.
 - **Info label** — shows current state and frame count (e.g. "Recording: 47 frames", "Playing: 12/47").
 - **Zoom** — rightmost on the row, right of the single y-axis checkbox and y-clip fields (visible while a recording chart is shown).
 - **Info** (second row, under Record) — appears once the recording has a kind/patient-id/note (after a download, or after uploading a file that carries them). Shows the kind, patient-id and note. A new Record clears it.
 
 **Download dialogs** (`crt_GridMeasInfo.h`, `/gridmeasinfo.js`):
-- "Wat voor recording is dit?" with **Het is een patient meting**, **Het is een kalibratiemeting** (met de 3D printer) and **Afbreken**.
+- Dialog "Recording downloaden" with the question "Wat voor recording is dit?" and **Het is een patient meting**, **Het is een kalibratiemeting** (met de 3D printer) and **Afbreken**.
   - Patient: dialog "Recording downloaden" with a required patient-id (letters, digits, `-`, `_`) and an optional multi-line note. **Downloaden** stays disabled until the patient-id is valid; hovering explains why, and invalid characters also give a red hint. **Afbreken** cancels. File: `recording_<patient-id>_<datetime>.json`.
-  - Calibration: downloaded at once as `recording_kalibratie_<datetime>.json`.
+  - Calibration: dialog "Recording downloaden" ("Kalibratiemeting (met de 3D printer)") with only the optional note, **Downloaden** and **Afbreken**. File: `recording_kalibratie_<datetime>.json`.
 - The kind, patient-id and note go into the file's meta as `measurement: {type: 'patient' | 'calibration' | 'other', patientId, note}`. They are not part of Download Meta, and Upload Meta ignores them. Uploading a recording restores them, so the Info button and the dialogs show them again.
-- **Download again** of content already downloaded first asks "U heeft deze recording al eens (ooit) gedownload, weet u het zeker?" (**Ja, downloaden** / **Nee, afbreken**). After Ja, the previous handling follows: the "Recording downloaden" dialog prefilled with the previous patient-id and note, or for a calibration recording the download at once. An uploaded file without these data (an older file) gets the kind question. New frames (resume after pause) and a successful "Herkalibreer druksensoren" count as new content, so they do not trigger this warning.
+- **Download again** of content already downloaded first asks "U heeft deze recording al eens (ooit) gedownload, weet u het zeker?" (**Ja, downloaden** / **Nee, afbreken**). After Ja, the "Recording downloaden" dialog of the previous kind follows, prefilled with the previous patient-id and note (for a calibration recording only the note). An uploaded file without these data (an older file) gets the kind question. New frames (resume after pause) and a successful "Herkalibreer druksensoren" count as new content, so they do not trigger this warning.
 - **Uploaded recordings** count as already downloaded, so the first Download already asks the question above. The download of content that came from an upload gets the same name as the uploaded file, without `_org` and without a " (1)" that the browser added earlier to a duplicate name. If the name already exists in the download folder, the browser numbers the new file itself ("x (1).json"). A new Record gives normal file names again.
 - **_org**: only the first download of fresh content (after Record) gets `_org` (original) before `.json`, e.g. `recording_P-12_<datetime>_org.json` or `recording_kalibratie_<datetime>_org.json`. Later downloads of the same recording, and downloads of uploaded content, do not.
 - Escape closes any of these dialogs, like Afbreken.
@@ -331,8 +353,8 @@ Below the recording panel, a lila-bordered panel provides snapshot capture and r
 
 **Capture row:**
 - **Snapshot** — captures the current EMA-raw values of all enabled sensors as a single frame (works with both live and recording-playback data)
-- **Clear Snapshots** — discards all snapshots and exits snapshot replay if active
-- **Download** — downloads snapshots as JSON (enabled when snapshots exist), via dialogs like those of the recording: first "Is dit een patient-meting?" (**Ja** / **Nee** / **Afbreken**). Ja gives the dialog "Snapshots downloaden" with a required patient-id and an optional note (`snapshots_<patient-id>_<datetime>.json`); Nee gives the same dialog with only the note (`snapshots_<datetime>.json`). Downloading the same series again, or an uploaded series, asks "U heeft deze snapshots al eens (ooit) gedownload, weet u het zeker?", then shows the dialog prefilled. A new snapshot makes it new content for this check. A series that came from an upload is saved under the uploaded name (without `_org`), like recordings; Clear Snapshots ends that. The first download of a fresh series (after Clear Snapshots or page load) gets `_org`, like recordings.
+- **Clear Snapshots** — discards all snapshots and exits snapshot replay if active (disabled while there are no snapshots)
+- **Download** — downloads snapshots as JSON (enabled when snapshots exist), via dialogs like those of the recording: first the dialog "Snapshots downloaden" with the question "Is dit een patient-meting?" (**Ja** / **Nee** / **Afbreken**). Ja gives the dialog "Snapshots downloaden" with a required patient-id and an optional note (`snapshots_<patient-id>_<datetime>.json`); Nee gives the same dialog with only the note (`snapshots_<datetime>.json`). Downloading the same series again, or an uploaded series, asks "U heeft deze snapshots al eens (ooit) gedownload, weet u het zeker?", then shows the dialog prefilled. A new snapshot makes it new content for this check. A series that came from an upload is saved under the uploaded name (without `_org`), like recordings; Clear Snapshots ends that. The first download of a fresh series (after Clear Snapshots or page load) gets `_org`, like recordings.
 - **Info label** — shows snapshot count
 - **Snapshots Info** — appears after a download or an upload carrying the data; shows the patient-id (or "Geen patient-meting") and the note of the series. Clear Snapshots clears it.
 

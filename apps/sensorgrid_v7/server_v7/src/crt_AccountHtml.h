@@ -73,7 +73,45 @@ namespace crt
       return PW_RE.test(n) && n === r;
     }
 
+    // Keuzes van een Gebruiker op de Home-pagina; elk opent de Grid View in die gebruikersmodus
+    // (/grid?mode=..., zie applyUserMode in de Grid View). De laatste keuze wordt onthouden.
+    const USER_MODES = [
+      {mode: 'meten', nav: 'Patient Meten', home: 'Patient Meten'},
+      {mode: 'bekijken', nav: 'Meting Bekijken', home: 'Meting Bekijken'},
+      {mode: 'snapshots', nav: 'Snapshots Bekijken', home: 'Snapshots bekijken'}
+    ];
+    function accIsUserMode(m) { return USER_MODES.some(u => u.mode === m); }
+    // Gebruikersmodus uit ?mode=, anders de laatst gekozen (localStorage); null als er geen is.
+    function accUserMode() {
+      const p = new URLSearchParams(location.search).get('mode');
+      if (accIsUserMode(p)) {
+        try { localStorage.setItem('sgUserMode', p); } catch (e) {}
+        return p;
+      }
+      try { const s = localStorage.getItem('sgUserMode'); if (accIsUserMode(s)) return s; } catch (e) {}
+      return null;
+    }
+    // Na het inloggen: Admin en Onderzoeker naar de Grid View, een Gebruiker naar Home.
+    function accLandingPage(role) { return role >= 1 ? '/grid' : '/'; }
+    // Links in <span id="navLinks">: Home, plus Grid View (Admin, Onderzoeker) of de drie keuzes
+    // (Gebruiker). De link van de huidige pagina (<body data-page="home|grid">) is wit.
+    function navRender(me) {
+      const host = document.getElementById('navLinks');
+      if (!host || !me) return;
+      const links = [['/', 'Home']].concat(me.role >= 1 ? [['/grid', 'Grid View']]
+        : USER_MODES.map(u => ['/grid?mode=' + u.mode, u.nav]));
+      const page = document.body.dataset.page;
+      const current = page === 'home' ? '/' : page !== 'grid' ? null : me.role >= 1 ? '/grid' : '/grid?mode=' + accUserMode();
+      host.innerHTML = links.map(([href, text]) => {
+        const active = href === current;
+        return '<a href="' + href + '"' + (active ? ' class="nav-active"' : '') + '>' + text + '</a>';
+      }).join('');
+      // de link van de huidige pagina doet niets (geen verversing, die zou niet-opgeslagen data wissen)
+      host.onclick = ev => { if (ev.target.closest('a.nav-active')) ev.preventDefault(); };
+    }
+
     const UM_CSS =
+      '#navLinks{display:flex;gap:1.5rem}#navLinks a{color:#ccc}#navLinks a.nav-active{color:#fff}' +
       '.um{position:relative;margin-left:auto}' +
       '.um-btn{background:#444;color:#fff;border:1px solid #777;border-radius:4px;padding:.25rem .7rem;font-weight:600;font-size:.85rem;cursor:pointer}' +
       '.um-list{position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:1px solid #ccc;border-radius:4px;box-shadow:0 2px 8px rgba(0,0,0,.25);min-width:170px;z-index:100;display:none}' +
@@ -111,7 +149,7 @@ namespace crt
     });
     document.addEventListener('DOMContentLoaded', () => {
       fetch('/api/me').then(r => r.ok ? r.json() : null).catch(() => null).then(me => {
-        if (me && !me.mustChange) umRender(me);
+        if (me && !me.mustChange) { umRender(me); navRender(me); }
         if (typeof window.accPage === 'function') window.accPage(me);
       });
     });
@@ -184,7 +222,7 @@ namespace crt
       updLogin();
       accPost('/api/login', {name: accVal('name'), password: accVal('pw')}).then(r => {
         if (r.ok) {
-          if (r.mustChange) showForce(); else location.href = '/grid';
+          if (r.mustChange) showForce(); else location.href = accLandingPage(r.role);
           return;
         }
         accText(r.field === 'name' ? 'nameErr' : 'pwErr', r.error);
@@ -233,8 +271,7 @@ namespace crt
 </head>
 <body>
   <nav>
-    <a href="/">Home</a>
-    <a href="/grid">Grid View</a>
+    <span id="navLinks"><a href="/">Home</a></span>
     <span id="userMenu"></span>
   </nav>
   <div class="page">
@@ -323,8 +360,7 @@ namespace crt
 </head>
 <body>
   <nav>
-    <a href="/">Home</a>
-    <a href="/grid">Grid View</a>
+    <span id="navLinks"><a href="/">Home</a></span>
     <span id="userMenu"></span>
   </nav>
   <div class="page">
@@ -427,8 +463,7 @@ namespace crt
 </head>
 <body>
   <nav>
-    <a href="/">Home</a>
-    <a href="/grid">Grid View</a>
+    <span id="navLinks"><a href="/">Home</a></span>
     <span id="userMenu"></span>
   </nav>
   <div class="page">

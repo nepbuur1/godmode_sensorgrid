@@ -116,30 +116,32 @@ namespace crt
       if (recFrames.length > 0 && !MI_REC.downloaded) miAskRecKind();
     }
     function miAskRecKind() {
-      const box = miOpen('Wat voor recording is dit?');
+      const box = miOpen(MI_REC.title);
+      box.appendChild(miEl('p', '', 'Wat voor recording is dit?'));
       const col = box.appendChild(miEl('div', 'mi-choices'));
-      miButton(col, 'Het is een patient meting', () => miDownloadDialog(MI_REC, true));
+      miButton(col, 'Het is een patient meting', () => miDownloadDialog(MI_REC, 'patient'));
       const row = col.appendChild(miEl('div', 'mi-choice-row'));
-      miButton(row, 'Het is een kalibratiemeting', () => {
-        miClose();
-        miSave(MI_REC, {type: 'calibration', patientId: '', note: ''});
-      });
+      miButton(row, 'Het is een kalibratiemeting', () => miDownloadDialog(MI_REC, 'calibration'));
       row.appendChild(miEl('span', '', '(met de 3D printer)'));
       miButton(col, 'Afbreken', miClose);
     }
     function miAskSnapKind() {
-      const box = miOpen('Is dit een patient-meting?');
+      const box = miOpen(MI_SNAP.title);
+      box.appendChild(miEl('p', '', 'Is dit een patient-meting?'));
       const row = box.appendChild(miEl('div', 'mi-buttons'));
-      miButton(row, 'Ja', () => miDownloadDialog(MI_SNAP, true));
-      miButton(row, 'Nee', () => miDownloadDialog(MI_SNAP, false));
+      miButton(row, 'Ja', () => miDownloadDialog(MI_SNAP, 'patient'));
+      miButton(row, 'Nee', () => miDownloadDialog(MI_SNAP, 'other'));
       miButton(row, 'Afbreken', miClose);
     }
 
-    // Dialoog "<Recording|Snapshots> downloaden": patient-id (verplicht als withPatient) en een
-    // optionele aantekening, voorgevuld met de eerder ingevulde gegevens van deze reeks.
-    function miDownloadDialog(m, withPatient) {
+    // Dialoog "<Recording|Snapshots> downloaden" voor soort type ('patient' | 'calibration' | 'other'):
+    // patient-id (alleen en verplicht bij 'patient') en een optionele aantekening, voorgevuld met de
+    // eerder ingevulde gegevens van deze reeks.
+    function miDownloadDialog(m, type) {
+      const withPatient = (type === 'patient');
       const prev = m.info || {patientId: '', note: ''};
       const box = miOpen(m.title);
+      if (type === 'calibration') box.appendChild(miEl('p', '', 'Kalibratiemeting (met de 3D printer)'));
       let pid = null, hint = null;
       if (withPatient) {
         box.appendChild(miEl('label', '', 'Vul hier de patient-id in'));
@@ -158,9 +160,7 @@ namespace crt
       const row = box.appendChild(miEl('div', 'mi-buttons'));
       const dl = miButton(row, 'Downloaden', () => {
         if (dl.disabled) return;
-        const info = withPatient
-          ? {type: 'patient', patientId: pid.value.trim(), note: note.value}
-          : {type: 'other', patientId: '', note: note.value};
+        const info = {type, patientId: withPatient ? pid.value.trim() : '', note: note.value};
         miClose();
         miSave(m, info);
       });
@@ -186,7 +186,7 @@ namespace crt
     }
 
     // Download-knop: eerst waarschuwen als deze inhoud al eens gedownload is (ook een upload); dan
-    // dezelfde afhandeling als de vorige keer (een kalibratiemeting meteen, anders de downloaddialoog).
+    // de downloaddialoog van dezelfde soort als de vorige keer.
     // Een upload zonder deze gegevens (ouder bestand) krijgt de vraag naar de soort meting.
     function miDownloadClick(m) {
       if (!m.downloaded) { m.ask(); return; }
@@ -194,8 +194,7 @@ namespace crt
       const row = box.appendChild(miEl('div', 'mi-buttons'));
       miButton(row, 'Ja, downloaden', () => {
         if (!m.info) m.ask();
-        else if (m.info.type === 'calibration') { miClose(); miSave(m, m.info); }
-        else miDownloadDialog(m, m.info.type === 'patient');
+        else miDownloadDialog(m, m.info.type);
       });
       miButton(row, 'Nee, afbreken', miClose);
     }
