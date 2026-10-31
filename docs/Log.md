@@ -1431,3 +1431,10 @@ to COM5.
   after burning an eFuse; by default they are ordinary GPIOs and no app uses them.
 - Verified on the bare sensor devkit (COM17, id 2): no GPIO errors, "Snapshot button configured on GPIO40".
   The buttons themselves were not pressed (no hardware attached).
+
+### Herkalibreer druksensoren usable during playback
+- The button was disabled while a recording played (enabled only when stopped or paused), and an upload
+  starts playing at once. Now it is also enabled during playback; pressing it first pauses the playback
+  (`recPlayPause()`, the Pause button turns active) and then recalibrates as before. Still disabled while
+  recording, or when the recording has no calibration staircase.
+- Verified in headless Edge (11 checks per role, roles 0 and 1) plus the regression tests (324 + 83 + test.js).

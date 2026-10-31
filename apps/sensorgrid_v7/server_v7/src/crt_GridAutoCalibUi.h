@@ -35,10 +35,11 @@ namespace crt
     function acPreviewValid() {
       return acPreview !== null && acPreview.frames === recFrames;
     }
-    // The button is only usable on a loaded recording that is not being recorded or played,
+    // The button is only usable on a loaded recording that is not being recorded,
     // and only when the preview found at least one sensor with a valid staircase.
+    // During playback it is usable too: pressing it pauses the playback first (acRunRecalibrate).
     function acCanRecalibrate() {
-      return (recState === 'stopped' || recState === 'playpaused') && recFrames.length > 0 &&
+      return (recState === 'stopped' || recState === 'playing' || recState === 'playpaused') && recFrames.length > 0 &&
              acPreviewValid() && acPreview.anyOk;
     }
     function acUpdateRecalibButton() {
@@ -66,6 +67,7 @@ namespace crt
     // store pwl/calVer/calLog, tag the recording, refresh the grid and show the result panel.
     function acRunRecalibrate() {
       if (!acCanRecalibrate()) return null;
+      if (recState === 'playing') recPlayPause();   // same as pressing Pause first
       const t0 = Date.now();
       const result = acPreviewValid() ? acPreview.result
                                       : acCalibrateRecording(recFrames, acLcParamsFromPage(), 'web-autocalib');
