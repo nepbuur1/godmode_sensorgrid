@@ -178,7 +178,7 @@ register_component()
 
 # App-selectie en sensor-id via CMake-cachevariabelen, gezet door build_server.bat /
 # build_sensor.bat (en de .sh-varianten):
-#   idf.py -D SENSORGRID_APP=server_v7|sensor_v7|client_v7  ->  #define SENSORGRID_APP_<NAAM> 1
+#   idf.py -D SENSORGRID_APP=server_v7|sensor_v7|client_v7|hello_simcard  ->  #define SENSORGRID_APP_<NAAM> 1
 #   idf.py -D SENSORGRID_SENSOR_ID=<n>                       ->  #define SENSORGRID_SENSOR_ID <n>
 # Zonder deze variabelen geldt de handmatige selectie in main.cpp (en SENSOR_ID in sensor_v7_ino.h).
 if(DEFINED SENSORGRID_APP AND NOT "${SENSORGRID_APP}" STREQUAL "")

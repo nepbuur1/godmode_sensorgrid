@@ -1406,3 +1406,28 @@ Snapshots Bekijken forces AutoCal) + 9. Built and flashed to COM5.
 Verified in headless Edge: 108 dialog checks per role (calibration note dialog, nothing downloaded before
 Downloaden, note in meta.measurement, prefilled on re-download), plus 83 + 126 + 46 + 9. Built and flashed
 to COM5.
+
+### hello_simcard: 4 MB write, read and delete times; app selectable via SENSORGRID_APP
+- Three new steps (5-7 of now 8): write a 4 MB file, read it back, delete it, each timed
+  (`testWriteBigFile`, `testReadBigFile`, `testRemoveBigFile`; `SdCard::fileExists` for the delete check).
+- Card `CBADS` at 20 MHz, three runs: write 6200-6223 ms (658-660 kB/s), read 6019-6024 ms (679-680 kB/s),
+  delete 9.3 ms. Results in Appendix A of `apps/hello_simcard/doc/hello_simcard.md`.
+- `main.cpp`: `#elif defined(SENSORGRID_APP_HELLO_SIMCARD)`, so `idf.py -D SENSORGRID_APP=hello_simcard`
+  selects the app (built in its own `build_simcard` with `sdkconfig.server`).
+
+### sensor_v7: no false HX711 detection without a loadcell
+- Without an HX711, the floating DOUT pin (GPIO8, library sets plain INPUT) often read low, so the sensor
+  reported `lc=1` and sent junk raw values (0 and 0x7FFFFF), visible as a jumping loadcell weight.
+- `HX711Measurement::init()` now enables the pull-up on DOUT before detection. Verified on the bare devkit
+  (COM17, id 2): "HX711 not detected", stub measurement still active.
+
+### Button pins: snapshot GPIO35 -> GPIO40, logger dump GPIO22 -> GPIO41
+- Every app logged `gpio_set_direction(308): GPIO number error` (and the same for `gpio_set_pull_mode`) just
+  before `app_main`: the logger in `main.cpp` used GPIO22 as dump button, which does not exist on the ESP32-S3.
+  Now GPIO41 (button to GND, internal pull-up; the logger dumps on release, no dump at boot).
+- Snapshot button (sensor_v7) moved from GPIO35 to GPIO40. The devkits are N16R8 (esptool: "Embedded PSRAM 8MB
+  (AP_3v3)"), whose octal PSRAM is wired to GPIO35-37; fine while PSRAM is off, but not reserved for us.
+- Not chosen: GPIO19/20 (native USB D-/D+, carries the console, COM port and JTAG). GPIO40/41 are only JTAG pins
+  after burning an eFuse; by default they are ordinary GPIOs and no app uses them.
+- Verified on the bare sensor devkit (COM17, id 2): no GPIO errors, "Snapshot button configured on GPIO40".
+  The buttons themselves were not pressed (no hardware attached).

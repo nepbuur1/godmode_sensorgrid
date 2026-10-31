@@ -7,7 +7,9 @@ so it is deliberately not part of sensorgrid_v7.
 
 On boot it runs one sequence and reports the verdict: it probes the wiring, mounts the card (FAT32,
 via the ESP-IDF `sdspi` driver with DMA), logs the card properties, writes and verifies a small file,
-measures write and read throughput on a 256 kB file, lists the root directory, and unmounts. The RGB
+measures write and read throughput on a 256 kB file, times writing, reading and deleting a 4 MB file
+(see [Appendix A](#appendix-a-4-mb-write-read-and-delete-times)), lists the root directory, and
+unmounts. The RGB
 LED then flashes green when everything passed and red when anything failed, so the outcome is visible
 without a serial monitor.
 
@@ -67,6 +69,17 @@ See Log.md phase 7a for the pins that were deliberately avoided and why.
       - ! readEntireFile(path)
       - ! logThroughput(label, bytes, elapsed)
       - ? removeFile(path)    // only when the read-back matched
+    - ! testWriteBigFile()
+      - ! removeFile(path)    // a leftover from an aborted run
+      - ! writeFile(path, chunk, repeatCount)
+      - ? removeFile(path)    // only when the write failed
+      - ? logThroughput(label, bytes, elapsed)
+    - ! testReadBigFile(bigWritten)
+      - ? readEntireFile(path)    // only when the 4 MB file was written
+      - ? logThroughput(label, bytes, elapsed)
+    - ! testRemoveBigFile(bigWritten)
+      - ? removeFile(path)    // only when the 4 MB file was written
+      - ? fileExists(path)
     - ! listRootDirectory()
       - ! readRootDirectory()
     - ! unmount()
@@ -192,3 +205,34 @@ CMD6 switch that both of our cards reject.
   and then only flashes the LED — but it is not a pattern to copy.
 - The card is never formatted by this app (`format_if_mount_failed = false`), by design: a test app
   should not be able to wipe the card it is testing.
+
+## Appendix A: 4 MB write, read and delete times
+
+Steps 5-7 of the sequence time a 4 MB file (`/sdcard/big4mb.bin`, 1024 chunks of 4 kB):
+
+- **Write** (step 5): from `fopen` up to and including the flushing `fclose`. A leftover file from an
+  aborted run is deleted first, so this is always the creation of a new file.
+- **Read** (step 6): the whole file streamed through the 4 kB scratch buffer, from `fopen` up to and
+  including `fclose`. Only the byte count is checked, not the contents, so the timing is not mixed
+  with a comparison.
+- **Delete** (step 7): `unlink()`, followed by a check that the file is gone. FAT only frees the
+  clusters in its allocation table and marks the directory entry as deleted; the 4 MB of data
+  sectors are not overwritten. That is why it is three orders of magnitude faster than writing.
+
+Measured on 2026-10-31: card `CBADS` (SDHC, 15115 MB, FAT32), 20 MHz, server devkit on COM5, three
+runs:
+
+| Run | Write 4 MB | Read 4 MB | Delete 4 MB |
+|-----|------------|-----------|-------------|
+| 1 | 6201 ms (660 kB/s) | 6019 ms (680 kB/s) | 9.3 ms |
+| 2 | 6223 ms (658 kB/s) | 6024 ms (679 kB/s) | 9.3 ms |
+| 3 | 6200 ms (660 kB/s) | 6020 ms (680 kB/s) | 9.3 ms |
+
+The same runs gave 650-651 kB/s write and 676-677 kB/s read for the 256 kB file of step 4: the
+throughput does not depend on the file size between 256 kB and 4 MB. So with this card and
+SPI at 20 MHz, writing or reading takes about **1.5 s per MB**. Deleting the 4 MB file costs about
+9 ms; for much larger files that grows somewhat, because more clusters have to be freed in the FAT
+(not measured).
+
+Not yet measured: card `SD16G`, which had the opposite read/write balance in the 256 kB test
+(write 664-672 kB/s, read 478-483 kB/s).

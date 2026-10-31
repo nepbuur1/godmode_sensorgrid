@@ -52,6 +52,13 @@ namespace crt
 			// Construct HX711 (calls begin() which sets up pin modes)
 			scale = new HX711(DOUT_PIN, SCK_PIN);
 
+			// The library leaves DOUT floating. Without an HX711 attached, a floating pin
+			// often reads low, which looks like "data ready" and yields junk readings.
+			// The pull-up makes a missing HX711 read high (= never ready, so not detected);
+			// a real HX711 drives DOUT actively, so the pull-up does not affect it.
+			gpio_pullup_en((gpio_num_t)DOUT_PIN);
+			delay(1);
+
 			detected = scale->wait_ready_timeout(500);
 			if (detected)
 			{

@@ -18,7 +18,9 @@
 namespace crt
 {
 	// Create a "global" logger object within namespace crt.
-	const unsigned int pinButtonDump = 22; // Pressing a button connected to this pin dumps the latest logs to serial monitor.
+	// Pressing (and releasing) a button between this pin and GND dumps the latest logs to serial monitor.
+	// GPIO41: a free, ordinary GPIO on the ESP32-S3 (GPIO22 does not exist on the S3).
+	const unsigned int pinButtonDump = 41;
 	Logger<100> theLogger("Logger", 2 /*priority*/, ARDUINO_RUNNING_CORE, pinButtonDump);
 	ILogger& logger = theLogger; // Global logger instance used by CleanGUI components.
 
@@ -104,17 +106,20 @@ namespace crt
 //#include <client_v5.ino>
 
 // **** Standalone hardware test app (phase 7b) ****
+// Ook te kiezen met idf.py -D SENSORGRID_APP=hello_simcard (zie het blok hieronder).
 //#include <hello_simcard.ino>
 
 // **** Sensor Grid apps (sensorgrid_v7) ****
 // Selectie via build_server.bat / build_sensor.bat (idf.py -D SENSORGRID_APP=server_v7|sensor_v7|
-// client_v7, zie main/CMakeLists.txt). Zonder die variabele geldt de handmatige keuze hieronder.
+// client_v7|hello_simcard, zie main/CMakeLists.txt). Zonder die variabele geldt de handmatige keuze hieronder.
 #if defined(SENSORGRID_APP_SERVER_V7)
 #include <server_v7.ino>
 #elif defined(SENSORGRID_APP_SENSOR_V7)
 #include <sensor_v7.ino>
 #elif defined(SENSORGRID_APP_CLIENT_V7)
 #include <client_v7.ino>
+#elif defined(SENSORGRID_APP_HELLO_SIMCARD)
+#include <hello_simcard.ino>
 #else
 #include <server_v7.ino>
 //#include <sensor_v7.ino>

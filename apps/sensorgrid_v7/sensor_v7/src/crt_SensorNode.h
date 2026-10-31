@@ -49,8 +49,9 @@ namespace crt
 		// Optional HX711 loadcell
 		HX711Measurement hx711;
 
-		// Snapshot button on GPIO35 (active low with internal pullup)
-		static const int SNAPSHOT_PIN = 35;
+		// Snapshot button on GPIO40 (active low with internal pullup).
+		// Not GPIO35: on modules with octal PSRAM (N16R8) that pin is wired to the PSRAM.
+		static const int SNAPSHOT_PIN = 40;
 
 		static SensorNode* instance;
 		static bool serverPeerAdded;
@@ -212,7 +213,7 @@ namespace crt
 			// Detect and initialize optional HX711 loadcell
 			hx711.init();
 
-			// Configure snapshot button on GPIO35 (active low, internal pullup)
+			// Configure snapshot button on GPIO40 (active low, internal pullup)
 			::pinMode(SNAPSHOT_PIN, INPUT_PULLUP);
 			attachInterrupt(digitalPinToInterrupt(SNAPSHOT_PIN), crt::snapshotISR, FALLING);
 			ESP_LOGI("SensorNode", "Snapshot button configured on GPIO%d", SNAPSHOT_PIN);

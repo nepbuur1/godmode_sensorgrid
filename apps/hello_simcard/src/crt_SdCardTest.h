@@ -15,11 +15,14 @@ namespace crt
 		static const size_t CHUNK_SIZE = 4096;
 		static const size_t THROUGHPUT_CHUNK_COUNT = 64;             // 64 * 4kB = 256kB
 		static const size_t THROUGHPUT_SIZE = CHUNK_SIZE * THROUGHPUT_CHUNK_COUNT;
+		static const size_t BIG_CHUNK_COUNT = 1024;                  // 1024 * 4kB = 4MB
+		static const size_t BIG_SIZE = CHUNK_SIZE * BIG_CHUNK_COUNT;
 		static const size_t MAX_DIR_ENTRIES = 32;
 		static const unsigned long LED_FLASH_INTERVAL_MS = 500;
 
 		static constexpr const char* SMALL_FILE = "/sdcard/hello.txt";
 		static constexpr const char* LARGE_FILE = "/sdcard/speed.bin";
+		static constexpr const char* BIG_FILE = "/sdcard/big4mb.bin";
 		static constexpr const char* SMALL_FILE_CONTENTS = "Hello simcard! - written by hello_simcard.";
 
 		SdCard& sdCard;
@@ -78,7 +81,7 @@ namespace crt
 	private:
 		void runAllTests()
 		{
-			ESP_LOGI("SdCardTest", "--- 1/5 mounting the card ---");
+			ESP_LOGI("SdCardTest", "--- 1/8 mounting the card ---");
 			probeWiring();
 			if (!sdCard.mount())
 			{
@@ -91,6 +94,10 @@ namespace crt
 			passed = reportProperties() && passed;
 			passed = testSmallFileRoundTrip() && passed;
 			passed = testThroughput() && passed;
+			bool bigWritten = testWriteBigFile();
+			passed = bigWritten && passed;
+			passed = testReadBigFile(bigWritten) && passed;
+			passed = testRemoveBigFile(bigWritten) && passed;
 			passed = listRootDirectory() && passed;
 
 			ESP_LOGI("SdCardTest", "--- unmounting ---");
@@ -119,7 +126,7 @@ namespace crt
 
 		bool reportProperties()
 		{
-			ESP_LOGI("SdCardTest", "--- 2/5 card properties ---");
+			ESP_LOGI("SdCardTest", "--- 2/8 card properties ---");
 			SdCard::Properties properties = sdCard.getProperties();
 			ESP_LOGI("SdCardTest", "Name        : %.8s", properties.name);
 			ESP_LOGI("SdCardTest", "Type        : %s", properties.isHighCapacity ? "SDHC/SDXC" : "SDSC");
@@ -131,7 +138,7 @@ namespace crt
 
 		bool testSmallFileRoundTrip()
 		{
-			ESP_LOGI("SdCardTest", "--- 3/5 write, read back and verify a small file ---");
+			ESP_LOGI("SdCardTest", "--- 3/8 write, read back and verify a small file ---");
 			size_t length = strlen(SMALL_FILE_CONTENTS);
 
 			if (!sdCard.writeFile(SMALL_FILE, (const uint8_t*)SMALL_FILE_CONTENTS, length))
@@ -158,7 +165,7 @@ namespace crt
 
 		bool testThroughput()
 		{
-			ESP_LOGI("SdCardTest", "--- 4/5 throughput of a %u kB file ---", (unsigned)(THROUGHPUT_SIZE / 1024));
+			ESP_LOGI("SdCardTest", "--- 4/8 throughput of a %u kB file ---", (unsigned)(THROUGHPUT_SIZE / 1024));
 
 			int64_t startUs = esp_timer_get_time();
 			bool written = sdCard.writeFile(LARGE_FILE, chunkBuffer, CHUNK_SIZE, THROUGHPUT_CHUNK_COUNT);
@@ -183,9 +190,73 @@ namespace crt
 			return true;
 		}
 
+		// Times writing a 4MB file, from fopen up to and including the flushing fclose.
+		bool testWriteBigFile()
+		{
+			ESP_LOGI("SdCardTest", "--- 5/8 write a %u MB file ---", (unsigned)(BIG_SIZE / (1024 * 1024)));
+			sdCard.removeFile(BIG_FILE);   // a leftover from an aborted run would turn this into an overwrite
+
+			int64_t startUs = esp_timer_get_time();
+			bool written = sdCard.writeFile(BIG_FILE, chunkBuffer, CHUNK_SIZE, BIG_CHUNK_COUNT);
+			int64_t writeUs = esp_timer_get_time() - startUs;
+			if (!written)
+			{
+				sdCard.removeFile(BIG_FILE);   // don't leave a partial file behind
+				return false;
+			}
+			logThroughput("Write", BIG_SIZE, writeUs);
+			return true;
+		}
+
+		// Times reading the 4MB file back, from fopen up to and including fclose.
+		bool testReadBigFile(bool bigWritten)
+		{
+			ESP_LOGI("SdCardTest", "--- 6/8 read the %u MB file ---", (unsigned)(BIG_SIZE / (1024 * 1024)));
+			if (!bigWritten)
+			{
+				ESP_LOGE("SdCardTest", "Skipped: the file was not written.");
+				return false;
+			}
+
+			int64_t startUs = esp_timer_get_time();
+			size_t bytesRead = sdCard.readEntireFile(BIG_FILE, chunkBuffer, CHUNK_SIZE);
+			int64_t readUs = esp_timer_get_time() - startUs;
+			if (bytesRead != BIG_SIZE)
+			{
+				ESP_LOGE("SdCardTest", "Read back %u bytes, expected %u", (unsigned)bytesRead, (unsigned)BIG_SIZE);
+				return false;
+			}
+			logThroughput("Read ", BIG_SIZE, readUs);
+			return true;
+		}
+
+		// Times deleting the 4MB file. FAT only frees the clusters in its table and marks the
+		// directory entry as deleted; the data sectors themselves are not overwritten.
+		bool testRemoveBigFile(bool bigWritten)
+		{
+			ESP_LOGI("SdCardTest", "--- 7/8 delete the %u MB file ---", (unsigned)(BIG_SIZE / (1024 * 1024)));
+			if (!bigWritten)
+			{
+				ESP_LOGE("SdCardTest", "Skipped: the file was not written.");
+				return false;
+			}
+
+			int64_t startUs = esp_timer_get_time();
+			bool removed = sdCard.removeFile(BIG_FILE);
+			int64_t removeUs = esp_timer_get_time() - startUs;
+			if (!removed || sdCard.fileExists(BIG_FILE))
+			{
+				ESP_LOGE("SdCardTest", "Could not delete %s", BIG_FILE);
+				return false;
+			}
+			ESP_LOGI("SdCardTest", "Delete: %u kB in %lld us (%lld ms)",
+				(unsigned)(BIG_SIZE / 1024), removeUs, removeUs / 1000);
+			return true;
+		}
+
 		bool listRootDirectory()
 		{
-			ESP_LOGI("SdCardTest", "--- 5/5 contents of the root directory ---");
+			ESP_LOGI("SdCardTest", "--- 8/8 contents of the root directory ---");
 
 			// On the heap: MAX_DIR_ENTRIES entries outgrow the 3584 byte main task stack.
 			SdCard::DirEntry* entries = (SdCard::DirEntry*)malloc(MAX_DIR_ENTRIES * sizeof(SdCard::DirEntry));

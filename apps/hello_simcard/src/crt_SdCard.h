@@ -237,6 +237,12 @@ namespace crt
 			return (unlink(path) == 0);
 		}
 
+		bool fileExists(const char* path)
+		{
+			struct stat fileStat;
+			return (stat(path, &fileStat) == 0);
+		}
+
 		// Fills the given array with the entries of the root directory.
 		// Returns the number of entries that were written.
 		size_t readRootDirectory(DirEntry* entries, size_t maxEntries)
