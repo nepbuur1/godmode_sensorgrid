@@ -4,3 +4,9 @@ CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
 CONFIG_ESPTOOLPY_FLASHSIZE="16MB"
 CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="partitions_server_16mb.csv"
 CONFIG_PARTITION_TABLE_FILENAME="partitions_server_16mb.csv"
+# Lange bestandsnamen op de SD-kaart (recording_<id>_<datum-tijd>_org.json, SdStore)
+CONFIG_FATFS_LFN_HEAP=y
+CONFIG_FATFS_MAX_LFN=255
+# Grotere stack voor de main-taak: setup()/loop() en de webhandlers draaien daarop, en het
+# mounten van de SD-kaart en de FATFS-aanroepen passen niet in de standaard 3584 bytes.
+CONFIG_ESP_MAIN_TASK_STACK_SIZE=8192

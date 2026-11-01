@@ -18,6 +18,7 @@ namespace crt
   <script src="/gridrecchart.js"></script>
   <script src="/gridsnapshot.js"></script>
   <script src="/gridmeasinfo.js"></script>
+  <script src="/gridsd.js"></script>
   <script src="/gridhistogram.js"></script>
   <script src="/gridplot.js"></script>
   <script src="/gridcircle.js"></script>
@@ -70,8 +71,10 @@ namespace crt
         <button id="btnStop" class="hide-bekijken" onclick="recStop()" disabled>Stop</button>
         <button id="btnPlay" class="hide-meten" onclick="recPlay()" disabled style="margin-left:1rem;">Play</button>
         <button id="btnPlayPause" class="hide-meten" onclick="recPlayPause()" disabled>Pause</button>
-        <button id="btnDownload" class="hide-bekijken" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
-        <button id="btnRecUpload" class="hide-meten" onclick="miUploadClick(MI_REC)">Upload</button>
+        <button id="btnDownload" class="hide-bekijken hide-gebruiker" onclick="recDownload()" disabled style="margin-left:1rem;">Download</button>
+        <button id="btnRecUpload" class="hide-meten hide-gebruiker" onclick="miUploadClick(MI_REC)">Upload</button>
+        <button id="btnRecSave" class="hide-bekijken" onclick="miSaveClick(MI_REC)" disabled title="Opslaan op de SD-kaart">Opslaan</button>
+        <button id="btnRecLoad" class="hide-meten" onclick="miLoadClick(MI_REC)" title="Laden van de SD-kaart">Laden</button>
         <input type="file" id="recFileInput" accept=".json" style="display:none" onchange="recUpload(event)"/>
         <button id="btnRecalib" class="hide-meten hide-bekijken" onclick="acRunRecalibrate()" disabled style="margin-left:1rem;" title="Kalibreer de druksensoren uit de geladen recording (loadcell vooraf: Tare, gewicht erop, Calibrate)">Herkalibreer druksensoren</button>
         <span class="rec-info" id="recInfo">Ready</span>
@@ -104,8 +107,10 @@ namespace crt
       <div class="snapshot-row">
         <button id="btnSnapshot" class="hide-snapshots" onclick="snapTake()">Snapshot</button>
         <button id="btnSnapClear" class="hide-snapshots" onclick="snapClear()" disabled>Clear Snapshots</button>
-        <button id="btnSnapDownload" class="hide-snapshots" onclick="snapDownload()" disabled>Download</button>
-        <button id="btnSnapUpload" class="hide-meten hide-bekijken" onclick="miUploadClick(MI_SNAP)">Upload</button>
+        <button id="btnSnapDownload" class="hide-snapshots hide-gebruiker" onclick="snapDownload()" disabled>Download</button>
+        <button id="btnSnapUpload" class="hide-meten hide-bekijken hide-gebruiker" onclick="miUploadClick(MI_SNAP)">Upload</button>
+        <button id="btnSnapSave" class="hide-snapshots" onclick="miSaveClick(MI_SNAP)" disabled title="Opslaan op de SD-kaart">Opslaan</button>
+        <button id="btnSnapLoad" class="hide-meten hide-bekijken" onclick="miLoadClick(MI_SNAP)" title="Laden van de SD-kaart">Laden</button>
         <input type="file" id="snapFileInput" accept=".json" style="display:none" onchange="snapUpload(event)"/>
         <span class="snap-info" id="snapInfo">Snapshots: 0</span>
         <button id="btnSnapInfo" onclick="miShowInfo(MI_SNAP)" style="display:none;" title="Patient-id en aantekening van deze snapshots">Snapshots Info</button>

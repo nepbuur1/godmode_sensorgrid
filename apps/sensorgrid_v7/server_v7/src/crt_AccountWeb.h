@@ -477,6 +477,13 @@ namespace crt
 			return false;
 		}
 
+		// Role of the logged-in user of the current request, or -1 without a (completed) login.
+		int currentRole()
+		{
+			Session* s = currentSession();
+			return (s && !s->mustChange) ? (int)store.role(s->idx) : -1;
+		}
+
 		void resetRootPassword()
 		{
 			store.resetRootPassword();

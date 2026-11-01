@@ -33,6 +33,8 @@ The module is fed from an external 5V supply whose GND is tied to the devkit GND
 
 See Log.md phase 7a for the pins that were deliberately avoided and why.
 
+`SdCard` (`src/crt_SdCard.h`) is also the card driver of server_v7: its `SdStore` (Opslaan / Laden of recordings and snapshots) includes this header, with the same pins and 20 MHz. See `sensorgrid_v7.md`, section "SD card".
+
 ## Object Model
 
 ![hello_simcard object model](img/hello_simcard_object_model.svg)

@@ -51,7 +51,7 @@ namespace crt
       const b = document.getElementById('btnSnapshot');
       const off = (userMode === 'bekijken' && recFrames.length === 0);
       b.disabled = off;
-      b.title = off ? 'Upload eerst een recording.' : '';
+      b.title = off ? 'Laad eerst een recording.' : '';
     }
 
     function snapClear() {
@@ -72,27 +72,31 @@ namespace crt
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
-        let parsed;
-        try { parsed = JSON.parse(e.target.result); } catch (err) { parsed = undefined; }
-        // eerst de soort van het bestand controleren (gridmeasinfo.js)
-        miCheckUpload(MI_SNAP, file.name, parsed, () => { try {
-          const split = metaSplitFromImport(parsed);
-          const data = split.frames;
-          if (snapReplaying) snapReplayStop();
-          if (recFrames.length > 0) recClear();   // na de vraag in miUploadClick
-          snapFrames = data;
-          snapIdx = 0;
-          if (split.meta) applyMetaState(split.meta);
-          miLoaded(MI_SNAP, split.meta, file.name);
-          snapUpdateUI();
-          if (userMode === 'snapshots') snapReplayStart();   // Snapshots bekijken: replay-knoppen verborgen
-        } catch (err) {
-          alert('Failed to load snapshot file: ' + err.message);
-        } });
-      };
+      reader.onload = function(e) { snapLoadText(e.target.result, file.name, false); };
       reader.readAsText(file);
       event.target.value = '';
+    }
+
+    // Snapshots laden uit de tekst van een bestand: van de pc (Upload) of van de SD-kaart (Laden,
+    // fromSd; gridsd.js).
+    function snapLoadText(text, name, fromSd) {
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (err) { parsed = undefined; }
+      // eerst de soort van het bestand controleren (gridmeasinfo.js)
+      miCheckUpload(MI_SNAP, name, parsed, () => { try {
+        const split = metaSplitFromImport(parsed);
+        const data = split.frames;
+        if (snapReplaying) snapReplayStop();
+        if (recFrames.length > 0) recClear();   // na de vraag in miConfirmReplace
+        snapFrames = data;
+        snapIdx = 0;
+        if (split.meta) applyMetaState(split.meta);
+        miLoaded(MI_SNAP, split.meta, name, fromSd);
+        snapUpdateUI();
+        if (userMode === 'snapshots') snapReplayStart();   // Snapshots bekijken: replay-knoppen verborgen
+      } catch (err) {
+        alert('Failed to load snapshot file: ' + err.message);
+      } });
     }
 
     function snapReplayStart() {
@@ -140,6 +144,7 @@ namespace crt
       document.getElementById('snapInfo').textContent = 'Snapshots: ' + snapFrames.length;
       document.getElementById('snapIdxInfo').textContent = 'Index: ' + snapIdx;
       document.getElementById('btnSnapDownload').disabled = (snapFrames.length === 0);
+      document.getElementById('btnSnapSave').disabled = (snapFrames.length === 0);
       document.getElementById('btnSnapClear').disabled = (snapFrames.length === 0);
       document.getElementById('btnSnapReplay').disabled = (snapFrames.length === 0);
       const slider = document.getElementById('snapSlider');

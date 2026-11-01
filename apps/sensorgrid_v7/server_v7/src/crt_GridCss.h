@@ -99,6 +99,12 @@ namespace crt
     body.um-snapshots .hide-snapshots {
       display: none !important;
     }
+    /* Gebruiker (in elke modus): geen Download/Upload naar de pc, alleen Opslaan/Laden (SD-kaart) */
+    body.um-meten .hide-gebruiker,
+    body.um-bekijken .hide-gebruiker,
+    body.um-snapshots .hide-gebruiker {
+      display: none !important;
+    }
     .note-popup {
       position: fixed;
       z-index: 1000;
@@ -599,6 +605,13 @@ namespace crt
     .mi-choices { display: flex; flex-direction: column; gap: 0.5rem; align-items: flex-start; }
     .mi-choice-row { display: flex; gap: 0.5rem; align-items: center; color: #666; }
     .mi-err { color: #c00; font-weight: 600; font-size: 0.8rem; }
+    /* plakveld "Naam plus patientID" en de bestandenlijst van Laden (gridsd.js) */
+    .pid-head { display: flex; align-items: center; gap: 0.5rem; }
+    .mi-box button.pid-help { padding: 0 0.45rem; margin-top: 0.3rem; font-size: 0.8rem; }
+    .pid-out { font-weight: 600; color: #333; }
+    .pid-note { color: #666; font-size: 0.8rem; }
+    .sd-list { display: flex; flex-direction: column; gap: 0.3rem; max-height: 16rem; overflow-y: auto; }
+    .mi-box button.sd-file { text-align: left; font-weight: 400; color: #333; }
     .mi-text {
       white-space: pre-wrap;
       background: #f5f5f5;

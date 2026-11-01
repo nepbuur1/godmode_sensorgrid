@@ -1,6 +1,6 @@
 // by Marius Versteegen, 2025
-// Download dialogs and Info buttons for recordings and snapshots on the Grid visualization page:
-// what kind of measurement it is, patient-id and a note.
+// Download and Opslaan dialogs and Info buttons for recordings and snapshots on the Grid
+// visualization page: what kind of measurement it is, patient-id and a note.
 
 #pragma once
 
@@ -15,26 +15,32 @@ namespace crt
     // een download daarvan krijgt weer die naam (miUploadName); bestaat hij al, dan nummert de browser.
     // orgDone: de eerste download van verse inhoud (na Record / Clear Snapshots) is gedaan; alleen
     // die eerste krijgt _org (origineel) achter de naam.
-    const PATIENT_ID_RE = /^[A-Za-z0-9_-]+$/;
+    // sdName: naam waaronder deze inhoud op de SD-kaart staat (opgeslagen of daarvandaan geladen),
+    // anders null. Opnieuw opslaan onder dezelfde naam kan niet (gridsd.js).
+    // target van de dialogen: 'pc' (Download) of 'sd' (Opslaan op de SD-kaart, gridsd.js).
     const MI_REC = {
-      word: 'recording', title: 'Recording downloaden', infoTitle: 'Recording info',
-      anchor: 'btnDownload', info: null, downloaded: false, source: null, orgDone: false,
+      word: 'recording', title: 'Recording downloaden', saveTitle: 'Recording opslaan', infoTitle: 'Recording info',
+      anchor: 'btnDownload', saveAnchor: 'btnRecSave',
+      info: null, downloaded: false, source: null, orgDone: false, sdName: null,
       fileName: info => 'recording_' + miNamePart(info) + recLocalStamp() + '.json',
       data: info => metaAppendForExport(recFrames, recExportTag(), info, 'recording'),
-      ask: () => miAskRecKind()
+      ask: target => miAskRecKind(target)
     };
     const MI_SNAP = {
-      word: 'snapshots', title: 'Snapshots downloaden', infoTitle: 'Snapshots info',
-      anchor: 'btnSnapDownload', info: null, downloaded: false, source: null, orgDone: false,
+      word: 'snapshots', title: 'Snapshots downloaden', saveTitle: 'Snapshots opslaan', infoTitle: 'Snapshots info',
+      anchor: 'btnSnapDownload', saveAnchor: 'btnSnapSave',
+      info: null, downloaded: false, source: null, orgDone: false, sdName: null,
       fileName: info => 'snapshots_' + miNamePart(info) + recLocalStamp() + '.json',
       data: info => metaAppendForExport(snapFrames, null, info, 'snapshots'),
-      ask: () => miAskSnapKind()
+      ask: target => miAskSnapKind(target)
     };
     function miNamePart(info) {
       if (info.type === 'patient') return info.patientId + '_';
       if (info.type === 'calibration') return 'kalibratie_';
-      return '';
+      return 'andere_';
     }
+    // Een Gebruiker heeft geen Download: na Stop volgt bij hem de Opslaan-dialoog.
+    function miStopTarget() { return userRole === 0 ? 'sd' : 'pc'; }
 
     // Naam van de upload, zonder een " (1)" die de browser eerder aan een dubbele naam toevoegde en
     // zonder _org (dat hoort alleen bij het origineel); de browser nummert zelf opnieuw als de naam
@@ -43,11 +49,14 @@ namespace crt
       return name.replace(/\.json$/i, '').replace(/\s*\(\d+\)$/, '').replace(/_org$/, '') + '.json';
     }
 
-    function miReset(m) { m.info = null; m.downloaded = false; m.source = null; m.orgDone = false; miUpdateInfoButtons(); }
-    function miContentChanged(m) { m.downloaded = false; }
-    function miLoaded(m, meta, fileName) {
+    function miReset(m) { m.info = null; m.downloaded = false; m.source = null; m.orgDone = false; m.sdName = null; miUpdateInfoButtons(); }
+    function miContentChanged(m) { m.downloaded = false; m.sdName = null; }
+    // Geladen van de pc (Upload) of van de SD-kaart (Laden, fromSd): een upload telt als al eens
+    // gedownload, een bestand van de SD-kaart als al opgeslagen.
+    function miLoaded(m, meta, fileName, fromSd) {
       m.info = miFromMeta(meta);
-      m.downloaded = true;
+      m.downloaded = !fromSd;
+      m.sdName = fromSd ? fileName : null;
       m.source = fileName || 'upload.json';
       m.orgDone = true;
       miUpdateInfoButtons();
@@ -100,10 +109,34 @@ namespace crt
       return box;
     }
     function miClose() {
+      miSubClose();
       const ov = document.getElementById('miOverlay');
       if (ov) ov.remove();
     }
-    document.addEventListener('keydown', ev => { if (ev.key === 'Escape') miClose(); });
+    // Tweede laag boven de dialoog (vraag, uitleg), zodat de dialoog eronder blijft staan.
+    // onEscape: wat Escape behalve sluiten nog doet.
+    function miSubOpen(title, onEscape) {
+      miSubClose();
+      const ov = miEl('div', 'mi-overlay');
+      ov.id = 'miSubOverlay';
+      ov.onEscape = onEscape || null;
+      const box = miEl('div', 'mi-box');
+      box.appendChild(miEl('h3', '', title));
+      ov.appendChild(box);
+      document.body.appendChild(ov);
+      return box;
+    }
+    function miSubClose() {
+      const ov = document.getElementById('miSubOverlay');
+      if (ov) ov.remove();
+    }
+    document.addEventListener('keydown', ev => {
+      if (ev.key !== 'Escape') return;
+      const sub = document.getElementById('miSubOverlay');
+      if (!sub) { miClose(); return; }
+      sub.remove();
+      if (sub.onEscape) sub.onEscape();
+    });
     function miButton(parent, label, fn) {
       const b = miEl('button', '', label);
       b.onclick = fn;
@@ -111,46 +144,54 @@ namespace crt
       return b;
     }
 
-    // Na Stop van een opname, en bij Download van een recording die nog niet gedownload is.
+    // Na Stop van een opname: de dialoog voor Download (bij een Gebruiker: Opslaan), als de
+    // recording daar nog niet heen is.
     function miAfterStop() {
-      if (recFrames.length > 0 && !MI_REC.downloaded) miAskRecKind();
+      if (recFrames.length === 0) return;
+      const target = miStopTarget();
+      if (target === 'sd' ? !MI_REC.sdName : !MI_REC.downloaded) miAskRecKind(target);
     }
-    function miAskRecKind() {
-      const box = miOpen(MI_REC.title);
+    function miAskRecKind(target) {
+      const box = miOpen(target === 'sd' ? MI_REC.saveTitle : MI_REC.title);
       box.appendChild(miEl('p', '', 'Wat voor recording is dit?'));
       const col = box.appendChild(miEl('div', 'mi-choices'));
-      miButton(col, 'Het is een patient meting', () => miDownloadDialog(MI_REC, 'patient'));
+      miButton(col, 'Het is een patient meting', () => miDownloadDialog(MI_REC, 'patient', target));
       const row = col.appendChild(miEl('div', 'mi-choice-row'));
-      miButton(row, 'Het is een kalibratiemeting', () => miDownloadDialog(MI_REC, 'calibration'));
+      miButton(row, 'Het is een kalibratiemeting', () => miDownloadDialog(MI_REC, 'calibration', target));
       row.appendChild(miEl('span', '', '(met de 3D printer)'));
       miButton(col, 'Afbreken', miClose);
     }
-    function miAskSnapKind() {
-      const box = miOpen(MI_SNAP.title);
+    function miAskSnapKind(target) {
+      const box = miOpen(target === 'sd' ? MI_SNAP.saveTitle : MI_SNAP.title);
       box.appendChild(miEl('p', '', 'Is dit een patient-meting?'));
       const row = box.appendChild(miEl('div', 'mi-buttons'));
-      miButton(row, 'Ja', () => miDownloadDialog(MI_SNAP, 'patient'));
-      miButton(row, 'Nee', () => miDownloadDialog(MI_SNAP, 'other'));
+      miButton(row, 'Ja', () => miDownloadDialog(MI_SNAP, 'patient', target));
+      miButton(row, 'Nee', () => miDownloadDialog(MI_SNAP, 'other', target));
       miButton(row, 'Afbreken', miClose);
     }
 
-    // Dialoog "<Recording|Snapshots> downloaden" voor soort type ('patient' | 'calibration' | 'other'):
-    // patient-id (alleen en verplicht bij 'patient') en een optionele aantekening, voorgevuld met de
-    // eerder ingevulde gegevens van deze reeks.
-    function miDownloadDialog(m, type) {
+    // Dialoog "<Recording|Snapshots> downloaden" (target 'pc') of "... opslaan" (target 'sd') voor
+    // soort type ('patient' | 'calibration' | 'other'): bij 'patient' het plakveld "Naam plus
+    // patientID" (gridsd.js), en een optionele aantekening, voorgevuld met de eerdere gegevens van
+    // deze reeks. Had de reeks al een patient-ID (eerdere download, of uit het geladen bestand),
+    // dan wordt dat overgenomen; voor de SD-kaart alleen als het aan het formaat voldoet.
+    function miDownloadDialog(m, type, target) {
+      const sd = (target === 'sd');
       const withPatient = (type === 'patient');
       const prev = m.info || {patientId: '', note: ''};
-      const box = miOpen(m.title);
+      const hadId = withPatient && m.info !== null && m.info.type === 'patient' && prev.patientId !== '';
+      const keepId = hadId && (!sd || pidProblem(prev.patientId) === '');
+      const box = miOpen(sd ? m.saveTitle : m.title);
       if (type === 'calibration') box.appendChild(miEl('p', '', 'Kalibratiemeting (met de 3D printer)'));
-      let pid = null, hint = null;
-      if (withPatient) {
-        box.appendChild(miEl('label', '', 'Vul hier de patient-id in'));
-        pid = box.appendChild(miEl('input'));
-        pid.type = 'text';
-        pid.id = 'miPatientId';
-        pid.placeholder = 'letters, cijfers, - en _';
-        pid.value = prev.patientId;
-        hint = box.appendChild(miEl('span', 'mi-err'));
+      let field = null;
+      if (keepId) {
+        box.appendChild(miEl('div', 'pid-out', 'PatientID: ' + prev.patientId + ' (overgenomen)')).id = 'pidKept';
+      } else if (withPatient) {
+        if (hadId) {
+          box.appendChild(miEl('p', '', 'Het patient-ID van deze ' + m.word + ' (' + prev.patientId +
+            ') past niet in de naamgeving van de SD-kaart. Plak de naam en het patient-ID uit Excel.'));
+        }
+        field = pidPasteField(box, userRole !== 0, () => update());
       }
       box.appendChild(miEl('label', '', 'Aantekening (optioneel)'));
       const note = box.appendChild(miEl('textarea'));
@@ -158,62 +199,54 @@ namespace crt
       note.rows = 5;
       note.value = prev.note;
       const row = box.appendChild(miEl('div', 'mi-buttons'));
-      const dl = miButton(row, 'Downloaden', () => {
+      const dl = miButton(row, sd ? 'Opslaan' : 'Downloaden', () => {
         if (dl.disabled) return;
-        const info = {type, patientId: withPatient ? pid.value.trim() : '', note: note.value};
+        const pid = keepId ? prev.patientId : (field ? field.id() : '');
+        const info = {type, patientId: withPatient ? pid : '', note: note.value};
         miClose();
-        miSave(m, info);
+        if (sd) sdSave(m, info); else miSave(m, info);
       });
-      dl.id = 'miDownload';
+      dl.id = sd ? 'miSave' : 'miDownload';
       miButton(row, 'Afbreken', miClose);
-      if (withPatient) {
-        const check = () => {
-          const v = pid.value.trim();
-          const ok = PATIENT_ID_RE.test(v);
-          const why = v === '' ? 'Vul eerst een patient-id in.'
-                               : 'Het patient-id mag alleen letters, cijfers, verbindingsstreepjes (-) en underscores (_) bevatten.';
-          dl.disabled = !ok;
-          dl.title = ok ? '' : why;
-          hint.textContent = (ok || v === '') ? '' : why;
-        };
-        pid.addEventListener('input', check);
-        pid.addEventListener('keydown', ev => { if (ev.key === 'Enter') dl.click(); });
-        check();
-        pid.focus();
-      } else {
-        note.focus();
+      function update() {
+        dl.disabled = (field !== null && field.id() === null);
+        dl.title = dl.disabled ? 'Plak eerst de naam en het patient-ID uit Excel.' : '';
       }
+      update();
+      if (field) field.input.focus(); else note.focus();
     }
 
     // Download-knop: eerst waarschuwen als deze inhoud al eens gedownload is (ook een upload); dan
     // de downloaddialoog van dezelfde soort als de vorige keer.
     // Een upload zonder deze gegevens (ouder bestand) krijgt de vraag naar de soort meting.
     function miDownloadClick(m) {
-      if (!m.downloaded) { m.ask(); return; }
+      if (!m.downloaded) { m.ask('pc'); return; }
       const box = miOpen('U heeft deze ' + m.word + ' al eens (ooit) gedownload, weet u het zeker?');
       const row = box.appendChild(miEl('div', 'mi-buttons'));
       miButton(row, 'Ja, downloaden', () => {
-        if (!m.info) m.ask();
-        else miDownloadDialog(m, m.info.type);
+        if (!m.info) m.ask('pc');
+        else miDownloadDialog(m, m.info.type, 'pc');
       });
       miButton(row, 'Nee, afbreken', miClose);
     }
 
-    // Upload-knoppen: een recording-upload verwijdert de huidige snapshots en een snapshots-upload
-    // de huidige recording. Is die andere er, dan eerst vragen; pas bij een geslaagde upload wordt
-    // hij verwijderd (recUpload / snapUpload), dus Afbreken in de bestandskeuze laat hem staan.
-    function miUploadClick(m) {
+    // Upload en Laden: een recording verwijdert bij het laden de huidige snapshots en omgekeerd.
+    // Is die andere er, dan eerst vragen (then = verder met laden). Pas bij een geslaagd laden wordt
+    // hij verwijderd (recLoadText / snapLoadText), dus Afbreken laat hem staan.
+    function miConfirmReplace(m, verb, then) {
       const isRec = m === MI_REC;
       const other = isRec ? MI_SNAP : MI_REC;
-      const pick = () => document.getElementById(isRec ? 'recFileInput' : 'snapFileInput').click();
-      if ((isRec ? snapFrames : recFrames).length === 0) { pick(); return; }
+      if ((isRec ? snapFrames : recFrames).length === 0) { then(); return; }
       const box = miOpen('Weet u het zeker?');
-      box.appendChild(miEl('p', '', 'Een ' + (isRec ? 'recording' : 'snapshots') + '-upload verwijdert ' +
+      box.appendChild(miEl('p', '', 'Een ' + (isRec ? 'recording' : 'snapshots') + '-' + verb + ' verwijdert ' +
         (isRec ? 'de huidige serie snapshots.' : 'de huidige recording.') +
-        (other.downloaded ? '' : ' Die is nog niet gedownload.')));
+        (other.downloaded || other.sdName ? '' : userRole === 0 ? ' Die is nog niet opgeslagen.' : ' Die is nog niet gedownload.')));
       const row = box.appendChild(miEl('div', 'mi-buttons'));
-      miButton(row, 'Ja', () => { miClose(); pick(); });
+      miButton(row, 'Ja', () => { miClose(); then(); });
       miButton(row, 'Afbreken', miClose);
+    }
+    function miUploadClick(m) {
+      miConfirmReplace(m, 'upload', () => document.getElementById(m === MI_REC ? 'recFileInput' : 'snapFileInput').click());
     }
 
     // Soort van een geüpload bestand: {kind: 'recording' | 'snapshots' | 'meta' | 'other' | null, sure}.

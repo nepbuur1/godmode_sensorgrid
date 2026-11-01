@@ -171,40 +171,44 @@ namespace crt
       const file = event.target.files[0];
       if (!file) return;
       const reader = new FileReader();
-      reader.onload = function(e) {
-        let parsed;
-        try { parsed = JSON.parse(e.target.result); } catch (err) { parsed = undefined; }
-        // eerst de soort van het bestand controleren (gridmeasinfo.js)
-        miCheckUpload(MI_REC, file.name, parsed, function() { try {
-          const split = metaSplitFromImport(parsed);
-          const data = split.frames;
-          if (snapFrames.length > 0) snapClear();   // na de vraag in miUploadClick
-          recFrames = data;
-          playIdx = 0;
-          recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
-            ? split.meta.recording : null;
-          if (split.meta) applyMetaState(split.meta);
-          miLoaded(MI_REC, split.meta, file.name);
-          if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
-          recState = 'stopped';
-          document.getElementById('btnRecord').classList.remove('rec-active');
-          document.getElementById('btnPause').disabled = true;
-          document.getElementById('btnPause').classList.remove('pause-active');
-          document.getElementById('btnStop').disabled = true;
-          document.getElementById('btnPlay').disabled = false;
-          document.getElementById('btnPlay').classList.remove('play-active');
-          document.getElementById('btnPlayPause').disabled = true;
-          document.getElementById('btnPlayPause').classList.remove('pause-active');
-          document.getElementById('btnDownload').disabled = false;
-          recUpdateInfo();
-          updateRecChart();
-          recPlay();   // een geladen recording speelt meteen af
-        } catch (err) {
-          alert('Failed to load recording file: ' + err.message);
-        } });
-      };
+      reader.onload = function(e) { recLoadText(e.target.result, file.name, false); };
       reader.readAsText(file);
       event.target.value = '';
+    }
+
+    // Een recording laden uit de tekst van een bestand: van de pc (Upload) of van de SD-kaart
+    // (Laden, fromSd; gridsd.js).
+    function recLoadText(text, name, fromSd) {
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (err) { parsed = undefined; }
+      // eerst de soort van het bestand controleren (gridmeasinfo.js)
+      miCheckUpload(MI_REC, name, parsed, function() { try {
+        const split = metaSplitFromImport(parsed);
+        const data = split.frames;
+        if (snapFrames.length > 0) snapClear();   // na de vraag in miConfirmReplace
+        recFrames = data;
+        playIdx = 0;
+        recordingTag = (split.meta && split.meta.recording && split.meta.recording.kind === 'calibration')
+          ? split.meta.recording : null;
+        if (split.meta) applyMetaState(split.meta);
+        miLoaded(MI_REC, split.meta, name, fromSd);
+        if (typeof acOnRecordingLoaded === 'function') acOnRecordingLoaded();
+        recState = 'stopped';
+        document.getElementById('btnRecord').classList.remove('rec-active');
+        document.getElementById('btnPause').disabled = true;
+        document.getElementById('btnPause').classList.remove('pause-active');
+        document.getElementById('btnStop').disabled = true;
+        document.getElementById('btnPlay').disabled = false;
+        document.getElementById('btnPlay').classList.remove('play-active');
+        document.getElementById('btnPlayPause').disabled = true;
+        document.getElementById('btnPlayPause').classList.remove('pause-active');
+        document.getElementById('btnDownload').disabled = false;
+        recUpdateInfo();
+        updateRecChart();
+        recPlay();   // een geladen recording speelt meteen af
+      } catch (err) {
+        alert('Failed to load recording file: ' + err.message);
+      } });
     }
 
     function recSliderChange(val) {
@@ -222,6 +226,7 @@ namespace crt
       else if (recState === 'playpaused') el.textContent = 'Paused: ' + playIdx + '/' + recFrames.length + recTagText();
       else el.textContent = 'Ready';
       if (typeof acUpdateRecalibButton === 'function') acUpdateRecalibButton();
+      document.getElementById('btnRecSave').disabled = document.getElementById('btnDownload').disabled;
       snapUpdateSnapshotButton();
       var sl = document.getElementById('recSlider');
       var show = (recState === 'playing' || recState === 'playpaused');

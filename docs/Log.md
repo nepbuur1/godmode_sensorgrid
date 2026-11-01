@@ -1438,3 +1438,28 @@ to COM5.
   (`recPlayPause()`, the Pause button turns active) and then recalibrates as before. Still disabled while
   recording, or when the recording has no calibration staircase.
 - Verified in headless Edge (11 checks per role, roles 0 and 1) plus the regression tests (324 + 83 + test.js).
+
+### Opslaan / Laden on the SD card, and the paste field "Naam plus patientID"
+- The patient-ID is no longer typed: in the download and save dialogs, the paste field "Naam plus patientID" only
+  accepts two adjacent Excel cells (name<TAB>ID). The name is shown for checking only and stored nowhere. The ID is
+  lowercase letters and digits, optionally after the test prefix `zzz_`. Admin and Onderzoeker get the question
+  "Is dit een echte patient of een test?" for an ID without `zzz_`.
+- New buttons **Opslaan** and **Laden** in the record and snapshot panels (SD card of the server). A Gebruiker has
+  only these; Download and Upload (pc) remain for Admin and Onderzoeker. After Stop, a Gebruiker gets the Opslaan
+  dialog.
+- Server: `crt_SdStore.h` (folders kalibraties / patientmetingen/<id> / andere / current_state, API
+  /api/sd/status|list|file|save, streamed save via .tmp + rename, no overwriting, role checks), using `SdCard`
+  from hello_simcard (SPI, GPIO10-13, 20 MHz). Page side: `crt_GridSd.h` (/gridsd.js); `gridmeasinfo.js` dialogs
+  got a target 'pc' | 'sd'; recording and snapshot loading split into recLoadText / snapLoadText.
+- Snapshots that are not a patient measurement are now named `snapshots_andere_<datetime>...` (also on download).
+- `sdkconfig.server`: FATFS long file names on, and main task stack 3584 -> 8192 bytes (the first flash
+  overflowed the stack while mounting the card: boot loop).
+- Verified: headless Edge with an in-memory SD API, 137 checks (roles 0/1/2), plus the adapted dialog test
+  (108 per role, roles 1/2), user modes (146 + 83), test.js (46), snapshots (27), recalibrate (22). On the
+  device: boots, "SD card CBADS mounted, 15115 MB". Not yet verified on the device: saving and loading through
+  the browser (this pc was not on the SCOLIOSE network).
+- Changed the same day: test prefix `zzz-` instead of `zzz_` (so `_` only ever separates the fields of a file
+  name; `zzz_...` is now refused), and the folder `andere/` became `snapshots_andere/` (it only holds
+  snapshots_andere_ files; the server refuses recordings there). An empty `andere/` folder made by the first
+  flash may still be on the card. Tests again: 140 SD checks per run (roles 0/1/2, incl. "zzz_ refused"), the
+  other suites unchanged; on the device it boots and mounts the card.

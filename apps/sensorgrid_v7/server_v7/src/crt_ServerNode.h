@@ -23,6 +23,8 @@
 #include "crt_GridAutoCalib.h"
 #include "crt_GridAutoCalibUi.h"
 #include "crt_AccountWeb.h"
+#include "crt_SdStore.h"
+#include "crt_GridSd.h"
 
 // Define USE_TIMED_DISCOVERY to use time-based discovery (10s window).
 // Undefine to revert to the v5 behaviour of waiting for a fixed sensor count.
@@ -47,6 +49,15 @@ namespace crt
 		static const unsigned long ROOT_RESET_WINDOW_MS = 10000;
 		static const unsigned long ROOT_RESET_HOLD_MS = 2000;
 		static const unsigned long ROOT_RESET_LED_MS = 1500;
+
+		// microSD module on the SPI2 (FSPI) IO_MUX pins, as tested with hello_simcard; fed from 5V.
+		// 20 MHz: higher makes the driver switch the card to high-speed mode, which the tested
+		// cards refuse (see hello_simcard.md).
+		static const gpio_num_t SD_PIN_CS   = GPIO_NUM_10;
+		static const gpio_num_t SD_PIN_MOSI = GPIO_NUM_11;
+		static const gpio_num_t SD_PIN_SCLK = GPIO_NUM_12;
+		static const gpio_num_t SD_PIN_MISO = GPIO_NUM_13;
+		static const int SD_FREQ_KHZ = SDMMC_FREQ_DEFAULT;
 
 		enum class State : uint8_t
 		{
@@ -76,6 +87,7 @@ namespace crt
 		uint8_t expectedSensorCount;
 		WebServer server;
 		AccountWeb accounts;
+		SdStore sdStore;
 
 		unsigned long bootPressedMs;     // 0 = BOOT not pressed
 		bool rootResetDone;
@@ -590,6 +602,7 @@ namespace crt
 				   uint8_t expectedSensors)
 			: apSsid(ssid), apPass(pass), apChannel(channel),
 			  expectedSensorCount(expectedSensors), server(80), accounts(server),
+			  sdStore(server, accounts, SD_PIN_CS, SD_PIN_MOSI, SD_PIN_MISO, SD_PIN_SCLK, SD_FREQ_KHZ),
 			  bootPressedMs(0), rootResetDone(false), rootResetLedUntilMs(0),
 			  currentState(State::DISCOVERING), currentPollIndex(0),
 			  pollRetryCount(0), stateEnteredMs(0), lastDiscoverMs(0),
@@ -616,6 +629,7 @@ namespace crt
 			ESP_LOGI("ServerNode", "AP IP: %s", WiFi.softAPIP().toString().c_str());
 
 			accounts.begin();
+			sdStore.begin();
 			server.on("/", HTTP_GET, [this]() {
 				if (!accounts.allowPage()) return;   // not logged in: redirected to /login
 				server.send(200, "text/html", HOME_HTML);
@@ -663,6 +677,9 @@ namespace crt
 			});
 			server.on("/gridautocalibui.js", HTTP_GET, [this]() {
 				server.send(200, "application/javascript", GRID_AUTOCALIBUI_JS);
+			});
+			server.on("/gridsd.js", HTTP_GET, [this]() {
+				server.send(200, "application/javascript", GRID_SD_JS);
 			});
 			server.on("/api/sensors", HTTP_GET, [this]() {
 				handleApiSensors();
